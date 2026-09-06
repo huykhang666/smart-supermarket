@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="../SupermarketPOS.Application/SupermarketPOS.Application.csproj" Id="9b22c0b6-a420-4319-9f32-e5a0713ab703" />
+  <Project Path="../SupermarketPOS.Domain/SupermarketPOS.Domain.csproj" Id="d27c91c6-ed28-4f64-b11a-b2f11f34df8f" />
+  <Project Path="../SupermarketPOS.Infrastructure/SupermarketPOS.Infrastructure.csproj" Id="d0bea7e6-44a3-4ae0-b032-698144e70d3b" />
+  <Project Path="SupermarketPOS.UI.csproj" />
+</Solution>

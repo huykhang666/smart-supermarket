@@ -8,4 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SupermarketPOS.Application\SupermarketPOS.Application.csproj" />
+    <ProjectReference Include="..\SupermarketPOS.Infrastructure\SupermarketPOS.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
