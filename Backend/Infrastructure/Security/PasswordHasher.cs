@@ -4,13 +4,16 @@ public class PasswordHasher
 {
     public string HashPassword(string password)
     {
-        // TODO: Hash password using BCrypt
-        return string.Empty;
+        return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
     }
 
     public bool VerifyPassword(string password, string hashedPassword)
     {
-        // TODO: Verify password against hash
-        return true;
+        if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(hashedPassword))
+        {
+            return false;
+        }
+
+        return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
     }
 }

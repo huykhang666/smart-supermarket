@@ -14,6 +14,8 @@ public class User
     public UserRole Role { get; set; } = UserRole.Customer;
     public UserStatus Status { get; set; } = UserStatus.Active;
     public int? BranchId { get; set; }
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiryTime { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

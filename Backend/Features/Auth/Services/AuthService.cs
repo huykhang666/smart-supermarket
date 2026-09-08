@@ -1,17 +1,251 @@
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Domain.Enums;
 using SmartSupermarket.Backend.Features.Auth.DTOs;
+using SmartSupermarket.Backend.Features.Auth.Repositories;
+using SmartSupermarket.Backend.Infrastructure.Security;
 
 namespace SmartSupermarket.Backend.Features.Auth.Services;
 
 public interface IAuthService
 {
     Task<AuthResponse> LoginAsync(LoginRequest request);
+    Task<AuthResponse> RegisterAsync(RegisterRequest request);
+    Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
+    Task<UserProfileResponse> GetProfileAsync(int userId);
+    Task<UserProfileResponse> CreateStaffAsync(CreateStaffRequest request);
 }
 
 public class AuthService : IAuthService
 {
-    public Task<AuthResponse> LoginAsync(LoginRequest request)
+    private readonly IUserRepository _userRepository;
+    private readonly PasswordHasher _passwordHasher;
+    private readonly JwtService _jwtService;
+
+    public AuthService(
+        IUserRepository userRepository,
+        PasswordHasher passwordHasher,
+        JwtService jwtService)
     {
-        // TODO: Implement Auth Logic (Password Verification & Jwt Token Generation)
-        throw new NotImplementedException();
+        _userRepository = userRepository;
+        _passwordHasher = passwordHasher;
+        _jwtService = jwtService;
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    {
+        var user = await _userRepository.GetByUsernameOrPhoneOrEmailAsync(request.Identifier);
+
+        if (user == null)
+        {
+            throw new UnauthorizedAccessException("Tên đăng nhập hoặc mật khẩu không chính xác.");
+        }
+
+        if (user.Status == UserStatus.Locked)
+        {
+            throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa.");
+        }
+
+        bool isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+        if (!isPasswordValid)
+        {
+            throw new UnauthorizedAccessException("Tên đăng nhập hoặc mật khẩu không chính xác.");
+        }
+
+        var token = _jwtService.GenerateToken(user);
+        var refreshToken = _jwtService.GenerateRefreshToken();
+
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        return new AuthResponse
+        {
+            Token = token,
+            RefreshToken = refreshToken,
+            UserId = user.UserId,
+            Username = user.Username,
+            FullName = user.FullName,
+            Role = user.Role.ToString(),
+            BranchId = user.BranchId,
+            ExpiresIn = _jwtService.Options.ExpiryMinutes * 60
+        };
+    }
+
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    {
+        var existingUser = await _userRepository.GetByUsernameOrPhoneOrEmailAsync(request.PhoneNumber);
+        if (existingUser != null)
+        {
+            throw new InvalidOperationException("Số điện thoại này đã được đăng ký tài khoản.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var existingEmail = await _userRepository.GetByEmailAsync(request.Email);
+            if (existingEmail != null)
+            {
+                throw new InvalidOperationException("Email này đã được sử dụng.");
+            }
+        }
+
+        var user = new User
+        {
+            Username = request.PhoneNumber,
+            PasswordHash = _passwordHasher.HashPassword(request.Password),
+            FullName = request.FullName,
+            Email = request.Email ?? $"{request.PhoneNumber}@customer.smartmarket.vn",
+            PhoneNumber = request.PhoneNumber,
+            Role = UserRole.Customer,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var customer = new Customer
+        {
+            User = user,
+            LoyaltyPoints = 0,
+            MembershipTier = 1
+        };
+
+        await _userRepository.AddUserAsync(user);
+        await _userRepository.AddCustomerProfileAsync(customer);
+        await _userRepository.SaveChangesAsync();
+
+        var token = _jwtService.GenerateToken(user);
+        var refreshToken = _jwtService.GenerateRefreshToken();
+
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        return new AuthResponse
+        {
+            Token = token,
+            RefreshToken = refreshToken,
+            UserId = user.UserId,
+            Username = user.Username,
+            FullName = user.FullName,
+            Role = user.Role.ToString(),
+            BranchId = user.BranchId,
+            ExpiresIn = _jwtService.Options.ExpiryMinutes * 60
+        };
+    }
+
+    public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
+    {
+        var principal = _jwtService.GetPrincipalFromExpiredToken(request.AccessToken);
+        if (principal == null)
+        {
+            throw new SecurityTokenException("AccessToken không hợp lệ.");
+        }
+
+        var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out int userId))
+        {
+            throw new SecurityTokenException("AccessToken không hợp lệ.");
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null || user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow || user.Status == UserStatus.Locked)
+        {
+            throw new SecurityTokenException("RefreshToken không hợp lệ hoặc đã hết hạn.");
+        }
+
+        var newAccessToken = _jwtService.GenerateToken(user);
+        var newRefreshToken = _jwtService.GenerateRefreshToken();
+
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        return new AuthResponse
+        {
+            Token = newAccessToken,
+            RefreshToken = newRefreshToken,
+            UserId = user.UserId,
+            Username = user.Username,
+            FullName = user.FullName,
+            Role = user.Role.ToString(),
+            BranchId = user.BranchId,
+            ExpiresIn = _jwtService.Options.ExpiryMinutes * 60
+        };
+    }
+
+    public async Task<UserProfileResponse> GetProfileAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("Không tìm thấy thông tin người dùng.");
+        }
+
+        return MapToUserProfileResponse(user);
+    }
+
+    public async Task<UserProfileResponse> CreateStaffAsync(CreateStaffRequest request)
+    {
+        var existingUser = await _userRepository.GetByUsernameOrPhoneOrEmailAsync(request.Username);
+        if (existingUser != null)
+        {
+            throw new InvalidOperationException("Tên đăng nhập đã tồn tại.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var existingEmail = await _userRepository.GetByEmailAsync(request.Email);
+            if (existingEmail != null)
+            {
+                throw new InvalidOperationException("Email đã được sử dụng.");
+            }
+        }
+
+        var user = new User
+        {
+            Username = request.Username,
+            PasswordHash = _passwordHasher.HashPassword(request.Password),
+            FullName = request.FullName,
+            Email = request.Email ?? $"{request.Username}@smartmarket.vn",
+            PhoneNumber = request.PhoneNumber,
+            Role = request.Role,
+            BranchId = request.BranchId,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _userRepository.AddUserAsync(user);
+        await _userRepository.SaveChangesAsync();
+
+        return MapToUserProfileResponse(user);
+    }
+
+    private static UserProfileResponse MapToUserProfileResponse(User user)
+    {
+        return new UserProfileResponse
+        {
+            UserId = user.UserId,
+            Username = user.Username,
+            FullName = user.FullName,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
+            Role = user.Role.ToString(),
+            Status = user.Status.ToString(),
+            BranchId = user.BranchId,
+            CustomerProfile = user.CustomerProfile != null
+                ? new CustomerProfileDto
+                {
+                    CustomerId = user.CustomerProfile.CustomerId,
+                    LoyaltyPoints = user.CustomerProfile.LoyaltyPoints,
+                    MembershipTier = user.CustomerProfile.MembershipTier.ToString()
+                }
+                : null
+        };
     }
 }

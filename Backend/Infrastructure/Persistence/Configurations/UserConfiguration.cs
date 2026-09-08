@@ -50,6 +50,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDefaultValue(UserStatus.Active)
             .IsRequired();
 
+        builder.Property(u => u.RefreshToken)
+            .HasMaxLength(500);
+
+        builder.Property(u => u.RefreshTokenExpiryTime);
+
         builder.Property(u => u.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
