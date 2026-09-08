@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Backend/">
+    <Project Path="Backend/SmartSupermarket.Backend.csproj" />
+  </Folder>
+  <Folder Name="/Desktop/">
+    <Project Path="Desktop/SmartSupermarket.Desktop.csproj" />
+  </Folder>
+</Solution>
