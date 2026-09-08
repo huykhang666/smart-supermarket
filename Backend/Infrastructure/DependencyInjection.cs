@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartSupermarket.Backend.Features.Auth.Repositories;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 using SmartSupermarket.Backend.Infrastructure.Security;
 
@@ -18,6 +19,9 @@ public static class DependencyInjection
         // Register Security Services
         services.AddScoped<JwtService>();
         services.AddScoped<PasswordHasher>();
+
+        // Register Repositories
+        services.AddScoped<IUserRepository, UserRepository>();
 
         return services;
     }
