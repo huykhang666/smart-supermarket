@@ -14,8 +14,9 @@ public class User
     public UserRole Role { get; set; } = UserRole.Customer;
     public UserStatus Status { get; set; } = UserStatus.Active;
     public int? BranchId { get; set; }
-    public int LoyaltyPoints { get; set; } = 0;
-    public int MembershipTier { get; set; } = 1;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+
+    // Navigation property (1-1 relationship with Customer profile)
+    public Customer? CustomerProfile { get; set; }
 }

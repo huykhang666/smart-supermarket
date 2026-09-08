@@ -6,8 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Extension methods for Infrastructure layer
-builder.Services.AddInfrastructure();
+// Extension method registering Infrastructure layer (DbContext, Security, Options)
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
