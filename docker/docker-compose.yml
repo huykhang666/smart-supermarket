@@ -1,18 +1,19 @@
 version: '3.8'
 
 services:
-  backend:
-    build:
-      context: ../Backend
-      dockerfile: Dockerfile
-    ports:
-      - "7123:80"
+  # PostgreSQL 16 Database Container
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: smart_supermarket_db
+    restart: always
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-
-  frontend:
-    build:
-      context: ../Frontend
-      dockerfile: Dockerfile
+      POSTGRES_DB: AISupermarketDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: YourPassword123!
     ports:
-      - "3000:80"
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
