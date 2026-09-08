@@ -70,7 +70,7 @@ public class AuthController : ControllerBase
         try
         {
             var response = await _authService.RefreshTokenAsync(request);
-            return Ok(ApiResult<AuthResponse>.Success(response, "Cap nhat Token thanh cong."));
+            return Ok(ApiResult<AuthResponse>.Success(response, "Cập nhật Token thành công."));
         }
         catch (SecurityTokenException ex)
         {
@@ -86,6 +86,7 @@ public class AuthController : ControllerBase
     /// Lấy thông tin cá nhân của người dùng hiện tại (Yêu cầu Token)
     /// </summary>
     [HttpGet("profile")]
+    [HttpGet("me")]
     [Authorize]
     public async Task<IActionResult> GetProfile()
     {
@@ -107,6 +108,34 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(ApiResult<UserProfileResponse>.Failure(ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// Đổi mật khẩu tài khoản hiện tại (Yêu cầu Token)
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResult<bool>.Failure("Mã định danh Token không hợp lệ."));
+            }
+
+            await _authService.ChangePasswordAsync(userId, request);
+            return Ok(ApiResult<bool>.Success(true, "Đổi mật khẩu thành công."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResult<bool>.Failure(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResult<bool>.Failure(ex.Message));
         }
     }
 

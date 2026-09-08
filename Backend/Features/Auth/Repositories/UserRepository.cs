@@ -63,6 +63,41 @@ public class UserRepository : IUserRepository
         return await query.ToListAsync();
     }
 
+    public async Task<(IEnumerable<User> Items, int TotalCount)> GetUsersPagedAsync(
+        UserRole? role, int? branchId, string? search, int page, int pageSize)
+    {
+        var query = _dbContext.Users.Include(u => u.CustomerProfile).AsQueryable();
+
+        if (role.HasValue)
+        {
+            query = query.Where(u => u.Role == role.Value);
+        }
+
+        if (branchId.HasValue)
+        {
+            query = query.Where(u => u.BranchId == branchId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.Trim().ToLower();
+            query = query.Where(u => u.Username.ToLower().Contains(searchLower) ||
+                                     u.FullName.ToLower().Contains(searchLower) ||
+                                     u.Email.ToLower().Contains(searchLower) ||
+                                     (u.PhoneNumber != null && u.PhoneNumber.Contains(searchLower)));
+        }
+
+        int totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
     public async Task AddUserAsync(User user)
     {
         await _dbContext.Users.AddAsync(user);

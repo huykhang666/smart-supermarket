@@ -11,6 +11,7 @@ public interface IUserRepository
     Task<User?> GetByPhoneAsync(string phone);
     Task<User?> GetByUsernameOrPhoneOrEmailAsync(string identifier);
     Task<IEnumerable<User>> GetAllStaffAsync(int? branchId = null);
+    Task<(IEnumerable<User> Items, int TotalCount)> GetUsersPagedAsync(UserRole? role, int? branchId, string? search, int page, int pageSize);
     Task AddUserAsync(User user);
     Task AddCustomerProfileAsync(Customer customer);
     void UpdateUser(User user);

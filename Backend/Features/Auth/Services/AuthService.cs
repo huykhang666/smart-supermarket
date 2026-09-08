@@ -15,6 +15,10 @@ public interface IAuthService
     Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
     Task<UserProfileResponse> GetProfileAsync(int userId);
     Task<UserProfileResponse> CreateStaffAsync(CreateStaffRequest request);
+    Task<PagedResult<UserProfileResponse>> GetUsersPagedAsync(UserRole? role, int? branchId, string? search, int page, int pageSize);
+    Task<UserProfileResponse> UpdateUserAsync(int userId, UpdateUserRequest request);
+    Task<bool> LockUserAsync(int userId);
+    Task<bool> ChangePasswordAsync(int userId, ChangePasswordRequest request);
 }
 
 public class AuthService : IAuthService
@@ -224,6 +228,86 @@ public class AuthService : IAuthService
         await _userRepository.SaveChangesAsync();
 
         return MapToUserProfileResponse(user);
+    }
+
+    public async Task<PagedResult<UserProfileResponse>> GetUsersPagedAsync(
+        UserRole? role, int? branchId, string? search, int page, int pageSize)
+    {
+        var (users, totalCount) = await _userRepository.GetUsersPagedAsync(role, branchId, search, page, pageSize);
+
+        var dtos = users.Select(MapToUserProfileResponse);
+
+        return new PagedResult<UserProfileResponse>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<UserProfileResponse> UpdateUserAsync(int userId, UpdateUserRequest request)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("Không tìm thấy thông tin người dùng.");
+        }
+
+        user.FullName = request.FullName;
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            user.Email = request.Email;
+        }
+        user.PhoneNumber = request.PhoneNumber;
+        user.Role = request.Role;
+        user.Status = request.Status;
+        user.BranchId = request.BranchId;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        return MapToUserProfileResponse(user);
+    }
+
+    public async Task<bool> LockUserAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("Không tìm thấy thông tin người dùng.");
+        }
+
+        user.Status = UserStatus.Locked;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<bool> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("Không tìm thấy thông tin người dùng.");
+        }
+
+        if (!_passwordHasher.VerifyPassword(request.OldPassword, user.PasswordHash))
+        {
+            throw new InvalidOperationException("Mật khẩu cũ không chính xác.");
+        }
+
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+
+        _userRepository.UpdateUser(user);
+        await _userRepository.SaveChangesAsync();
+
+        return true;
     }
 
     private static UserProfileResponse MapToUserProfileResponse(User user)
