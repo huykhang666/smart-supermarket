@@ -59,7 +59,11 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Enable Swagger UI in Development / Production
+// Middleware Pipeline
+app.UseStaticFiles();
+app.UseRouting();
+
+// Enable Swagger UI
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -67,10 +71,11 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Auto Redirect root / to /swagger/index.html
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 app.MapControllers();
 
