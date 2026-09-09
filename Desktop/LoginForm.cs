@@ -18,7 +18,7 @@ public class LoginForm : Form
 
     private Label lblUsername = null!;
     private TextBox txtUsername = null!;
-    
+
     private Label lblPassword = null!;
     private Panel pnlPasswordBox = null!;
     private TextBox txtPassword = null!;
@@ -46,7 +46,7 @@ public class LoginForm : Form
         this.FormBorderStyle = FormBorderStyle.None;
         this.BackColor = Color.FromArgb(0, 114, 206); // Unified Sky Blue
 
-        // Custom Paint for smooth gradient & crisp 1px border
+        // Background Paint
         this.Paint += (s, e) =>
         {
             using var brush = new LinearGradientBrush(
@@ -144,12 +144,17 @@ public class LoginForm : Form
             Location = new Point(30, 52),
             BackColor = Color.FromArgb(0, 42, 90) // Dark Navy Container
         };
+        pnlHeaderCard.Resize += (s, e) =>
+        {
+            if (pnlHeaderCard.Width > 0 && pnlHeaderCard.Height > 0)
+            {
+                using var path = GetRoundedPath(pnlHeaderCard.ClientRectangle, 12);
+                pnlHeaderCard.Region = new Region(path);
+            }
+        };
         pnlHeaderCard.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var path = GetRoundedPath(pnlHeaderCard.ClientRectangle, 12);
-            pnlHeaderCard.Region = new Region(path);
-
             // Green dot indicator
             using var badgeBrush = new SolidBrush(Color.FromArgb(16, 185, 129));
             e.Graphics.FillEllipse(badgeBrush, 20, 16, 10, 10);
@@ -182,11 +187,17 @@ public class LoginForm : Form
             Location = new Point(12, 42),
             BackColor = Color.White
         };
+        pnlLogoBox.Resize += (s, e) =>
+        {
+            if (pnlLogoBox.Width > 0 && pnlLogoBox.Height > 0)
+            {
+                using var path = GetRoundedPath(pnlLogoBox.ClientRectangle, 10);
+                pnlLogoBox.Region = new Region(path);
+            }
+        };
         pnlLogoBox.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var path = GetRoundedPath(pnlLogoBox.ClientRectangle, 10);
-            pnlLogoBox.Region = new Region(path);
 
             // Draw Blue Logo Square in Center
             int logoX = (pnlLogoBox.Width - 76) / 2;
@@ -221,13 +232,21 @@ public class LoginForm : Form
             IconSize = 40,
             Size = new Size(40, 40),
             Location = new Point((376 - 40) / 2, 30),
-            BackColor = Color.Transparent,
-            Parent = pnlLogoBox
+            BackColor = Color.Transparent
         };
+
+        pnlLogoBox.Controls.Add(picCart);
 
         pnlHeaderCard.Controls.Add(lblSystemTag);
         pnlHeaderCard.Controls.Add(lblSystemId);
         pnlHeaderCard.Controls.Add(pnlLogoBox);
+
+        // Set Regions initially
+        using (var pathCard = GetRoundedPath(pnlHeaderCard.ClientRectangle, 12))
+            pnlHeaderCard.Region = new Region(pathCard);
+
+        using (var pathBox = GetRoundedPath(pnlLogoBox.ClientRectangle, 10))
+            pnlLogoBox.Region = new Region(pathBox);
 
         // --- 3. Username Input Row (EMPTY by default!) ---
         lblUsername = new Label
@@ -242,7 +261,7 @@ public class LoginForm : Form
 
         txtUsername = new TextBox
         {
-            Text = "", // EMPTY BY DEFAULT as requested!
+            Text = "", // EMPTY BY DEFAULT
             PlaceholderText = "Nhập tài khoản (admin)",
             Font = new Font("Segoe UI", 11f),
             ForeColor = Color.FromArgb(20, 30, 40),
@@ -274,7 +293,7 @@ public class LoginForm : Form
 
         txtPassword = new TextBox
         {
-            Text = "", // EMPTY BY DEFAULT as requested!
+            Text = "", // EMPTY BY DEFAULT
             PlaceholderText = "Nhập mật khẩu (admin123)",
             Font = new Font("Segoe UI", 11f),
             ForeColor = Color.FromArgb(20, 30, 40),
@@ -337,7 +356,7 @@ public class LoginForm : Form
             Location = new Point(310, 378),
             Cursor = Cursors.Hand
         };
-        lblForgotPassword.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? this, "Vui lòng liên hệ bộ phận Kỹ Thuật Admin để reset mật khẩu.");
+        lblForgotPassword.Click += (s, e) => AntdUI.Message.info(this, "Vui lòng liên hệ bộ phận Kỹ Thuật Admin để reset mật khẩu.");
 
         // --- 6. Primary & Secondary Buttons ---
         btnLogin = new Button
@@ -367,7 +386,7 @@ public class LoginForm : Form
         };
         btnRegister.FlatAppearance.BorderSize = 1;
         btnRegister.FlatAppearance.BorderColor = Color.FromArgb(100, 190, 255);
-        btnRegister.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? this, "Chức năng đăng ký tài khoản mới yêu cầu quyền Admin.");
+        btnRegister.Click += (s, e) => AntdUI.Message.info(this, "Chức năng đăng ký tài khoản mới yêu cầu quyền Admin.");
 
         // --- 7. Footer Status Bar ---
         pnlFooter = new Panel
@@ -423,7 +442,7 @@ public class LoginForm : Form
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            AntdUI.Message.error(this.FindForm() ?? this, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
+            AntdUI.Message.error(this, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
             return;
         }
 
@@ -431,7 +450,7 @@ public class LoginForm : Form
         if ((username.Equals("admin", StringComparison.OrdinalIgnoreCase) && password == "admin123") ||
             (username.Equals("quanly", StringComparison.OrdinalIgnoreCase)))
         {
-            AntdUI.Message.success(this.FindForm() ?? this, "Đăng nhập thành công! Đang chuyển đến Trung Tâm Điều Hành Admin...");
+            AntdUI.Message.success(this, "Đăng nhập thành công! Đang chuyển đến Trung Tâm Điều Hành Admin...");
 
             var timer = new System.Windows.Forms.Timer { Interval = 500 };
             timer.Tick += (s, ev) =>
@@ -446,7 +465,7 @@ public class LoginForm : Form
         }
         else
         {
-            AntdUI.Message.error(this.FindForm() ?? this, "Tài khoản hoặc mật khẩu không chính xác! (Gợi ý: admin / admin123)");
+            AntdUI.Message.error(this, "Tài khoản hoặc mật khẩu không chính xác! (Gợi ý: admin / admin123)");
         }
     }
 
