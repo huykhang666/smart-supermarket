@@ -410,9 +410,9 @@ public class SupplierService : ISupplierService
             return result;
         }
 
-        while (!reader.EndOfStream)
+        string? line;
+        while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
         {
-            string? line = await reader.ReadLineAsync(cancellationToken);
             if (string.IsNullOrWhiteSpace(line)) continue;
 
             result.TotalRows++;
