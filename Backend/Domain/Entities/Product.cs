@@ -21,4 +21,5 @@ public class Product
     public Category Category { get; set; } = null!;
     public Supplier? Supplier { get; set; }
     public ICollection<ProductCategory> ProductCategories { get; set; } = new List<ProductCategory>();
+    public ICollection<ProductSupplier> ProductSuppliers { get; set; } = new List<ProductSupplier>();
 }

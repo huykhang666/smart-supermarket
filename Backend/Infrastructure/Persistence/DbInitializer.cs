@@ -110,8 +110,32 @@ public static class DbInitializer
         // 7. Check if Suppliers exist
         if (!await dbContext.Suppliers.AnyAsync())
         {
-            var cocaSupplier = new Supplier { SupplierName = "Công ty TNHH Coca-Cola Việt Nam", ContactPerson = "Nguyễn Văn A", PhoneNumber = "02838111222", Email = "contact@cocacola.vn", Address = "TP. Hồ Chí Minh", CreatedAt = DateTime.UtcNow };
-            var vinamilkSupplier = new Supplier { SupplierName = "Công ty Cổ phần Sữa Vinamilk", ContactPerson = "Trần Thị B", PhoneNumber = "02854155555", Email = "vinamilk@vinamilk.com.vn", Address = "TP. Hồ Chí Minh", CreatedAt = DateTime.UtcNow };
+            var cocaSupplier = new Supplier 
+            { 
+                SupplierCode = "SUP001",
+                SupplierName = "Công ty TNHH Coca-Cola Việt Nam", 
+                ContactPerson = "Nguyễn Văn A", 
+                PhoneNumber = "02838111222", 
+                Email = "contact@cocacola.vn", 
+                Address = "Xa lộ Hà Nội, P. Linh Trung, TP. Thủ Đức, TP.HCM",
+                TaxCode = "0301234567",
+                LogoUrl = "/images/suppliers/coca-logo.png",
+                Status = 1,
+                CreatedAt = DateTime.UtcNow 
+            };
+            var vinamilkSupplier = new Supplier 
+            { 
+                SupplierCode = "SUP002",
+                SupplierName = "Công ty Cổ phần Sữa Vinamilk", 
+                ContactPerson = "Trần Thị B", 
+                PhoneNumber = "02854155555", 
+                Email = "vinamilk@vinamilk.com.vn", 
+                Address = "Số 10 Tân Trào, P. Tân Phú, Quận 7, TP.HCM",
+                TaxCode = "0307654321",
+                LogoUrl = "/images/suppliers/vinamilk-logo.png",
+                Status = 1,
+                CreatedAt = DateTime.UtcNow 
+            };
 
             await dbContext.Suppliers.AddRangeAsync(cocaSupplier, vinamilkSupplier);
             await dbContext.SaveChangesAsync();
@@ -178,6 +202,49 @@ public static class DbInitializer
                     ProductId = prod.ProductId,
                     CategoryId = prod.CategoryId
                 });
+            }
+            await dbContext.SaveChangesAsync();
+        }
+
+        // 10. Seed ProductSupplier join entity (Many-to-Many)
+        if (!await dbContext.ProductSuppliers.AnyAsync())
+        {
+            var products = await dbContext.Products.ToListAsync();
+            var cocaSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Coca-Cola"));
+            var vinamilkSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Vinamilk"));
+
+            foreach (var prod in products)
+            {
+                if (prod.ProductName.Contains("Coca-Cola") && cocaSupplier != null)
+                {
+                    dbContext.ProductSuppliers.Add(new ProductSupplier
+                    {
+                        ProductId = prod.ProductId,
+                        SupplierId = cocaSupplier.SupplierId,
+                        PurchasePrice = 7500.00m,
+                        SupplierProductCode = "KO-330",
+                        LeadTime = 2,
+                        MinimumOrderQuantity = 50,
+                        Rating = 4.80m,
+                        IsDefault = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                else if (prod.ProductName.Contains("Vinamilk") && vinamilkSupplier != null)
+                {
+                    dbContext.ProductSuppliers.Add(new ProductSupplier
+                    {
+                        ProductId = prod.ProductId,
+                        SupplierId = vinamilkSupplier.SupplierId,
+                        PurchasePrice = 29000.00m,
+                        SupplierProductCode = "VNM-1L",
+                        LeadTime = 1,
+                        MinimumOrderQuantity = 20,
+                        Rating = 4.90m,
+                        IsDefault = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
             }
             await dbContext.SaveChangesAsync();
         }

@@ -15,9 +15,19 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
         builder.Property(s => s.SupplierId)
             .ValueGeneratedOnAdd();
 
+        builder.Property(s => s.SupplierCode)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.HasIndex(s => s.SupplierCode)
+            .IsUnique();
+
         builder.Property(s => s.SupplierName)
             .HasMaxLength(150)
             .IsRequired();
+
+        builder.HasIndex(s => s.SupplierName)
+            .IsUnique();
 
         builder.Property(s => s.ContactPerson)
             .HasMaxLength(100);
@@ -30,6 +40,17 @@ public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
 
         builder.Property(s => s.Address)
             .HasMaxLength(255);
+
+        builder.Property(s => s.TaxCode)
+            .HasMaxLength(50);
+
+        builder.Property(s => s.LogoUrl)
+            .HasMaxLength(255);
+
+        builder.Property(s => s.Status)
+            .HasDefaultValue((byte)1)
+            .HasSentinel((byte)0)
+            .IsRequired();
 
         builder.Property(s => s.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
