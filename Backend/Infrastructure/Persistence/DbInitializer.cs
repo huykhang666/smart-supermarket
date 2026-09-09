@@ -95,5 +95,76 @@ public static class DbInitializer
         }
 
         await dbContext.SaveChangesAsync();
+
+        // 6. Check if Categories exist
+        if (!await dbContext.Categories.AnyAsync())
+        {
+            var beverageCat = new Category { CategoryName = "Nước giải khát", Description = "Các loại nước ngọt, nước suối, trà, cà phê đóng lon/chai", CreatedAt = DateTime.UtcNow };
+            var dairyCat = new Category { CategoryName = "Sữa & Sản phẩm từ sữa", Description = "Sữa tươi, sữa chua, phô mai, bơ", CreatedAt = DateTime.UtcNow };
+            var snackCat = new Category { CategoryName = "Bánh kẹo & Ăn vặt", Description = "Các loại bánh quy, snack, kẹo", CreatedAt = DateTime.UtcNow };
+
+            await dbContext.Categories.AddRangeAsync(beverageCat, dairyCat, snackCat);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // 7. Check if Suppliers exist
+        if (!await dbContext.Suppliers.AnyAsync())
+        {
+            var cocaSupplier = new Supplier { SupplierName = "Công ty TNHH Coca-Cola Việt Nam", ContactPerson = "Nguyễn Văn A", PhoneNumber = "02838111222", Email = "contact@cocacola.vn", Address = "TP. Hồ Chí Minh", CreatedAt = DateTime.UtcNow };
+            var vinamilkSupplier = new Supplier { SupplierName = "Công ty Cổ phần Sữa Vinamilk", ContactPerson = "Trần Thị B", PhoneNumber = "02854155555", Email = "vinamilk@vinamilk.com.vn", Address = "TP. Hồ Chí Minh", CreatedAt = DateTime.UtcNow };
+
+            await dbContext.Suppliers.AddRangeAsync(cocaSupplier, vinamilkSupplier);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // 8. Check if Products exist
+        if (!await dbContext.Products.AnyAsync())
+        {
+            var beverageCategory = await dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName == "Nước giải khát");
+            var dairyCategory = await dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName == "Sữa & Sản phẩm từ sữa");
+
+            var cocaSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Coca-Cola"));
+            var vinamilkSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Vinamilk"));
+
+            if (beverageCategory != null)
+            {
+                var product1 = new Product
+                {
+                    ProductName = "Nước ngọt Coca-Cola Lon 330ml",
+                    Barcode = "8935001800012",
+                    CategoryId = beverageCategory.CategoryId,
+                    SupplierId = cocaSupplier?.SupplierId,
+                    Price = 10000.00m,
+                    CostPrice = 7500.00m,
+                    ImageUrl = "/images/products/coca_330ml.jpg",
+                    Unit = "lon",
+                    Status = ProductStatus.Active,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await dbContext.Products.AddAsync(product1);
+            }
+
+            if (dairyCategory != null)
+            {
+                var product2 = new Product
+                {
+                    ProductName = "Sữa tươi tiệt trùng Vinamilk Có đường 1L",
+                    Barcode = "8934673123456",
+                    CategoryId = dairyCategory.CategoryId,
+                    SupplierId = vinamilkSupplier?.SupplierId,
+                    Price = 36000.00m,
+                    CostPrice = 29000.00m,
+                    ImageUrl = "/images/products/vinamilk_1l.jpg",
+                    Unit = "hộp",
+                    Status = ProductStatus.Active,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await dbContext.Products.AddAsync(product2);
+            }
+
+            await dbContext.SaveChangesAsync();
+        }
     }
 }

@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/users/3"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "fullName": "Phạm Văn Kho (Đã cập nhật)",
+      "email": "staff02@smartmarket.vn",
+      "phoneNumber": "0977889900",
+      "role": 3,
+      "status": 1,
+      "branchId": 1
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+order: 3000

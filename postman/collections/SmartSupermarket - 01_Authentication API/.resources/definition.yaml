@@ -1,0 +1,6 @@
+$kind: collection
+description: Postman Collection kiểm thử toàn bộ REST API phân hệ Authentication & User Management cho hệ thống Smart SuperMarket.
+variables:
+  baseUrl: http://localhost:5000
+  authToken: ""
+  refreshToken: ""

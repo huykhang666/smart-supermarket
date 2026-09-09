@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/users"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "username": "staff_pos_02",
+      "password": "StaffPassword123!",
+      "fullName": "Phạm Văn Kho",
+      "email": "staff02@smartmarket.vn",
+      "phoneNumber": "0977889900",
+      "role": 3,
+      "branchId": 1
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+order: 2000

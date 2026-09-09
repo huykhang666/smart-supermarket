@@ -48,6 +48,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Status)
             .HasConversion<byte>()
             .HasDefaultValue(UserStatus.Active)
+            .HasSentinel((UserStatus)0)
             .IsRequired();
 
         builder.Property(u => u.RefreshToken)

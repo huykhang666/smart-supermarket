@@ -22,11 +22,11 @@ builder.Services.AddSwaggerGen(options =>
     var jwtSecurityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Nhập JWT Bearer Token theo định dạng: Bearer {your_jwt_token}"
+        Description = "Dán chuỗi JWT Token của bạn vào đây (không cần gõ chữ Bearer)"
     };
 
     options.AddSecurityDefinition("Bearer", jwtSecurityScheme);
