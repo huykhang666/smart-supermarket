@@ -4,6 +4,7 @@ using SmartSupermarket.Backend.Domain.Enums;
 using SmartSupermarket.Backend.Features.Categories.Repositories;
 using SmartSupermarket.Backend.Features.Products.DTOs;
 using SmartSupermarket.Backend.Features.Products.Repositories;
+using SmartSupermarket.Backend.Features.Suppliers.Repositories;
 
 namespace SmartSupermarket.Backend.Features.Products.Services;
 
