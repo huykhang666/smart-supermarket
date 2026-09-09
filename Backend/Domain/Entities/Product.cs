@@ -1,3 +1,5 @@
+using SmartSupermarket.Backend.Domain.Enums;
+
 namespace SmartSupermarket.Backend.Domain.Entities;
 
 public class Product
@@ -11,10 +13,11 @@ public class Product
     public decimal? CostPrice { get; set; }
     public string? ImageUrl { get; set; }
     public string Unit { get; set; } = string.Empty;
-    public int Status { get; set; } = 1;
+    public ProductStatus Status { get; set; } = ProductStatus.Active;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation properties
     public Category Category { get; set; } = null!;
-    public Supplier? PrimarySupplier { get; set; }
+    public Supplier? Supplier { get; set; }
 }

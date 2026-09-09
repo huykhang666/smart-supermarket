@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{baseUrl}}/api/admin/users?role=3&page=1&pageSize=10"
+method: GET
+queryParams:
+  role: "3"
+  page: "1"
+  pageSize: "10"
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+order: 1000

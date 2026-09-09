@@ -9,4 +9,7 @@ public class Supplier
     public string? Email { get; set; }
     public string? Address { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation property
+    public ICollection<Product> Products { get; set; } = new List<Product>();
 }

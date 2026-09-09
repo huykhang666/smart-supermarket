@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "phoneNumber": "0911223344",
+      "fullName": "Trần Thị Khách Hàng",
+      "email": "khachhang01@gmail.com",
+      "password": "CustomerPassword123!"
+    }
+order: 3000
