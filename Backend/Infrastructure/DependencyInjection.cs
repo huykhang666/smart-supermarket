@@ -6,6 +6,9 @@ using SmartSupermarket.Backend.Features.Auth.Services;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 using SmartSupermarket.Backend.Infrastructure.Security;
 
+using SmartSupermarket.Backend.Features.Products.Repositories;
+using SmartSupermarket.Backend.Features.Products.Services;
+
 namespace SmartSupermarket.Backend.Infrastructure;
 
 public static class DependencyInjection
@@ -25,6 +28,12 @@ public static class DependencyInjection
         // Register Repositories & Services
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<ISupplierService, SupplierService>();
 
         return services;
     }
