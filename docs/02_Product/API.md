@@ -13,6 +13,10 @@
    - 2.6. [Chi tiết API 5: Cập nhật Thông tin Sản phẩm (`PUT /api/products/{id}`)](#26-chi-tiết-api-5-cập-nhật-thông-tin-sản-phẩm-put-apiproductsid)
    - 2.7. [Chi tiết API 6: Khóa/Ngừng kinh doanh Sản phẩm (`DELETE /api/products/{id}`)](#27-chi-tiết-api-6-khóangừng-kinh-doanh-sản-phẩm-delete-apiproductsid)
    - 2.8. [Chi tiết API 7: Tải lên Hình ảnh Sản phẩm (`POST /api/products/upload-image`)](#28-chi-tiết-api-7-tải-lên-hình-ảnh-sản-phẩm-post-apiproductsupload-image)
+   - 2.9. [Chi tiết API 8: Tự động Sinh Mã vạch GS1 EAN-13 (`POST /api/products/generate-barcode`)](#29-chi-tiết-api-8-tự-động-sinh-mã-vạch-gs1-ean-13-post-apiproductsgenerate-barcode)
+   - 2.10. [Chi tiết API 9: Cập nhật & Xem Biên lợi nhuận Giá (`PUT /api/products/{id}/price`)](#210-chi-tiết-api-9-cập-nhật--xem-biên-lợi-nhuận-giá-put-apiproductsidprice)
+   - 2.11. [Chi tiết API 10: Quản lý Danh mục Sản phẩm (`/api/category`)](#211-chi-tiết-api-10-quản-lý-danh-mục-sản-phẩm-apicategory)
+   - 2.12. [Chi tiết API 11: Quản lý Nhà cung cấp (`/api/supplier`)](#212-chi-tiết-api-11-quản-lý-nhà-cung-cấp-apisupplier)
 3. [Ghi chú](#3-ghi-chú)
 4. [Kết luận](#4-kết-luận)
 
@@ -20,7 +24,7 @@
 
 ## 1. GIỚI THIỆU
 
-Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTful API (API Contract) cho phân hệ **02_Product (Quản lý Sản phẩm)** thuộc hệ thống **Smart SuperMarket**. Tài liệu quy định cụ thể URL, HTTP Method, Header xác thực JWT Bearer, tham số Query, cấu trúc JSON Request/Response bọc trong bọc chuẩn `ApiResult<T>` và các mã lỗi HTTP tương ứng.
+Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTful API (API Contract) cho phân hệ **02_Product (Quản lý Sản phẩm)** thuộc hệ thống **Smart SuperMarket**. Tài liệu quy định cụ thể URL, HTTP Method, Header xác thực JWT Bearer, tham số Query, cấu trúc JSON Request/Response bọc trong vỏ chuẩn `ApiResult<T>` và các mã lỗi HTTP tương ứng.
 
 ---
 
@@ -37,6 +41,11 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
 | `PUT` | `/api/products/{id}` | Admin / Manager | Cập nhật thông tin chi tiết sản phẩm |
 | `DELETE`| `/api/products/{id}` | Admin / Manager | Đổi trạng thái sản phẩm sang `Ngừng kinh doanh` (Soft Delete) |
 | `POST` | `/api/products/upload-image` | Admin / Manager | Upload file hình ảnh sản phẩm lên Server |
+| `POST` | `/api/products/generate-barcode` | Admin / Manager / Staff | Sinh mã vạch nội bộ GS1 EAN-13 tự động |
+| `PUT` | `/api/products/{id}/price` | Admin / Manager | Cập nhật giá bán niêm yết và giá vốn |
+| `GET` | `/api/products/{id}/price-history` | Admin / Manager | Xem thông tin biên lợi nhuận và cờ cảnh báo bán lỗ |
+| `GET/POST/PUT/DELETE` | `/api/category` | Public / Admin / Manager | Quản lý danh mục sản phẩm (CRUD) |
+| `GET/POST/PUT/DELETE` | `/api/supplier` | Public / Admin / Manager | Quản lý nhà cung cấp chính (CRUD) |
 
 ---
 
@@ -114,15 +123,6 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
   "errors": null
 }
 ```
-- **Response Thất bại (404 Not Found)**:
-```json
-{
-  "isSuccess": false,
-  "message": "Không tìm thấy sản phẩm có ID = 999.",
-  "data": null,
-  "errors": ["Product not found"]
-}
-```
 
 ---
 
@@ -141,19 +141,10 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
     "barcode": "8935001800012",
     "price": 10000.00,
     "unit": "lon",
-    "imageUrl": "/images/products/coca_330ml.jpg",
-    "status": "Active"
+    "status": "Active",
+    "categoryName": "Nước giải khát"
   },
   "errors": null
-}
-```
-- **Response Thất bại (404 Not Found)**:
-```json
-{
-  "isSuccess": false,
-  "message": "Mã vạch 8935001999999 không tồn tại trên hệ thống.",
-  "data": null,
-  "errors": ["Barcode not found"]
 }
 ```
 
@@ -195,15 +186,6 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
   "errors": null
 }
 ```
-- **Response Thất bại (400 Bad Request)**:
-```json
-{
-  "isSuccess": false,
-  "message": "Mã vạch 8934673123456 đã tồn tại trên hệ thống.",
-  "data": null,
-  "errors": ["Barcode duplicate"]
-}
-```
 
 ---
 
@@ -211,21 +193,7 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
 
 - **Xác thực**: Header `Authorization: Bearer <JWT>` (Yêu cầu Role `Admin` hoặc `Manager`).
 - **Path Parameter**: `id` (int, required).
-- **Request Body (JSON)**:
-```json
-{
-  "productName": "Sữa tươi Vinamilk Có đường 1L (Mẫu mới)",
-  "barcode": "8934673123456",
-  "categoryId": 2,
-  "supplierId": 2,
-  "price": 37000.00,
-  "costPrice": 29500.00,
-  "imageUrl": "/images/products/vinamilk_1l_new.jpg",
-  "unit": "hộp",
-  "status": 1
-}
-```
-- **Response Thành công (200 OK)**: Trả về đối tượng `Product` sau khi đã cập nhật.
+- **Response Thành công (200 OK)**: Trả về đối tượng `ProductDto` đã cập nhật.
 
 ---
 
@@ -249,14 +217,14 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
 
 - **Xác thực**: Header `Authorization: Bearer <JWT>` (Yêu cầu Role `Admin` hoặc `Manager`).
 - **Content-Type**: `multipart/form-data`.
-- **Form Data**: `file` (Binary File image).
+- **Form Data**: `file` (Binary File image), `productId` (int).
 - **Response Thành công (200 OK)**:
 ```json
 {
   "isSuccess": true,
   "message": "Tải lên hình ảnh thành công.",
   "data": {
-    "imageUrl": "/images/products/prod_8935001800012_20260909.jpg"
+    "imageUrl": "/images/products/prod_1_a1b2c3d4.jpg"
   },
   "errors": null
 }
@@ -264,12 +232,70 @@ Tài liệu **API.md** định nghĩa chi tiết Hợp đồng Giao tiếp RESTf
 
 ---
 
+### 2.9. Chi tiết API 8: Tự động Sinh Mã vạch GS1 EAN-13 (`POST /api/products/generate-barcode`)
+
+- **Xác thực**: Authenticated / Public.
+- **Response Thành công (200 OK)**:
+```json
+{
+  "isSuccess": true,
+  "message": "Sinh mã vạch EAN-13 thành công.",
+  "data": "2000010100009",
+  "errors": null
+}
+```
+
+---
+
+### 2.10. Chi tiết API 9: Cập nhật & Xem Biên lợi nhuận Giá (`PUT /api/products/{id}/price`)
+
+- **Xác thực**: Header `Authorization: Bearer <JWT>` (Yêu cầu Role `Admin` hoặc `Manager`).
+- **Response Thành công (200 OK)**:
+```json
+{
+  "isSuccess": true,
+  "message": "Cập nhật giá sản phẩm thành công.",
+  "data": {
+    "productId": 1,
+    "productName": "Nước ngọt Coca-Cola Lon 330ml",
+    "price": 10000.00,
+    "costPrice": 7500.00,
+    "grossProfit": 2500.00,
+    "profitMarginPercentage": 25.0,
+    "isNegativeMarginWarning": false
+  },
+  "errors": null
+}
+```
+
+---
+
+### 2.11. Chi tiết API 10: Quản lý Danh mục Sản phẩm (`/api/category`)
+
+- `GET /api/category`: Lấy tất cả hoặc tìm kiếm phân trang.
+- `GET /api/category/{id}`: Chi tiết danh mục.
+- `POST /api/category`: Tạo mới danh mục.
+- `PUT /api/category/{id}`: Cập nhật danh mục.
+- `DELETE /api/category/{id}`: Xóa danh mục.
+
+---
+
+### 2.12. Chi tiết API 11: Quản lý Nhà cung cấp (`/api/supplier`)
+
+- `GET /api/supplier`: Lấy tất cả hoặc tìm kiếm phân trang.
+- `GET /api/supplier/{id}`: Chi tiết nhà cung cấp.
+- `POST /api/supplier`: Tạo mới nhà cung cấp.
+- `PUT /api/supplier/{id}`: Cập nhật nhà cung cấp.
+- `DELETE /api/supplier/{id}`: Xóa nhà cung cấp.
+
+---
+
 ## 3. GHI CHÚ
 - Khi gọi các API tạo mới hoặc cập nhật sản phẩm, Client phải đảm bảo giá trị `price >= 0` và `barcode` không rỗng.
-- Tất cả các API phản hồi lỗi validation đều trả về mã HTTP `400 Bad Request` kèm danh sách mảng lỗi trong thuộc tính `errors`.
+- Tất cả các API phản hồi lỗi validation đều trả về mã HTTP `400 Bad Request` hoặc `404 Not Found` bọc trong `ApiResult<T>`.
 
 ---
 
 ## 4. KẾT LUẬN
 
-Tài liệu `API.md` đã xác lập đầy đủ Hợp đồng REST API cho phân hệ Sản phẩm. Đây là tiêu chuẩn để Backend Developer lập trình Controller/Service và Client Developer (WinForms POS & React Web) viết mã gọi API.
+Tài liệu `API.md` đã cập nhật đầy đủ toàn bộ Hợp đồng REST API của phân hệ Sản phẩm, bao gồm cả Product, Category, Supplier, Barcode Service và Price Margin features.
