@@ -9,6 +9,21 @@ public class CategoryDto
     public DateTime CreatedAt { get; set; }
 }
 
+public class CategoryDropdownDto
+{
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+}
+
+public class CategoryTreeDto
+{
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int ProductCount { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
 public class CreateCategoryRequest
 {
     public string CategoryName { get; set; } = string.Empty;
@@ -19,6 +34,12 @@ public class UpdateCategoryRequest
 {
     public string CategoryName { get; set; } = string.Empty;
     public string? Description { get; set; }
+}
+
+public class MoveCategoryRequest
+{
+    public int SourceCategoryId { get; set; }
+    public int TargetCategoryId { get; set; }
 }
 
 public class CategoryPagedResult

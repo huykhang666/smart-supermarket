@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

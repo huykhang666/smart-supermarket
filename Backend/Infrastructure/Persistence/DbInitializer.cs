@@ -166,5 +166,20 @@ public static class DbInitializer
 
             await dbContext.SaveChangesAsync();
         }
+
+        // 9. Seed ProductCategory join entity
+        if (!await dbContext.ProductCategories.AnyAsync())
+        {
+            var products = await dbContext.Products.ToListAsync();
+            foreach (var prod in products)
+            {
+                dbContext.ProductCategories.Add(new ProductCategory
+                {
+                    ProductId = prod.ProductId,
+                    CategoryId = prod.CategoryId
+                });
+            }
+            await dbContext.SaveChangesAsync();
+        }
     }
 }

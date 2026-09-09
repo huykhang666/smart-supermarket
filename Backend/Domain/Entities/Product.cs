@@ -20,4 +20,5 @@ public class Product
     // Navigation properties
     public Category Category { get; set; } = null!;
     public Supplier? Supplier { get; set; }
+    public ICollection<ProductCategory> ProductCategories { get; set; } = new List<ProductCategory>();
 }

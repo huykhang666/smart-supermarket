@@ -7,6 +7,7 @@ public class Category
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation property
+    // Navigation properties
     public ICollection<Product> Products { get; set; } = new List<Product>();
+    public ICollection<ProductCategory> ProductCategories { get; set; } = new List<ProductCategory>();
 }
