@@ -31,6 +31,7 @@ public class CartItem
 public partial class Form1 : Form
 {
     private readonly List<CartItem> _cartItems = new();
+    private readonly Dictionary<string, CartItem> _customProducts = new();
     private readonly HttpClient _httpClient = new();
     private readonly StringBuilder _scanBuffer = new();
     private DateTime _lastKeyTime = DateTime.MinValue;
@@ -39,6 +40,7 @@ public partial class Form1 : Form
     // Controls
     private TextBox txtBarcode = null!;
     private Button btnScan = null!;
+    private Button btnAddNewProduct = null!;
     private Button btnDemoScan1 = null!;
     private Button btnDemoScan2 = null!;
     private Button btnDemoScan3 = null!;
@@ -132,27 +134,39 @@ public partial class Form1 : Form
         {
             Text = "🔍 Quét Mã Vạch",
             Location = new Point(475, 16),
-            Size = new Size(130, 36),
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Size = new Size(125, 36),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             BackColor = Color.FromArgb(24, 144, 255),
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat
         };
         btnScan.Click += (s, e) => ProcessScanBarcode(txtBarcode.Text);
 
+        btnAddNewProduct = new Button
+        {
+            Text = "➕ Thêm Mã Hàng Mới (F2)",
+            Location = new Point(610, 16),
+            Size = new Size(185, 36),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            BackColor = Color.FromArgb(82, 196, 26),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        btnAddNewProduct.Click += BtnAddNewProduct_Click;
+
         var lblDemoTag = new Label
         {
-            Text = "Demo Nhanh:",
+            Text = "Demo:",
             Font = new Font("Segoe UI", 9, FontStyle.Italic),
-            Location = new Point(620, 25),
+            Location = new Point(805, 25),
             AutoSize = true
         };
 
         btnDemoScan1 = new Button
         {
-            Text = "Coca 330ml (8935001800012)",
-            Location = new Point(710, 18),
-            Size = new Size(160, 32),
+            Text = "Coca 330ml",
+            Location = new Point(855, 18),
+            Size = new Size(105, 32),
             Font = new Font("Segoe UI", 8.5f),
             BackColor = Color.FromArgb(230, 247, 255),
             FlatStyle = FlatStyle.Flat
@@ -161,9 +175,9 @@ public partial class Form1 : Form
 
         btnDemoScan2 = new Button
         {
-            Text = "Vinamilk 1L (8934673123456)",
-            Location = new Point(880, 18),
-            Size = new Size(160, 32),
+            Text = "Vinamilk 1L",
+            Location = new Point(968, 18),
+            Size = new Size(110, 32),
             Font = new Font("Segoe UI", 8.5f),
             BackColor = Color.FromArgb(246, 255, 237),
             FlatStyle = FlatStyle.Flat
@@ -172,9 +186,9 @@ public partial class Form1 : Form
 
         btnDemoScan3 = new Button
         {
-            Text = "Bánh Oreo (8935001800099)",
-            Location = new Point(1050, 18),
-            Size = new Size(150, 32),
+            Text = "Oreo 133g",
+            Location = new Point(1085, 18),
+            Size = new Size(100, 32),
             Font = new Font("Segoe UI", 8.5f),
             BackColor = Color.FromArgb(255, 242, 232),
             FlatStyle = FlatStyle.Flat
@@ -182,7 +196,7 @@ public partial class Form1 : Form
         btnDemoScan3.Click += (s, e) => ProcessScanBarcode("8935001800099");
 
         pnlScanBar.Controls.AddRange(new Control[] {
-            lblScanPrompt, txtBarcode, btnScan, lblDemoTag, btnDemoScan1, btnDemoScan2, btnDemoScan3
+            lblScanPrompt, txtBarcode, btnScan, btnAddNewProduct, lblDemoTag, btnDemoScan1, btnDemoScan2, btnDemoScan3
         });
         Controls.Add(pnlScanBar);
 
@@ -490,8 +504,45 @@ public partial class Form1 : Form
         txtBarcode.Focus();
     }
 
+    private void BtnAddNewProduct_Click(object? sender, EventArgs e)
+    {
+        using var form = new AddProductForm(_httpClient, _apiBaseUrl);
+        if (form.ShowDialog(this) == DialogResult.OK && form.CreatedProduct != null)
+        {
+            var prod = form.CreatedProduct;
+            var item = new CartItem
+            {
+                ProductId = prod.ProductId,
+                ProductName = prod.ProductName,
+                Barcode = prod.Barcode,
+                Price = prod.Price,
+                Unit = prod.Unit,
+                StockQuantity = 100
+            };
+
+            _customProducts[prod.Barcode] = item;
+
+            txtBarcode.Text = prod.Barcode;
+            ProcessScanBarcode(prod.Barcode);
+        }
+    }
+
     private async Task<CartItem?> FetchProductByBarcodeAsync(string barcode)
     {
+        if (_customProducts.TryGetValue(barcode, out var customItem))
+        {
+            return new CartItem
+            {
+                ProductId = customItem.ProductId,
+                ProductName = customItem.ProductName,
+                Barcode = customItem.Barcode,
+                Price = customItem.Price,
+                Unit = customItem.Unit,
+                StockQuantity = customItem.StockQuantity,
+                Quantity = 1
+            };
+        }
+
         try
         {
             var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/products/barcode/{barcode}");
@@ -650,11 +701,9 @@ public partial class Form1 : Form
 
     private void Form1_KeyDown(object? sender, KeyEventArgs e)
     {
-        // Focus on scanner textbox when pressing Ctrl+F or F2
         if (e.KeyCode == Keys.F2)
         {
-            txtBarcode.Focus();
-            txtBarcode.SelectAll();
+            BtnAddNewProduct_Click(sender, e);
         }
     }
 
