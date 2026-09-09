@@ -261,8 +261,7 @@ public class LoginForm : Form
 
         txtUsername = new TextBox
         {
-            Text = "", // EMPTY BY DEFAULT
-            PlaceholderText = "Nhập tài khoản (admin)",
+            Text = "",
             Font = new Font("Segoe UI", 11f),
             ForeColor = Color.FromArgb(20, 30, 40),
             Size = new Size(240, 36),
@@ -293,8 +292,7 @@ public class LoginForm : Form
 
         txtPassword = new TextBox
         {
-            Text = "", // EMPTY BY DEFAULT
-            PlaceholderText = "Nhập mật khẩu (admin123)",
+            Text = "",
             Font = new Font("Segoe UI", 11f),
             ForeColor = Color.FromArgb(20, 30, 40),
             PasswordChar = '•',
