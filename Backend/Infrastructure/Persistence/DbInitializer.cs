@@ -99,9 +99,9 @@ public static class DbInitializer
         // 6. Check if Categories exist
         if (!await dbContext.Categories.AnyAsync())
         {
-            var beverageCat = new Category { CategoryName = "Nước giải khát", Description = "Các loại nước ngọt, nước suối, trà, cà phê đóng lon/chai", CreatedAt = DateTime.UtcNow };
-            var dairyCat = new Category { CategoryName = "Sữa & Sản phẩm từ sữa", Description = "Sữa tươi, sữa chua, phô mai, bơ", CreatedAt = DateTime.UtcNow };
-            var snackCat = new Category { CategoryName = "Bánh kẹo & Ăn vặt", Description = "Các loại bánh quy, snack, kẹo", CreatedAt = DateTime.UtcNow };
+            var beverageCat = new Category { CategoryName = "Nước giải khát", Slug = "nuoc-giai-khat", Description = "Các loại nước ngọt, nước suối, trà, cà phê đóng lon/chai", OrderIndex = 1, Status = 1, CreatedAt = DateTime.UtcNow };
+            var dairyCat = new Category { CategoryName = "Sữa & Sản phẩm từ sữa", Slug = "sua-san-pham-tu-sua", Description = "Sữa tươi, sữa chua, phô mai, bơ", OrderIndex = 2, Status = 1, CreatedAt = DateTime.UtcNow };
+            var snackCat = new Category { CategoryName = "Bánh kẹo & Ăn vặt", Slug = "banh-keo-an-vat", Description = "Các loại bánh quy, snack, kẹo", OrderIndex = 3, Status = 1, CreatedAt = DateTime.UtcNow };
 
             await dbContext.Categories.AddRangeAsync(beverageCat, dairyCat, snackCat);
             await dbContext.SaveChangesAsync();

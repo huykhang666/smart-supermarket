@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using SmartSupermarket.Backend.Domain.Entities;
 using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Categories.Repositories;
 using SmartSupermarket.Backend.Features.Products.DTOs;
 using SmartSupermarket.Backend.Features.Products.Repositories;
 

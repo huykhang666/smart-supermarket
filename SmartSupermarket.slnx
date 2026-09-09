@@ -1,8 +1,9 @@
 <Solution>
   <Folder Name="/Backend/">
     <Project Path="Backend/SmartSupermarket.Backend.csproj" />
+    <Project Path="Backend.Tests/Backend.Tests.csproj" />
   </Folder>
   <Folder Name="/Desktop/">
-    <Project Path="Desktop/SmartSupermarket.Desktop.csproj" />
+    <Project Path="Desktop/Desktop.csproj" />
   </Folder>
 </Solution>
