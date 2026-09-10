@@ -13,6 +13,11 @@ using CategorySvc = SmartSupermarket.Backend.Features.Categories.Services;
 using SupplierRepo = SmartSupermarket.Backend.Features.Suppliers.Repositories;
 using SupplierSvc = SmartSupermarket.Backend.Features.Suppliers.Services;
 
+using SmartSupermarket.Backend.Features.Orders.Repositories;
+using SmartSupermarket.Backend.Features.Orders.Services;
+using SmartSupermarket.Backend.Features.Promotions.Repositories;
+using SmartSupermarket.Backend.Features.Promotions.Services;
+
 namespace SmartSupermarket.Backend.Infrastructure;
 
 public static class DependencyInjection
@@ -40,6 +45,10 @@ public static class DependencyInjection
         services.AddScoped<CategorySvc.ICategoryService, CategorySvc.CategoryService>();
         services.AddScoped<SupplierSvc.ISupplierService, SupplierSvc.SupplierService>();
         services.AddScoped<IBarcodeService, BarcodeService>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
+        services.AddScoped<IPromotionService, PromotionService>();
 
         return services;
     }
