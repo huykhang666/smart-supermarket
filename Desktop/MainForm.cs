@@ -27,6 +27,11 @@ public class MainForm : Form
 
     private IconButton? _activeNavButton;
 
+    // KATQ Smart Brand Color Palette
+    private static readonly Color NavyPrimary = Color.FromArgb(11, 37, 69);     // #0B2545 - KATQ Navy
+    private static readonly Color TealAccent = Color.FromArgb(0, 168, 204);    // #00A8CC - smart Teal
+    private static readonly Color DarkSidebar = Color.FromArgb(7, 25, 46);      // #07192E - Darker Sidebar
+
     // View Instances
     private readonly DashboardView _dashboardView = new();
     private readonly ProductsView _productsView = new();
@@ -44,10 +49,10 @@ public class MainForm : Form
 
     private void InitializeComponent()
     {
-        this.Text = "TRUNG TÂM ĐIỀU HÀNH ADMIN - SMART SUPERMARKET POS & AI INSIGHTS";
+        this.Text = "KATQ smart - TRUNG TÂM ĐIỀU HÀNH ADMIN & AI INSIGHTS";
         this.Size = new Size(1380, 840);
         this.StartPosition = FormStartPosition.CenterScreen;
-        this.BackColor = Color.FromArgb(240, 242, 245);
+        this.BackColor = Color.FromArgb(240, 244, 248);
 
         // --- 1. Top Header Panel ---
         pnlHeader = new Panel
@@ -59,16 +64,15 @@ public class MainForm : Form
         };
         pnlHeader.Paint += (s, e) =>
         {
-            // Bottom subtle border line
-            using var pen = new Pen(Color.FromArgb(230, 235, 240), 1);
+            using var pen = new Pen(Color.FromArgb(225, 235, 245), 1);
             e.Graphics.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
         };
 
         lblAppTitle = new Label
         {
-            Text = "🛒 MARKET POS & SMART SCAN  |  ADMIN CONTROL CENTER",
+            Text = "KATQ smart  |  ENTERPRISE POS & AI INSIGHTS CONTROL CENTER",
             Font = new Font("Segoe UI", 13f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(9, 109, 217), // Ocean Blue Primary
+            ForeColor = NavyPrimary,
             AutoSize = true,
             Location = new Point(20, 18)
         };
@@ -76,15 +80,15 @@ public class MainForm : Form
         // Realtime status badge
         var pnlStatusBadge = new Panel
         {
-            Size = new Size(310, 32),
-            Location = new Point(560, 16),
-            BackColor = Color.FromArgb(230, 244, 255)
+            Size = new Size(330, 32),
+            Location = new Point(570, 16),
+            BackColor = Color.FromArgb(230, 246, 250)
         };
         var lblStatus = new Label
         {
             Text = "🟢 Dự Báo Nhu Cầu & Giá Động AI Realtime (148 Siêu Thị)",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(9, 109, 217),
+            ForeColor = TealAccent,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter
         };
@@ -95,7 +99,7 @@ public class MainForm : Form
         {
             Text = "👤 Nguyễn Văn An (Quản Lý Admin)",
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(50, 60, 70),
+            ForeColor = Color.FromArgb(40, 55, 75),
             AutoSize = true,
             Location = new Point(pnlHeader.Width - 360, 22),
             Anchor = AnchorStyles.Top | AnchorStyles.Right
@@ -131,12 +135,12 @@ public class MainForm : Form
         pnlHeader.Controls.Add(lblAdminProfile);
         pnlHeader.Controls.Add(btnLogout);
 
-        // --- 2. Left Sidebar Panel (Dark Ocean Blue Theme) ---
+        // --- 2. Left Sidebar Panel (Dark KATQ Navy Theme) ---
         pnlSidebar = new Panel
         {
             Dock = DockStyle.Left,
             Width = 240,
-            BackColor = Color.FromArgb(0, 21, 41), // Antd Dark Sidebar Blue
+            BackColor = DarkSidebar,
             Padding = new Padding(0, 10, 0, 10)
         };
 
@@ -168,7 +172,7 @@ public class MainForm : Form
         pnlContent = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.FromArgb(240, 242, 245)
+            BackColor = Color.FromArgb(240, 244, 248)
         };
 
         this.Controls.Add(pnlContent);
@@ -184,11 +188,11 @@ public class MainForm : Form
             Height = 52,
             Text = "  " + text,
             IconChar = icon,
-            IconColor = Color.FromArgb(160, 180, 200),
+            IconColor = Color.FromArgb(160, 185, 210),
             IconSize = 20,
             Font = new Font("Segoe UI", 10f, FontStyle.Regular),
-            ForeColor = Color.FromArgb(160, 180, 200),
-            BackColor = Color.FromArgb(0, 21, 41),
+            ForeColor = Color.FromArgb(160, 185, 210),
+            BackColor = DarkSidebar,
             FlatStyle = FlatStyle.Flat,
             TextImageRelation = TextImageRelation.ImageBeforeText,
             ImageAlign = ContentAlignment.MiddleLeft,
@@ -204,14 +208,14 @@ public class MainForm : Form
     {
         if (_activeNavButton != null)
         {
-            _activeNavButton.BackColor = Color.FromArgb(0, 21, 41);
-            _activeNavButton.ForeColor = Color.FromArgb(160, 180, 200);
-            _activeNavButton.IconColor = Color.FromArgb(160, 180, 200);
+            _activeNavButton.BackColor = DarkSidebar;
+            _activeNavButton.ForeColor = Color.FromArgb(160, 185, 210);
+            _activeNavButton.IconColor = Color.FromArgb(160, 185, 210);
             _activeNavButton.Font = new Font("Segoe UI", 10f, FontStyle.Regular);
         }
 
         _activeNavButton = navBtn;
-        _activeNavButton.BackColor = Color.FromArgb(9, 109, 217); // Active Primary Blue
+        _activeNavButton.BackColor = TealAccent; // Active KATQ Teal Cyan
         _activeNavButton.ForeColor = Color.White;
         _activeNavButton.IconColor = Color.White;
         _activeNavButton.Font = new Font("Segoe UI", 10f, FontStyle.Bold);

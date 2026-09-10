@@ -33,6 +33,13 @@ public class LoginForm : Form
     private Label lblFooterStatus = null!;
     private Label lblFooterVersion = null!;
 
+    // KATQ Smart Brand Color Palette
+    private static readonly Color NavyPrimary = Color.FromArgb(11, 37, 69);     // #0B2545 - Dark Navy for KATQ
+    private static readonly Color NavyDark = Color.FromArgb(7, 25, 46);        // #07192E - Darker Title Bar
+    private static readonly Color TealAccent = Color.FromArgb(0, 168, 204);    // #00A8CC - Teal Cyan for smart
+    private static readonly Color TealLight = Color.FromArgb(0, 210, 211);     // #00D2D3 - Bright Cyan Node
+    private static readonly Color GradientEnd = Color.FromArgb(0, 102, 153);    // #006699 - Soft Cyan-Navy
+
     public LoginForm()
     {
         InitializeComponent();
@@ -41,22 +48,23 @@ public class LoginForm : Form
     private void InitializeComponent()
     {
         this.Text = "DangNhap - KATQ Smart Workstation";
-        this.Size = new Size(460, 650);
+        this.Size = new Size(460, 660);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.FormBorderStyle = FormBorderStyle.None;
-        this.BackColor = Color.FromArgb(0, 114, 206); // Unified Sky Blue
+        this.BackColor = NavyPrimary;
 
-        // Background Paint
+        // Custom Paint for KATQ Brand Gradient Background
         this.Paint += (s, e) =>
         {
             using var brush = new LinearGradientBrush(
                 this.ClientRectangle,
-                Color.FromArgb(0, 114, 206),  // Deep Sky Blue
-                Color.FromArgb(0, 160, 230),  // Bright Cyan-Blue Accent
-                90f);
+                NavyPrimary,
+                GradientEnd,
+                65f);
             e.Graphics.FillRectangle(brush, this.ClientRectangle);
 
-            using var borderPen = new Pen(Color.FromArgb(100, 255, 255, 255), 1);
+            // Subtle inner border glow
+            using var borderPen = new Pen(Color.FromArgb(80, 0, 168, 204), 1);
             e.Graphics.DrawRectangle(borderPen, 0, 0, this.Width - 1, this.Height - 1);
         };
 
@@ -75,7 +83,7 @@ public class LoginForm : Form
         {
             Dock = DockStyle.Top,
             Height = 40,
-            BackColor = Color.FromArgb(0, 50, 110)
+            BackColor = NavyDark
         };
         pnlTitleBar.MouseDown += (s, e) =>
         {
@@ -89,7 +97,7 @@ public class LoginForm : Form
         var picWindowIcon = new IconPictureBox
         {
             IconChar = IconChar.ShoppingBasket,
-            IconColor = Color.FromArgb(0, 210, 255),
+            IconColor = TealAccent,
             IconSize = 20,
             Size = new Size(20, 20),
             Location = new Point(12, 10),
@@ -137,12 +145,12 @@ public class LoginForm : Form
         pnlTitleBar.Controls.Add(btnMinimize);
         pnlTitleBar.Controls.Add(btnClose);
 
-        // --- 2. Top Header Logo Card (X = 30, Width = 400) ---
+        // --- 2. Top Header Container Card (X = 30, Width = 400, Height = 215) ---
         pnlHeaderCard = new Panel
         {
-            Size = new Size(400, 210),
+            Size = new Size(400, 215),
             Location = new Point(30, 52),
-            BackColor = Color.FromArgb(0, 42, 90) // Dark Navy Container
+            BackColor = Color.FromArgb(8, 28, 51) // Deep Navy Container Card
         };
         pnlHeaderCard.Resize += (s, e) =>
         {
@@ -155,7 +163,7 @@ public class LoginForm : Form
         pnlHeaderCard.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            // Green dot indicator
+            // Green dot status indicator
             using var badgeBrush = new SolidBrush(Color.FromArgb(16, 185, 129));
             e.Graphics.FillEllipse(badgeBrush, 20, 16, 10, 10);
         };
@@ -174,16 +182,16 @@ public class LoginForm : Form
         {
             Text = "ID: ST-0428",
             Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(160, 210, 255),
+            ForeColor = Color.FromArgb(160, 220, 245),
             BackColor = Color.Transparent,
             AutoSize = true,
             Location = new Point(310, 13)
         };
 
-        // White Inner Logo Box
+        // White Inner Logo Card (Width = 376, Height = 158)
         pnlLogoBox = new Panel
         {
-            Size = new Size(376, 155),
+            Size = new Size(376, 158),
             Location = new Point(12, 42),
             BackColor = Color.White
         };
@@ -198,57 +206,82 @@ public class LoginForm : Form
         pnlLogoBox.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Draw Blue Logo Square in Center
-            int logoX = (pnlLogoBox.Width - 76) / 2;
-            using var logoBgBrush = new LinearGradientBrush(
-                new Rectangle(logoX, 12, 76, 76),
-                Color.FromArgb(0, 122, 240),
-                Color.FromArgb(0, 80, 200),
+            // --- Draw Monogram Icon Logo on Top/Center ---
+            int iconBoxX = (pnlLogoBox.Width - 68) / 2;
+            using var logoBrush = new LinearGradientBrush(
+                new Rectangle(iconBoxX, 10, 68, 60),
+                NavyPrimary,
+                TealAccent,
                 45f);
 
-            using var logoPath = GetRoundedPath(new Rectangle(logoX, 12, 76, 76), 16);
-            e.Graphics.FillPath(logoBgBrush, logoPath);
+            // Draw Monogram KATQ Arch & Target Icon
+            using var mainPen = new Pen(logoBrush, 5.5f);
+            e.Graphics.DrawArc(mainPen, iconBoxX + 10, 12, 48, 38, 180, 180);
+            e.Graphics.DrawLine(mainPen, iconBoxX + 16, 25, iconBoxX + 52, 25);
 
-            // Centered Brand Text
-            using var fontBrand = new Font("Segoe UI", 16, FontStyle.Bold);
-            using var brandBrush = new SolidBrush(Color.FromArgb(0, 90, 200));
-            string brandStr = "KATQ SMART";
-            var szBrand = e.Graphics.MeasureString(brandStr, fontBrand);
-            e.Graphics.DrawString(brandStr, fontBrand, brandBrush, (pnlLogoBox.Width - szBrand.Width) / 2, 94);
+            // Bullseye Ring Target at Bottom of Monogram Icon
+            using var ringPen = new Pen(TealAccent, 3.5f);
+            e.Graphics.DrawEllipse(ringPen, iconBoxX + 24, 34, 20, 20);
+            using var dotBrush = new SolidBrush(TealAccent);
+            e.Graphics.FillEllipse(dotBrush, iconBoxX + 31, 41, 6, 6);
 
-            // Centered Subtag Text
-            using var fontSub = new Font("Segoe UI", 8f, FontStyle.Bold);
-            using var subBrush = new SolidBrush(Color.FromArgb(100, 135, 175));
+            // --- Draw Brand Name "KATQ smart" ---
+            // 1. "KATQ" in Bold Deep Navy Blue (#0B2545)
+            using var fontKatq = new Font("Segoe UI", 21f, FontStyle.Bold);
+            using var katqBrush = new SolidBrush(NavyPrimary);
+            string strKatq = "KATQ";
+            var szKatq = e.Graphics.MeasureString(strKatq, fontKatq);
+
+            // 2. "smart" in Lowercase Teal Cyan (#00A8CC)
+            using var fontSmart = new Font("Segoe UI", 16f, FontStyle.Bold);
+            using var smartBrush = new SolidBrush(TealAccent);
+            string strSmart = "smart";
+            var szSmart = e.Graphics.MeasureString(strSmart, fontSmart);
+
+            float totalBrandWidth = szKatq.Width + szSmart.Width - 10;
+            float startBrandX = (pnlLogoBox.Width - totalBrandWidth) / 2;
+
+            e.Graphics.DrawString(strKatq, fontKatq, katqBrush, startBrandX, 74);
+            e.Graphics.DrawString(strSmart, fontSmart, smartBrush, startBrandX + szKatq.Width - 12, 80);
+
+            // --- Draw Circuit Nodes "o--- RETAIL & POS SYSTEM ---o" ---
+            using var linePen = new Pen(TealAccent, 1.5f);
+            using var nodeBrush = new SolidBrush(Color.White);
+            using var nodeBorderPen = new Pen(TealAccent, 1.5f);
+
+            int nodeY = 126;
+            // Left Node Line
+            e.Graphics.DrawLine(linePen, 50, nodeY, 110, nodeY);
+            e.Graphics.FillEllipse(nodeBrush, 45, nodeY - 3, 6, 6);
+            e.Graphics.DrawEllipse(nodeBorderPen, 45, nodeY - 3, 6, 6);
+
+            // Center Subtag Text
+            using var fontSub = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            using var subBrush = new SolidBrush(Color.FromArgb(90, 115, 140));
             string subStr = "RETAIL & POS SYSTEM";
             var szSub = e.Graphics.MeasureString(subStr, fontSub);
-            e.Graphics.DrawString(subStr, fontSub, subBrush, (pnlLogoBox.Width - szSub.Width) / 2, 126);
-        };
+            e.Graphics.DrawString(subStr, fontSub, subBrush, (pnlLogoBox.Width - szSub.Width) / 2, nodeY - 7);
 
-        var picCart = new IconPictureBox
-        {
-            IconChar = IconChar.ShoppingCart,
-            IconColor = Color.White,
-            IconSize = 40,
-            Size = new Size(40, 40),
-            Location = new Point((376 - 40) / 2, 30),
-            BackColor = Color.Transparent
+            // Right Node Line
+            e.Graphics.DrawLine(linePen, pnlLogoBox.Width - 110, nodeY, pnlLogoBox.Width - 50, nodeY);
+            e.Graphics.FillEllipse(nodeBrush, pnlLogoBox.Width - 51, nodeY - 3, 6, 6);
+            e.Graphics.DrawEllipse(nodeBorderPen, pnlLogoBox.Width - 51, nodeY - 3, 6, 6);
         };
-
-        pnlLogoBox.Controls.Add(picCart);
 
         pnlHeaderCard.Controls.Add(lblSystemTag);
         pnlHeaderCard.Controls.Add(lblSystemId);
         pnlHeaderCard.Controls.Add(pnlLogoBox);
 
-        // Set Regions initially
+        // Set Rounded Regions initially
         using (var pathCard = GetRoundedPath(pnlHeaderCard.ClientRectangle, 12))
             pnlHeaderCard.Region = new Region(pathCard);
 
         using (var pathBox = GetRoundedPath(pnlLogoBox.ClientRectangle, 10))
             pnlLogoBox.Region = new Region(pathBox);
 
-        // --- 3. Username Input Row (EMPTY by default!) ---
+        // --- 3. Username Input Row (EMPTY by default) ---
         lblUsername = new Label
         {
             Text = "Tên đăng nhập:",
@@ -256,22 +289,22 @@ public class LoginForm : Form
             ForeColor = Color.White,
             BackColor = Color.Transparent,
             AutoSize = true,
-            Location = new Point(30, 283)
+            Location = new Point(30, 288)
         };
 
         txtUsername = new TextBox
         {
-            Text = "",
+            Text = "", // EMPTY BY DEFAULT
             Font = new Font("Segoe UI", 11f),
             ForeColor = Color.FromArgb(20, 30, 40),
             Size = new Size(240, 36),
-            Location = new Point(190, 278),
+            Location = new Point(190, 283),
             BorderStyle = BorderStyle.FixedSingle,
             BackColor = Color.White,
             TextAlign = HorizontalAlignment.Center
         };
 
-        // --- 4. Password Input Row with Integrated Eye Button (EMPTY by default!) ---
+        // --- 4. Password Input Row with Integrated Eye Toggle Button (EMPTY by default) ---
         lblPassword = new Label
         {
             Text = "Mật khẩu:",
@@ -279,20 +312,20 @@ public class LoginForm : Form
             ForeColor = Color.White,
             BackColor = Color.Transparent,
             AutoSize = true,
-            Location = new Point(30, 335)
+            Location = new Point(30, 340)
         };
 
         pnlPasswordBox = new Panel
         {
             Size = new Size(240, 36),
-            Location = new Point(190, 330),
+            Location = new Point(190, 335),
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle
         };
 
         txtPassword = new TextBox
         {
-            Text = "",
+            Text = "", // EMPTY BY DEFAULT
             Font = new Font("Segoe UI", 11f),
             ForeColor = Color.FromArgb(20, 30, 40),
             PasswordChar = '•',
@@ -332,7 +365,7 @@ public class LoginForm : Form
         pnlPasswordBox.Controls.Add(txtPassword);
         pnlPasswordBox.Controls.Add(btnTogglePassword);
 
-        // --- 5. Checkbox & Forgot Password ---
+        // --- 5. Checkbox & Forgot Link ---
         chkRemember = new CheckBox
         {
             Text = "Ghi nhớ",
@@ -341,31 +374,31 @@ public class LoginForm : Form
             ForeColor = Color.White,
             BackColor = Color.Transparent,
             AutoSize = true,
-            Location = new Point(190, 378)
+            Location = new Point(190, 383)
         };
 
         lblForgotPassword = new Label
         {
             Text = "Quên mật khẩu?",
             Font = new Font("Segoe UI", 9.5f, FontStyle.Underline),
-            ForeColor = Color.FromArgb(230, 245, 255),
+            ForeColor = Color.FromArgb(200, 235, 255),
             BackColor = Color.Transparent,
             AutoSize = true,
-            Location = new Point(310, 378),
+            Location = new Point(310, 383),
             Cursor = Cursors.Hand
         };
         lblForgotPassword.Click += (s, e) => AntdUI.Message.info(this, "Vui lòng liên hệ bộ phận Kỹ Thuật Admin để reset mật khẩu.");
 
-        // --- 6. Primary & Secondary Buttons ---
+        // --- 6. Action Buttons ---
         btnLogin = new Button
         {
             Text = "↪  Đăng Nhập",
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(0, 90, 200),
+            ForeColor = NavyPrimary,
             BackColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Size = new Size(400, 48),
-            Location = new Point(30, 420),
+            Location = new Point(30, 425),
             Cursor = Cursors.Hand
         };
         btnLogin.FlatAppearance.BorderSize = 0;
@@ -376,22 +409,22 @@ public class LoginForm : Form
             Text = "Đăng Ký / Phân Quyền Mới",
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             ForeColor = Color.White,
-            BackColor = Color.FromArgb(0, 50, 110),
+            BackColor = Color.FromArgb(8, 28, 51),
             FlatStyle = FlatStyle.Flat,
             Size = new Size(400, 44),
-            Location = new Point(30, 480),
+            Location = new Point(30, 485),
             Cursor = Cursors.Hand
         };
         btnRegister.FlatAppearance.BorderSize = 1;
-        btnRegister.FlatAppearance.BorderColor = Color.FromArgb(100, 190, 255);
+        btnRegister.FlatAppearance.BorderColor = TealAccent;
         btnRegister.Click += (s, e) => AntdUI.Message.info(this, "Chức năng đăng ký tài khoản mới yêu cầu quyền Admin.");
 
-        // --- 7. Footer Status Bar ---
+        // --- 7. Footer Bar ---
         pnlFooter = new Panel
         {
             Dock = DockStyle.Bottom,
             Height = 36,
-            BackColor = Color.FromArgb(0, 45, 95)
+            BackColor = NavyDark
         };
 
         lblFooterStatus = new Label
