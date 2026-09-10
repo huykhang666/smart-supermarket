@@ -1,0 +1,200 @@
+using Microsoft.EntityFrameworkCore;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Orders.DTOs;
+using SmartSupermarket.Backend.Features.Orders.Repositories;
+using SmartSupermarket.Backend.Infrastructure.Persistence;
+
+namespace SmartSupermarket.Backend.Features.Orders.Services;
+
+public class OrderService : IOrderService
+{
+    private readonly IOrderRepository _orderRepository;
+    private readonly AppDbContext _dbContext;
+
+    public OrderService(IOrderRepository orderRepository, AppDbContext dbContext)
+    {
+        _orderRepository = orderRepository;
+        _dbContext = dbContext;
+    }
+
+    public async Task<OrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+        if (order == null) return null;
+
+        return await MapToDtoAsync(order, cancellationToken);
+    }
+
+    public async Task<OrderPagedResult> GetPagedAsync(
+        int? employeeId,
+        int? customerId,
+        OrderStatus? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var (items, totalCount) = await _orderRepository.GetPagedAsync(
+            employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
+
+        var dtos = new List<OrderDto>();
+        foreach (var order in items)
+        {
+            dtos.Add(await MapToDtoAsync(order, cancellationToken));
+        }
+
+        return new OrderPagedResult
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.Items == null || !request.Items.Any())
+        {
+            throw new ArgumentException("Đơn hàng phải chứa ít nhất một sản phẩm.");
+        }
+
+        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await _dbContext.Products
+            .Where(p => productIds.Contains(p.ProductId))
+            .ToDictionaryAsync(p => p.ProductId, cancellationToken);
+
+        foreach (var item in request.Items)
+        {
+            if (!products.TryGetValue(item.ProductId, out _))
+            {
+                throw new KeyNotFoundException($"Không tìm thấy sản phẩm có ID = {item.ProductId}");
+            }
+        }
+
+        decimal totalAmount = 0;
+        var orderDetails = new List<OrderDetail>();
+
+        foreach (var item in request.Items)
+        {
+            var product = products[item.ProductId];
+            decimal unitPrice = item.UnitPrice > 0 ? item.UnitPrice : product.Price;
+            decimal subTotal = unitPrice * item.Quantity;
+
+            totalAmount += subTotal;
+
+            orderDetails.Add(new OrderDetail
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                UnitPrice = unitPrice,
+                SubTotal = subTotal
+            });
+
+            product.UpdatedAt = DateTime.UtcNow;
+            _dbContext.Products.Update(product);
+        }
+
+        decimal discountAmount = 0;
+        decimal finalAmount = totalAmount - discountAmount;
+
+        var order = new Order
+        {
+            EmployeeId = request.EmployeeId,
+            CustomerId = request.CustomerId,
+            BranchId = request.BranchId,
+            OrderDate = DateTime.UtcNow,
+            TotalAmount = totalAmount,
+            DiscountAmount = discountAmount,
+            VoucherId = request.VoucherId,
+            FinalAmount = finalAmount,
+            Status = OrderStatus.Completed,
+            OrderDetails = orderDetails
+        };
+
+        await _orderRepository.AddAsync(order, cancellationToken);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return await MapToDtoAsync(order, cancellationToken);
+    }
+
+    public async Task<bool> CancelOrderAsync(int orderId, CancellationToken cancellationToken = default)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken);
+        if (order == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy đơn hàng có ID = {orderId}");
+        }
+
+        if (order.Status == OrderStatus.Cancelled)
+        {
+            throw new InvalidOperationException("Đơn hàng đã được hủy trước đó.");
+        }
+
+        order.Status = OrderStatus.Cancelled;
+        _orderRepository.Update(order);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    private async Task<OrderDto> MapToDtoAsync(Order order, CancellationToken cancellationToken)
+    {
+        var productIds = order.OrderDetails.Select(od => od.ProductId).Distinct().ToList();
+        var products = await _dbContext.Products
+            .Where(p => productIds.Contains(p.ProductId))
+            .ToDictionaryAsync(p => p.ProductId, cancellationToken);
+
+        string? employeeName = null;
+        if (order.EmployeeId > 0)
+        {
+            var user = await _dbContext.Users.FindAsync(new object[] { order.EmployeeId }, cancellationToken);
+            employeeName = user?.FullName;
+        }
+
+        string? customerName = null;
+        if (order.CustomerId.HasValue)
+        {
+            var customer = await _dbContext.Customers
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId.Value, cancellationToken);
+            customerName = customer?.User?.FullName;
+        }
+
+        var detailDtos = order.OrderDetails.Select(od =>
+        {
+            products.TryGetValue(od.ProductId, out var p);
+            return new OrderDetailDto
+            {
+                OrderDetailId = od.OrderDetailId,
+                OrderId = od.OrderId,
+                ProductId = od.ProductId,
+                ProductName = p?.ProductName ?? string.Empty,
+                Barcode = p?.Barcode ?? string.Empty,
+                Unit = p?.Unit ?? string.Empty,
+                Quantity = od.Quantity,
+                UnitPrice = od.UnitPrice,
+                SubTotal = od.SubTotal
+            };
+        }).ToList();
+
+        return new OrderDto
+        {
+            OrderId = order.OrderId,
+            EmployeeId = order.EmployeeId,
+            EmployeeName = employeeName,
+            CustomerId = order.CustomerId,
+            CustomerName = customerName,
+            BranchId = order.BranchId,
+            OrderDate = order.OrderDate,
+            TotalAmount = order.TotalAmount,
+            DiscountAmount = order.DiscountAmount,
+            VoucherId = order.VoucherId,
+            FinalAmount = order.FinalAmount,
+            Status = order.Status,
+            OrderDetails = detailDtos
+        };
+    }
+}
