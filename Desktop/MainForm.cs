@@ -21,6 +21,8 @@ public class MainForm : Form
     private IconButton btnNavProducts = null!;
     private IconButton btnNavCategories = null!;
     private IconButton btnNavSuppliers = null!;
+    private IconButton btnNavInventory = null!;
+    private IconButton btnNavImportReceipts = null!;
     private IconButton btnNavPosScan = null!;
     private IconButton btnNavAiCopilot = null!;
     private IconButton btnNavAdminUsers = null!;
@@ -37,6 +39,8 @@ public class MainForm : Form
     private readonly ProductsView _productsView = new();
     private readonly CategoriesView _categoriesView = new();
     private readonly SuppliersView _suppliersView = new();
+    private readonly InventoryView _inventoryView = new();
+    private readonly ImportReceiptsView _importReceiptsView = new();
     private readonly PosScanView _posScanView = new();
     private readonly AiCopilotView _aiCopilotView = new();
     private readonly AdminUsersView _adminUsersView = new();
@@ -148,6 +152,8 @@ public class MainForm : Form
         btnNavProducts = CreateNavButton("Quản Lý Sản Phẩm", IconChar.BoxOpen);
         btnNavCategories = CreateNavButton("Quản Lý Danh Mục", IconChar.FolderTree);
         btnNavSuppliers = CreateNavButton("Quản Lý Nhà Cung Cấp", IconChar.TruckLoading);
+        btnNavInventory = CreateNavButton("Quản Lý Tồn Kho", IconChar.Warehouse);
+        btnNavImportReceipts = CreateNavButton("Quản Lý Nhập Hàng", IconChar.FileInvoiceDollar);
         btnNavPosScan = CreateNavButton("Bán Hàng POS & Scan", IconChar.CashRegister);
         btnNavAiCopilot = CreateNavButton("Trợ Lý AI & Báo Cáo", IconChar.Robot);
         btnNavAdminUsers = CreateNavButton("Quản Lý Nhân Viên", IconChar.UsersCog);
@@ -156,6 +162,8 @@ public class MainForm : Form
         btnNavProducts.Click += (s, e) => SelectNavButton(btnNavProducts, _productsView);
         btnNavCategories.Click += (s, e) => SelectNavButton(btnNavCategories, _categoriesView);
         btnNavSuppliers.Click += (s, e) => SelectNavButton(btnNavSuppliers, _suppliersView);
+        btnNavInventory.Click += (s, e) => SelectNavButton(btnNavInventory, _inventoryView);
+        btnNavImportReceipts.Click += (s, e) => SelectNavButton(btnNavImportReceipts, _importReceiptsView);
         btnNavPosScan.Click += (s, e) => SelectNavButton(btnNavPosScan, _posScanView);
         btnNavAiCopilot.Click += (s, e) => SelectNavButton(btnNavAiCopilot, _aiCopilotView);
         btnNavAdminUsers.Click += (s, e) => SelectNavButton(btnNavAdminUsers, _adminUsersView);
@@ -163,6 +171,8 @@ public class MainForm : Form
         pnlSidebar.Controls.Add(btnNavAdminUsers);
         pnlSidebar.Controls.Add(btnNavAiCopilot);
         pnlSidebar.Controls.Add(btnNavPosScan);
+        pnlSidebar.Controls.Add(btnNavImportReceipts);
+        pnlSidebar.Controls.Add(btnNavInventory);
         pnlSidebar.Controls.Add(btnNavSuppliers);
         pnlSidebar.Controls.Add(btnNavCategories);
         pnlSidebar.Controls.Add(btnNavProducts);

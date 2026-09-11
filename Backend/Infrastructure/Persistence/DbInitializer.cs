@@ -248,5 +248,28 @@ public static class DbInitializer
             }
             await dbContext.SaveChangesAsync();
         }
+
+        // 11. Seed DiscountRule for Inventory Module
+        if (!await dbContext.DiscountRules.AnyAsync())
+        {
+            var rule1 = new DiscountRule
+            {
+                DaysBeforeExpiry = 7,
+                DiscountPercent = 50.00m,
+                Description = "Còn ≤ 7 ngày HSD — Giảm 50%",
+                IsActive = true
+            };
+
+            var rule2 = new DiscountRule
+            {
+                DaysBeforeExpiry = 15,
+                DiscountPercent = 20.00m,
+                Description = "Còn ≤ 15 ngày HSD — Giảm 20%",
+                IsActive = true
+            };
+
+            await dbContext.DiscountRules.AddRangeAsync(rule1, rule2);
+            await dbContext.SaveChangesAsync();
+        }
     }
 }

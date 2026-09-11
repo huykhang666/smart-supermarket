@@ -17,6 +17,15 @@ public class AppDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    
+    // Module 05_Inventory
+    public DbSet<Inventory> Inventories => Set<Inventory>();
+    public DbSet<StockHistory> StockHistories => Set<StockHistory>();
+    public DbSet<DiscountRule> DiscountRules => Set<DiscountRule>();
+
+    // Module 06_Import
+    public DbSet<ImportReceipt> ImportReceipts => Set<ImportReceipt>();
+    public DbSet<ImportDetail> ImportDetails => Set<ImportDetail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
