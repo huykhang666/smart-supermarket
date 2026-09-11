@@ -21,10 +21,10 @@ public static class DbInitializer
         // 2. Clear/Reset full database (0 business data records)
         await ResetFullDatabaseAsync(dbContext);
 
-        // 3. Keep only Admin system user for login
-        if (!await dbContext.Users.AnyAsync(u => u.Role == UserRole.Admin))
+        // 3. Keep system default user accounts for login (Admin, Manager, Staff)
+        if (!await dbContext.Users.AnyAsync(u => u.Username == "admin"))
         {
-            var adminUser = new User
+            await dbContext.Users.AddAsync(new User
             {
                 Username = "admin",
                 PasswordHash = passwordHasher.HashPassword("AdminPassword123!"),
@@ -34,11 +34,40 @@ public static class DbInitializer
                 Role = UserRole.Admin,
                 Status = UserStatus.Active,
                 CreatedAt = DateTime.UtcNow
-            };
-
-            await dbContext.Users.AddAsync(adminUser);
-            await dbContext.SaveChangesAsync();
+            });
         }
+
+        if (!await dbContext.Users.AnyAsync(u => u.Username == "staff"))
+        {
+            await dbContext.Users.AddAsync(new User
+            {
+                Username = "staff",
+                PasswordHash = passwordHasher.HashPassword("StaffPassword123!"),
+                FullName = "Nhân viên Thu ngân (Staff POS)",
+                Email = "staff@smartmarket.vn",
+                PhoneNumber = "0901111222",
+                Role = UserRole.Staff,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        if (!await dbContext.Users.AnyAsync(u => u.Username == "manager"))
+        {
+            await dbContext.Users.AddAsync(new User
+            {
+                Username = "manager",
+                PasswordHash = passwordHasher.HashPassword("ManagerPassword123!"),
+                FullName = "Quản lý Cửa hàng (Store Manager)",
+                Email = "manager@smartmarket.vn",
+                PhoneNumber = "0903333444",
+                Role = UserRole.Manager,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
 
         // 4. Seed default Categories lookup catalog
         if (!await dbContext.Categories.AnyAsync())
@@ -99,7 +128,7 @@ public static class DbInitializer
                     LIMIT 1;
 
                     IF users_tbl IS NOT NULL THEN
-                        EXECUTE 'DELETE FROM ""' || users_tbl || '"" WHERE ""Username"" != ''admin'';';
+                        EXECUTE 'DELETE FROM ""' || users_tbl || '"" WHERE ""Username"" NOT IN (''admin'', ''staff'', ''manager'');';
                     END IF;
                 END $$;
             ";
