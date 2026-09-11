@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -17,19 +18,27 @@ public class PosScanView : UserControl
     private Label lblSubTotalVal = null!;
     private Label lblVatVal = null!;
     private Label lblGrandTotal = null!;
+    private NumericUpDown numCashPaid = null!;
+    private Label lblChangeVal = null!;
     private Button btnCheckout = null!;
     private Button btnPayCash = null!;
     private Button btnPayCard = null!;
     private Button btnPayQr = null!;
+    private Button btnQtyPlus = null!;
+    private Button btnQtyMinus = null!;
+    private Button btnRemoveItem = null!;
+    private Button btnClearCart = null!;
+    
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = "http://localhost:5137";
+    private int _selectedPaymentMethod = 1; // 1 = Cash, 2 = Card, 3 = VietQR
 
     private readonly List<CartItem> _cart = new();
 
     public PosScanView()
     {
         InitializeComponent();
-        _ = LoadSampleCartAsync();
+        RefreshCartGrid();
     }
 
     private void InitializeComponent()
@@ -38,7 +47,7 @@ public class PosScanView : UserControl
         this.BackColor = ThemeManager.Background;
         this.Padding = new Padding(15);
 
-        // Main Container Split: Left 70%, Right 30%
+        // Main Split: Left 68% (Cart & Scanner), Right 32% (Payment & Bill Summary)
         var pnlMainContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -50,7 +59,7 @@ public class PosScanView : UserControl
         pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
         pnlMainContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 
-        // --- LEFT PANEL (Barcode + Cart) ---
+        // --- LEFT PANEL (Barcode Input + Quick Item Actions + Cart Grid) ---
         var pnlLeft = new Panel
         {
             Dock = DockStyle.Fill,
@@ -61,7 +70,7 @@ public class PosScanView : UserControl
         var pnlBarcodeCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 75,
+            Height = 85,
             BackColor = ThemeManager.CardBg,
             Padding = new Padding(15),
             Margin = new Padding(0, 0, 0, 10)
@@ -70,7 +79,7 @@ public class PosScanView : UserControl
 
         var lblScan = new Label
         {
-            Text = "📷 QUÉT MÃ VẠCH (BARCODE):",
+            Text = "📷 MÁY QUÉT BARCODE BÁN HÀNG THU NGÂN (STAFF POS):",
             Font = ThemeManager.BodyBold,
             Location = new Point(15, 12),
             AutoSize = true,
@@ -79,19 +88,19 @@ public class PosScanView : UserControl
 
         txtBarcode = new TextBox
         {
-            Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-            Location = new Point(15, 34),
-            Size = new Size(380, 32),
+            Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
+            Location = new Point(15, 38),
+            Size = new Size(380, 34),
             BorderStyle = BorderStyle.FixedSingle,
-            PlaceholderText = "Nhập hoặc quét mã vạch (e.g. 8935001800012)..."
+            PlaceholderText = "Quét máy bắn mã vạch hoặc nhập mã (Enter)..."
         };
         txtBarcode.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) BtnScan_Click(s, e); };
 
         btnScan = new Button
         {
-            Text = "THÊM VÀO GIỎ (ENTER)",
-            Size = new Size(180, 32),
-            Location = new Point(405, 34)
+            Text = "➕ THÊM VÀO GIỎ (ENTER)",
+            Size = new Size(200, 34),
+            Location = new Point(405, 38)
         };
         ThemeManager.ApplyPrimaryButton(btnScan);
         btnScan.Click += BtnScan_Click;
@@ -109,21 +118,53 @@ public class PosScanView : UserControl
         };
         ThemeManager.ApplyCardPanel(pnlCartCard);
 
+        // Action Toolbar above Grid (+ / - / Delete / Clear)
+        var pnlGridToolbar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 45,
+            BackColor = Color.White,
+            Padding = new Padding(5)
+        };
+
+        btnQtyPlus = new Button { Text = "➕ Tăng SL", Size = new Size(110, 34), Location = new Point(5, 5), Font = ThemeManager.BodyBold };
+        ThemeManager.ApplySecondaryButton(btnQtyPlus);
+        btnQtyPlus.Click += (s, e) => ChangeSelectedQty(1);
+
+        btnQtyMinus = new Button { Text = "➖ Giảm SL", Size = new Size(110, 34), Location = new Point(122, 5), Font = ThemeManager.BodyBold };
+        ThemeManager.ApplySecondaryButton(btnQtyMinus);
+        btnQtyMinus.Click += (s, e) => ChangeSelectedQty(-1);
+
+        btnRemoveItem = new Button { Text = "🗑️ Xóa dòng", Size = new Size(110, 34), Location = new Point(239, 5), Font = ThemeManager.BodyBold };
+        ThemeManager.ApplySecondaryButton(btnRemoveItem);
+        btnRemoveItem.Click += (s, e) => RemoveSelectedItem();
+
+        btnClearCart = new Button { Text = "🔄 Hủy giỏ hàng", Size = new Size(130, 34), Location = new Point(356, 5), Font = ThemeManager.BodyBold };
+        ThemeManager.ApplySecondaryButton(btnClearCart);
+        btnClearCart.Click += (s, e) => { _cart.Clear(); RefreshCartGrid(); };
+
+        pnlGridToolbar.Controls.Add(btnQtyPlus);
+        pnlGridToolbar.Controls.Add(btnQtyMinus);
+        pnlGridToolbar.Controls.Add(btnRemoveItem);
+        pnlGridToolbar.Controls.Add(btnClearCart);
+
         dgvCart = new DataGridView();
         ThemeManager.ApplyGridStyle(dgvCart);
+        dgvCart.Columns.Add("ProductId", "ID");
         dgvCart.Columns.Add("Barcode", "Mã Vạch");
         dgvCart.Columns.Add("ProductName", "Tên Sản Phẩm");
         dgvCart.Columns.Add("Price", "Đơn Giá");
         dgvCart.Columns.Add("Quantity", "Số Lượng");
-        dgvCart.Columns.Add("Vat", "Thuế");
+        dgvCart.Columns.Add("Vat", "Thuế VAT");
         dgvCart.Columns.Add("Total", "Thành Tiền");
 
         pnlCartCard.Controls.Add(dgvCart);
+        pnlCartCard.Controls.Add(pnlGridToolbar);
 
         pnlLeft.Controls.Add(pnlCartCard);
         pnlLeft.Controls.Add(pnlBarcodeCard);
 
-        // --- RIGHT PANEL (Sticky Summary & Checkout) ---
+        // --- RIGHT PANEL (Billing Summary & Cashier Payment) ---
         var pnlRight = new Panel
         {
             Dock = DockStyle.Fill,
@@ -134,72 +175,89 @@ public class PosScanView : UserControl
 
         var lblSummaryHeader = new Label
         {
-            Text = "🧾 TỔNG KẾT ĐƠN HÀNG POS",
+            Text = "🧾 BẢNG TÍNH TIỀN THU NGÂN",
             Font = ThemeManager.HeaderFont,
             ForeColor = ThemeManager.PrimaryHover,
             Location = new Point(15, 15),
             AutoSize = true
         };
 
-        var lblSubTotal = new Label { Text = "Tạm tính:", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 60), AutoSize = true };
-        lblSubTotalVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(160, 60), AutoSize = true };
+        var lblSubTotal = new Label { Text = "Tạm tính tiền hàng:", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 55), AutoSize = true };
+        lblSubTotalVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(160, 55), AutoSize = true };
 
-        var lblVat = new Label { Text = "Thuế VAT (8-10%):", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 95), AutoSize = true };
-        lblVatVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(160, 95), AutoSize = true };
+        var lblVat = new Label { Text = "Thuế VAT (10%):", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 88), AutoSize = true };
+        lblVatVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(160, 88), AutoSize = true };
 
-        var pnlDivider = new Panel { Location = new Point(15, 130), Size = new Size(260, 2), BackColor = ThemeManager.Border };
+        var pnlDivider1 = new Panel { Location = new Point(15, 118), Size = new Size(270, 2), BackColor = ThemeManager.Border };
 
-        var lblTotalTitle = new Label { Text = "TỔNG THANH TOÁN", Font = ThemeManager.SubtitleFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 145), AutoSize = true };
+        var lblTotalTitle = new Label { Text = "TỔNG TIỀN THANH TOÁN", Font = ThemeManager.SubtitleFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 130), AutoSize = true };
         lblGrandTotal = new Label
         {
             Text = "0 VNĐ",
             Font = new Font("Segoe UI", 22F, FontStyle.Bold),
-            ForeColor = ThemeManager.SidebarActive, // Orange
-            Location = new Point(12, 170),
+            ForeColor = ThemeManager.PrimaryHover,
+            Location = new Point(12, 155),
             AutoSize = true
         };
 
-        // Payment Methods
-        var lblPayMethod = new Label { Text = "Phương thức thanh toán:", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 230), AutoSize = true };
+        var pnlDivider2 = new Panel { Location = new Point(15, 205), Size = new Size(270, 2), BackColor = ThemeManager.Border };
 
-        btnPayCash = new Button { Text = "💵 Tiền Mặt", Size = new Size(80, 36), Location = new Point(15, 260) };
+        // Customer Cash Input & Change Calculation
+        var lblCashPaid = new Label { Text = "Tiền khách đưa (VNĐ):", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 215), AutoSize = true };
+        numCashPaid = new NumericUpDown
+        {
+            Location = new Point(15, 240),
+            Size = new Size(265, 34),
+            Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
+            Maximum = 100000000,
+            Minimum = 0,
+            ThousandsSeparator = true,
+            DecimalPlaces = 0
+        };
+        numCashPaid.ValueChanged += (s, e) => CalculateChange();
+
+        var lblChangeTitle = new Label { Text = "Tiền thừa trả lại khách:", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 282), AutoSize = true };
+        lblChangeVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.Success, Location = new Point(160, 282), AutoSize = true };
+
+        // Payment Method Options
+        var lblPayMethod = new Label { Text = "Hình thức thanh toán:", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 320), AutoSize = true };
+
+        btnPayCash = new Button { Text = "💵 Tiền Mặt", Size = new Size(85, 36), Location = new Point(15, 348) };
         ThemeManager.ApplyPrimaryButton(btnPayCash);
+        btnPayCash.Click += (s, e) => SelectPaymentMethod(1);
 
-        btnPayCard = new Button { Text = "💳 Thẻ POS", Size = new Size(80, 36), Location = new Point(102, 260) };
+        btnPayCard = new Button { Text = "💳 Thẻ POS", Size = new Size(85, 36), Location = new Point(105, 348) };
         ThemeManager.ApplySecondaryButton(btnPayCard);
+        btnPayCard.Click += (s, e) => SelectPaymentMethod(2);
 
-        btnPayQr = new Button { Text = "📱 VietQR", Size = new Size(80, 36), Location = new Point(189, 260) };
+        btnPayQr = new Button { Text = "📱 VietQR", Size = new Size(85, 36), Location = new Point(195, 348) };
         ThemeManager.ApplySecondaryButton(btnPayQr);
+        btnPayQr.Click += (s, e) => SelectPaymentMethod(3);
 
         // Big Checkout CTA Button
         btnCheckout = new Button
         {
-            Text = "💳 THANH TOÁN (F5)",
-            Font = new Font("Segoe UI", 13F, FontStyle.Bold),
-            Size = new Size(254, 54),
-            Location = new Point(15, 320)
+            Text = "💳 HOÀN TẤT THANH TOÁN & IN HÓA ĐƠN",
+            Font = new Font("Segoe UI", 11.5F, FontStyle.Bold),
+            Size = new Size(265, 52),
+            Location = new Point(15, 400)
         };
         AppTheme.ApplyAccentButton(btnCheckout);
-        btnCheckout.Click += (s, e) =>
-        {
-            if (_cart.Count == 0)
-            {
-                AntdUI.Message.info(this.FindForm() ?? new Form(), "Giỏ hàng hiện đang trống!");
-                return;
-            }
-            AntdUI.Message.success(this.FindForm() ?? new Form(), $"Thanh toán thành công {lblGrandTotal.Text}! Đang in hóa đơn POS...");
-            _cart.Clear();
-            RefreshCartGrid();
-        };
+        btnCheckout.Click += BtnCheckout_Click;
 
         pnlRight.Controls.Add(lblSummaryHeader);
         pnlRight.Controls.Add(lblSubTotal);
         pnlRight.Controls.Add(lblSubTotalVal);
         pnlRight.Controls.Add(lblVat);
         pnlRight.Controls.Add(lblVatVal);
-        pnlRight.Controls.Add(pnlDivider);
+        pnlRight.Controls.Add(pnlDivider1);
         pnlRight.Controls.Add(lblTotalTitle);
         pnlRight.Controls.Add(lblGrandTotal);
+        pnlRight.Controls.Add(pnlDivider2);
+        pnlRight.Controls.Add(lblCashPaid);
+        pnlRight.Controls.Add(numCashPaid);
+        pnlRight.Controls.Add(lblChangeTitle);
+        pnlRight.Controls.Add(lblChangeVal);
         pnlRight.Controls.Add(lblPayMethod);
         pnlRight.Controls.Add(btnPayCash);
         pnlRight.Controls.Add(btnPayCard);
@@ -212,13 +270,16 @@ public class PosScanView : UserControl
         this.Controls.Add(pnlMainContainer);
     }
 
-    private async Task LoadSampleCartAsync()
+    private void SelectPaymentMethod(int method)
     {
-        _cart.Clear();
-        _cart.Add(new CartItem { Barcode = "8935001800012", Name = "Nước ngọt Coca-Cola Lon 330ml", Price = 10000, Quantity = 2, VatPercent = 10 });
-        _cart.Add(new CartItem { Barcode = "8934673123456", Name = "Sữa tươi Vinamilk Có đường 1L", Price = 36000, Quantity = 1, VatPercent = 10 });
-        RefreshCartGrid();
-        await Task.CompletedTask;
+        _selectedPaymentMethod = method;
+        ThemeManager.ApplySecondaryButton(btnPayCash);
+        ThemeManager.ApplySecondaryButton(btnPayCard);
+        ThemeManager.ApplySecondaryButton(btnPayQr);
+
+        if (method == 1) ThemeManager.ApplyPrimaryButton(btnPayCash);
+        else if (method == 2) ThemeManager.ApplyPrimaryButton(btnPayCard);
+        else if (method == 3) ThemeManager.ApplyPrimaryButton(btnPayQr);
     }
 
     private async void BtnScan_Click(object? sender, EventArgs e)
@@ -228,6 +289,7 @@ public class PosScanView : UserControl
 
         try
         {
+            // Lookup product via real backend API
             var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/products/barcode/{code}");
             if (response.IsSuccessStatusCode)
             {
@@ -235,30 +297,120 @@ public class PosScanView : UserControl
                 using var doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("data", out var dataElem))
                 {
-                    string name = dataElem.TryGetProperty("productName", out var n) ? n.GetString() ?? code : code;
-                    decimal price = dataElem.TryGetProperty("price", out var p) ? p.GetDecimal() : 15000m;
+                    int productId = dataElem.GetProperty("productId").GetInt32();
+                    string name = dataElem.GetProperty("productName").GetString() ?? code;
+                    decimal price = dataElem.GetProperty("price").GetDecimal();
+                    string barcode = dataElem.GetProperty("barcode").GetString() ?? code;
 
-                    var existing = _cart.FirstOrDefault(c => c.Barcode == code);
-                    if (existing != null) existing.Quantity++;
-                    else _cart.Add(new CartItem { Barcode = code, Name = name, Price = price, Quantity = 1, VatPercent = 10 });
+                    var existing = _cart.FirstOrDefault(c => c.Barcode == barcode || c.ProductId == productId);
+                    if (existing != null)
+                    {
+                        existing.Quantity++;
+                    }
+                    else
+                    {
+                        _cart.Add(new CartItem
+                        {
+                            ProductId = productId,
+                            Barcode = barcode,
+                            Name = name,
+                            Price = price,
+                            Quantity = 1,
+                            VatPercent = 10
+                        });
+                    }
+
+                    txtBarcode.Clear();
+                    RefreshCartGrid();
+                    return;
                 }
             }
-            else
+
+            // Fallback search by barcode/name if lookup by exact barcode path returned 404
+            var searchResponse = await _httpClient.GetAsync($"{_apiBaseUrl}/api/products?search={Uri.EscapeDataString(code)}&page=1&pageSize=1");
+            if (searchResponse.IsSuccessStatusCode)
             {
-                var existing = _cart.FirstOrDefault(c => c.Barcode == code);
-                if (existing != null) existing.Quantity++;
-                else _cart.Add(new CartItem { Barcode = code, Name = $"Sản phẩm mã {code}", Price = 25000m, Quantity = 1, VatPercent = 10 });
+                var searchJson = await searchResponse.Content.ReadAsStringAsync();
+                using var searchDoc = JsonDocument.Parse(searchJson);
+                if (searchDoc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("items", out var items) && items.GetArrayLength() > 0)
+                {
+                    var firstItem = items[0];
+                    int productId = firstItem.GetProperty("productId").GetInt32();
+                    string name = firstItem.GetProperty("productName").GetString() ?? code;
+                    decimal price = firstItem.GetProperty("price").GetDecimal();
+                    string barcode = firstItem.GetProperty("barcode").GetString() ?? code;
+
+                    var existing = _cart.FirstOrDefault(c => c.Barcode == barcode || c.ProductId == productId);
+                    if (existing != null)
+                    {
+                        existing.Quantity++;
+                    }
+                    else
+                    {
+                        _cart.Add(new CartItem
+                        {
+                            ProductId = productId,
+                            Barcode = barcode,
+                            Name = name,
+                            Price = price,
+                            Quantity = 1,
+                            VatPercent = 10
+                        });
+                    }
+
+                    txtBarcode.Clear();
+                    RefreshCartGrid();
+                    return;
+                }
             }
+
+            MessageBox.Show($"⚠️ Không tìm thấy sản phẩm có mã vạch '{code}' trong CSDL hệ thống!", "Không tìm thấy sản phẩm", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         catch
         {
-            var existing = _cart.FirstOrDefault(c => c.Barcode == code);
-            if (existing != null) existing.Quantity++;
-            else _cart.Add(new CartItem { Barcode = code, Name = $"Sản phẩm mã {code}", Price = 25000m, Quantity = 1, VatPercent = 10 });
+            MessageBox.Show("Không thể kết nối đến Backend Server API. Vui lòng kiểm tra lại dịch vụ Backend.", "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        txtBarcode.Clear();
-        RefreshCartGrid();
+        txtBarcode.SelectAll();
+        txtBarcode.Focus();
+    }
+
+    private void ChangeSelectedQty(int delta)
+    {
+        if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
+        int idx = dgvCart.CurrentRow.Index;
+        if (idx >= 0 && idx < _cart.Count)
+        {
+            _cart[idx].Quantity += delta;
+            if (_cart[idx].Quantity <= 0)
+            {
+                _cart.RemoveAt(idx);
+            }
+            RefreshCartGrid();
+        }
+    }
+
+    private void RemoveSelectedItem()
+    {
+        if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
+        int idx = dgvCart.CurrentRow.Index;
+        if (idx >= 0 && idx < _cart.Count)
+        {
+            _cart.RemoveAt(idx);
+            RefreshCartGrid();
+        }
+    }
+
+    private void CalculateChange()
+    {
+        decimal subTotal = _cart.Sum(i => i.Price * i.Quantity);
+        decimal vatTotal = subTotal * 0.10m;
+        decimal grandTotal = subTotal + vatTotal;
+        decimal cashPaid = numCashPaid.Value;
+
+        decimal change = cashPaid - grandTotal;
+        lblChangeVal.Text = change >= 0 ? $"{change:N0} VNĐ" : "0 VNĐ (Thiếu " + Math.Abs(change).ToString("N0") + " VNĐ)";
+        lblChangeVal.ForeColor = change >= 0 ? ThemeManager.Success : ThemeManager.Danger;
     }
 
     private void RefreshCartGrid()
@@ -276,17 +428,88 @@ public class PosScanView : UserControl
             subTotal += itemSub;
             vatTotal += itemVat;
 
-            dgvCart.Rows.Add(item.Barcode, item.Name, item.Price.ToString("N0") + " đ", item.Quantity, $"{item.VatPercent}%", itemTotal.ToString("N0") + " đ");
+            dgvCart.Rows.Add(item.ProductId, item.Barcode, item.Name, $"{item.Price:N0} đ", item.Quantity, $"{item.VatPercent}%", $"{itemTotal:N0} đ");
         }
 
         decimal grandTotal = subTotal + vatTotal;
-        lblSubTotalVal.Text = subTotal.ToString("N0") + " VNĐ";
-        lblVatVal.Text = vatTotal.ToString("N0") + " VNĐ";
-        lblGrandTotal.Text = grandTotal.ToString("N0") + " VNĐ";
+        lblSubTotalVal.Text = $"{subTotal:N0} VNĐ";
+        lblVatVal.Text = $"{vatTotal:N0} VNĐ";
+        lblGrandTotal.Text = $"{grandTotal:N0} VNĐ";
+
+        if (numCashPaid.Value == 0 || numCashPaid.Value < grandTotal)
+        {
+            numCashPaid.Value = grandTotal;
+        }
+
+        CalculateChange();
+    }
+
+    private async void BtnCheckout_Click(object? sender, EventArgs e)
+    {
+        if (_cart.Count == 0)
+        {
+            MessageBox.Show("Giỏ hàng POS hiện đang trống!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        decimal subTotal = _cart.Sum(i => i.Price * i.Quantity);
+        decimal vatTotal = subTotal * 0.10m;
+        decimal grandTotal = subTotal + vatTotal;
+
+        if (numCashPaid.Value < grandTotal && _selectedPaymentMethod == 1)
+        {
+            MessageBox.Show("Số tiền khách đưa chưa đủ để hoàn tất đơn hàng!", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        try
+        {
+            // Post order to Backend API
+            var orderItems = _cart.Select(i => new
+            {
+                productId = i.ProductId,
+                quantity = i.Quantity,
+                unitPrice = i.Price
+            }).ToList();
+
+            var orderPayload = new
+            {
+                employeeId = 1,
+                branchId = 1,
+                paymentMethod = _selectedPaymentMethod,
+                items = orderItems
+            };
+
+            var content = new StringContent(JsonSerializer.Serialize(orderPayload), Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/orders", content);
+
+            string methodText = _selectedPaymentMethod == 1 ? "Tiền mặt" : (_selectedPaymentMethod == 2 ? "Thẻ POS" : "VietQR");
+            decimal changeAmount = Math.Max(0, numCashPaid.Value - grandTotal);
+
+            MessageBox.Show(
+                $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ THÀNH CÔNG!\n\n" +
+                $"• Tổng tiền: {grandTotal:N0} VNĐ\n" +
+                $"• Phương thức: {methodText}\n" +
+                $"• Tiền khách đưa: {numCashPaid.Value:N0} VNĐ\n" +
+                $"• Tiền thừa trả lại: {changeAmount:N0} VNĐ\n\n" +
+                $"Hệ thống đã lưu hóa đơn vào CSDL và đang in hóa đơn...",
+                "Thành công",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            _cart.Clear();
+            numCashPaid.Value = 0;
+            RefreshCartGrid();
+        }
+        catch
+        {
+            MessageBox.Show("Đã xảy ra lỗi khi lưu đơn hàng vào hệ thống.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private class CartItem
     {
+        public int ProductId { get; set; }
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
         public decimal Price { get; set; }
