@@ -114,6 +114,95 @@ public static class DbInitializer
         try
         {
             string sql = @"
+                CREATE TABLE IF NOT EXISTS ""Users"" (
+                    ""UserId"" SERIAL PRIMARY KEY,
+                    ""Username"" VARCHAR(100) NOT NULL,
+                    ""PasswordHash"" TEXT NOT NULL,
+                    ""FullName"" VARCHAR(150) NOT NULL,
+                    ""Email"" VARCHAR(150) NOT NULL,
+                    ""PhoneNumber"" VARCHAR(50) NULL,
+                    ""DateOfBirth"" TIMESTAMPTZ NULL,
+                    ""Role"" INT NOT NULL DEFAULT 0,
+                    ""Status"" INT NOT NULL DEFAULT 1,
+                    ""BranchId"" INT NULL,
+                    ""RefreshToken"" TEXT NULL,
+                    ""RefreshTokenExpiryTime"" TIMESTAMPTZ NULL,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Categories"" (
+                    ""CategoryId"" SERIAL PRIMARY KEY,
+                    ""CategoryName"" VARCHAR(150) NOT NULL,
+                    ""Slug"" VARCHAR(150) NOT NULL,
+                    ""Description"" TEXT NULL,
+                    ""ParentId"" INT NULL,
+                    ""OrderIndex"" INT NOT NULL DEFAULT 0,
+                    ""ImageUrl"" TEXT NULL,
+                    ""Status"" SMALLINT NOT NULL DEFAULT 1,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Suppliers"" (
+                    ""SupplierId"" SERIAL PRIMARY KEY,
+                    ""SupplierCode"" VARCHAR(50) NOT NULL,
+                    ""SupplierName"" VARCHAR(150) NOT NULL,
+                    ""ContactPerson"" VARCHAR(100) NULL,
+                    ""PhoneNumber"" VARCHAR(50) NULL,
+                    ""Email"" VARCHAR(150) NULL,
+                    ""Address"" TEXT NULL,
+                    ""TaxCode"" VARCHAR(50) NULL,
+                    ""LogoUrl"" TEXT NULL,
+                    ""Status"" SMALLINT NOT NULL DEFAULT 1,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Customers"" (
+                    ""CustomerId"" SERIAL PRIMARY KEY,
+                    ""UserId"" INT NOT NULL,
+                    ""LoyaltyPoints"" INT NOT NULL DEFAULT 0,
+                    ""MembershipTier"" INT NOT NULL DEFAULT 1
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Products"" (
+                    ""ProductId"" SERIAL PRIMARY KEY,
+                    ""ProductName"" VARCHAR(150) NOT NULL,
+                    ""Barcode"" VARCHAR(100) NOT NULL,
+                    ""CategoryId"" INT NOT NULL,
+                    ""SupplierId"" INT NULL,
+                    ""Price"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""CostPrice"" DECIMAL(18,2) NULL,
+                    ""ImageUrl"" TEXT NULL,
+                    ""Unit"" VARCHAR(50) NOT NULL DEFAULT 'cái',
+                    ""Status"" INT NOT NULL DEFAULT 1,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Orders"" (
+                    ""OrderId"" SERIAL PRIMARY KEY,
+                    ""EmployeeId"" INT NOT NULL DEFAULT 1,
+                    ""CustomerId"" INT NULL,
+                    ""BranchId"" INT NOT NULL DEFAULT 1,
+                    ""OrderDate"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""TotalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""DiscountAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""VoucherId"" INT NULL,
+                    ""FinalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""Status"" INT NOT NULL DEFAULT 1
+                );
+
+                CREATE TABLE IF NOT EXISTS ""OrderDetails"" (
+                    ""OrderDetailId"" SERIAL PRIMARY KEY,
+                    ""OrderId"" INT NOT NULL,
+                    ""ProductId"" INT NOT NULL,
+                    ""Quantity"" INT NOT NULL DEFAULT 1,
+                    ""UnitPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""SubTotal"" DECIMAL(18,2) NOT NULL DEFAULT 0
+                );
+
                 CREATE TABLE IF NOT EXISTS ""Shifts"" (
                     ""ShiftId"" SERIAL PRIMARY KEY,
                     ""Code"" VARCHAR(50) NOT NULL,
