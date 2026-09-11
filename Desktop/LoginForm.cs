@@ -34,11 +34,11 @@ public class LoginForm : Form
     private Label lblFooterVersion = null!;
 
     // KATQ Smart Sky Blue Color Palette
-    private static readonly Color SkyBluePrimary = Color.FromArgb(0, 140, 240);    // #008CF0 - Vibrant Sky Blue Main
-    private static readonly Color SkyBlueGradientEnd = Color.FromArgb(0, 185, 255); // #00B9FF - Bright Light Sky Blue
-    private static readonly Color TitleBarBlue = Color.FromArgb(0, 80, 165);       // #0050A5 - Deep Sky Blue Title Bar
-    private static readonly Color HeaderCardBlue = Color.FromArgb(0, 48, 110);     // #00306E - Dark Sky Blue Container Card
-    private static readonly Color FooterBlue = Color.FromArgb(0, 55, 125);         // #00377D - Dark Sky Blue Footer
+    private static readonly Color SkyBluePrimary = Color.FromArgb(0, 135, 230);    // #0087E6 - Vibrant Sky Blue Main
+    private static readonly Color SkyBlueGradientEnd = Color.FromArgb(0, 180, 255); // #00B4FF - Bright Light Sky Blue
+    private static readonly Color TitleBarBlue = Color.FromArgb(0, 95, 180);       // #005FB4 - Soft Sky Title Bar
+    private static readonly Color CardGlassBg = Color.FromArgb(40, 255, 255, 255); // Translucent Sky Glass Card Container
+    private static readonly Color FooterBlue = Color.FromArgb(0, 95, 180);         // #005FB4 - Harmonious Sky Footer
     
     private static readonly Color NavyBrand = Color.FromArgb(11, 37, 69);        // #0B2545 - Dark Navy for KATQ Text
     private static readonly Color TealBrand = Color.FromArgb(0, 168, 204);       // #00A8CC - Teal Cyan for smart Text
@@ -153,7 +153,7 @@ public class LoginForm : Form
         {
             Size = new Size(400, 215),
             Location = new Point(30, 52),
-            BackColor = HeaderCardBlue // Dark Sky Blue Container
+            BackColor = CardGlassBg // Translucent white glass card container
         };
         pnlHeaderCard.Resize += (s, e) =>
         {
@@ -166,6 +166,11 @@ public class LoginForm : Form
         pnlHeaderCard.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            // Subtle glass border
+            using var glassPen = new Pen(Color.FromArgb(120, 255, 255, 255), 1.5f);
+            using var borderPath = GetRoundedPath(new Rectangle(0, 0, pnlHeaderCard.Width - 1, pnlHeaderCard.Height - 1), 12);
+            e.Graphics.DrawPath(glassPen, borderPath);
+
             // Green dot status indicator
             using var badgeBrush = new SolidBrush(Color.FromArgb(16, 185, 129));
             e.Graphics.FillEllipse(badgeBrush, 20, 16, 10, 10);
@@ -412,14 +417,16 @@ public class LoginForm : Form
             Text = "Đăng Ký / Phân Quyền Mới",
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             ForeColor = Color.White,
-            BackColor = HeaderCardBlue,
+            BackColor = CardGlassBg,
             FlatStyle = FlatStyle.Flat,
             Size = new Size(400, 44),
             Location = new Point(30, 485),
             Cursor = Cursors.Hand
         };
         btnRegister.FlatAppearance.BorderSize = 1;
-        btnRegister.FlatAppearance.BorderColor = Color.FromArgb(120, 220, 255);
+        btnRegister.FlatAppearance.BorderColor = Color.FromArgb(180, 235, 255);
+        btnRegister.MouseEnter += (s, e) => btnRegister.BackColor = Color.FromArgb(70, 255, 255, 255);
+        btnRegister.MouseLeave += (s, e) => btnRegister.BackColor = CardGlassBg;
         btnRegister.Click += (s, e) => AntdUI.Message.info(this, "Chức năng đăng ký tài khoản mới yêu cầu quyền Admin.");
 
         // --- 7. Footer Bar ---

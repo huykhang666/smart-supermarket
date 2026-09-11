@@ -18,6 +18,15 @@ public class AppDbContext : DbContext
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
 
+    // Modules 13 & 14 (Employee, ERP Inventory, Import, System)
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<Attendance> Attendances => Set<Attendance>();
+    public DbSet<InventoryBatch> InventoryBatches => Set<InventoryBatch>();
+    public DbSet<ImportInvoice> ImportInvoices => Set<ImportInvoice>();
+    public DbSet<ImportInvoiceItem> ImportInvoiceItems => Set<ImportInvoiceItem>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

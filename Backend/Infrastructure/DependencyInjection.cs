@@ -27,7 +27,8 @@ public static class DependencyInjection
         // Register EF Core DbContext with PostgreSQL
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString)
+                   .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         // Register Security Services & JWT Authentication / Authorization
         services.AddJwtAuthentication(configuration);

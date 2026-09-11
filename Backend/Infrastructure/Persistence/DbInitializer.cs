@@ -10,9 +10,18 @@ public static class DbInitializer
     public static async Task SeedDataAsync(AppDbContext dbContext, PasswordHasher passwordHasher)
     {
         // 1. Ensure Database is created & migrations applied
-        await dbContext.Database.MigrateAsync();
+        try
+        {
+            await dbContext.Database.MigrateAsync();
+        }
+        catch { }
 
-        // 2. Check if Admin user already exists
+        await EnsureTablesCreatedAsync(dbContext);
+
+        // 2. Clear/Reset full database (0 business data records)
+        await ResetFullDatabaseAsync(dbContext);
+
+        // 3. Keep only Admin system user for login
         if (!await dbContext.Users.AnyAsync(u => u.Role == UserRole.Admin))
         {
             var adminUser = new User
@@ -28,225 +37,158 @@ public static class DbInitializer
             };
 
             await dbContext.Users.AddAsync(adminUser);
+            await dbContext.SaveChangesAsync();
         }
 
-        // 3. Check if Manager user exists
-        if (!await dbContext.Users.AnyAsync(u => u.Username == "manager_01"))
-        {
-            var managerUser = new User
-            {
-                Username = "manager_01",
-                PasswordHash = passwordHasher.HashPassword("ManagerPassword123!"),
-                FullName = "Nguyễn Văn Quản Lý",
-                Email = "manager01@smartmarket.vn",
-                PhoneNumber = "0901112233",
-                Role = UserRole.Manager,
-                BranchId = 1,
-                Status = UserStatus.Active,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await dbContext.Users.AddAsync(managerUser);
-        }
-
-        // 4. Check if Staff user exists
-        if (!await dbContext.Users.AnyAsync(u => u.Username == "staff_pos_01"))
-        {
-            var staffUser = new User
-            {
-                Username = "staff_pos_01",
-                PasswordHash = passwordHasher.HashPassword("StaffPassword123!"),
-                FullName = "Trần Thị Thu Ngân",
-                Email = "staff01@smartmarket.vn",
-                PhoneNumber = "0904445566",
-                Role = UserRole.Staff,
-                BranchId = 1,
-                Status = UserStatus.Active,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await dbContext.Users.AddAsync(staffUser);
-        }
-
-        // 5. Check if Customer user exists
-        if (!await dbContext.Users.AnyAsync(u => u.Username == "0988776655"))
-        {
-            var customerUser = new User
-            {
-                Username = "0988776655",
-                PasswordHash = passwordHasher.HashPassword("CustomerPassword123!"),
-                FullName = "Lê Văn Khách Hàng",
-                Email = "customer01@gmail.com",
-                PhoneNumber = "0988776655",
-                Role = UserRole.Customer,
-                Status = UserStatus.Active,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            var customerProfile = new Customer
-            {
-                User = customerUser,
-                LoyaltyPoints = 150,
-                MembershipTier = 1 // Bronze
-            };
-
-            await dbContext.Users.AddAsync(customerUser);
-            await dbContext.Customers.AddAsync(customerProfile);
-        }
-
-        await dbContext.SaveChangesAsync();
-
-        // 6. Check if Categories exist
+        // 4. Seed default Categories lookup catalog
         if (!await dbContext.Categories.AnyAsync())
         {
-            var beverageCat = new Category { CategoryName = "Nước giải khát", Slug = "nuoc-giai-khat", Description = "Các loại nước ngọt, nước suối, trà, cà phê đóng lon/chai", OrderIndex = 1, Status = 1, CreatedAt = DateTime.UtcNow };
-            var dairyCat = new Category { CategoryName = "Sữa & Sản phẩm từ sữa", Slug = "sua-san-pham-tu-sua", Description = "Sữa tươi, sữa chua, phô mai, bơ", OrderIndex = 2, Status = 1, CreatedAt = DateTime.UtcNow };
-            var snackCat = new Category { CategoryName = "Bánh kẹo & Ăn vặt", Slug = "banh-keo-an-vat", Description = "Các loại bánh quy, snack, kẹo", OrderIndex = 3, Status = 1, CreatedAt = DateTime.UtcNow };
-
-            await dbContext.Categories.AddRangeAsync(beverageCat, dairyCat, snackCat);
+            var defaultCategories = new[]
+            {
+                new Category { CategoryName = "Nước giải khát", Slug = "nuoc-giai-khat", OrderIndex = 1, Status = 1, CreatedAt = DateTime.UtcNow },
+                new Category { CategoryName = "Sữa & Sản phẩm từ sữa", Slug = "sua-san-pham-tu-sua", OrderIndex = 2, Status = 1, CreatedAt = DateTime.UtcNow },
+                new Category { CategoryName = "Bánh kẹo & Ăn vặt", Slug = "banh-keo-an-vat", OrderIndex = 3, Status = 1, CreatedAt = DateTime.UtcNow },
+                new Category { CategoryName = "Rau củ quả tươi", Slug = "rau-cu-qua-tuoi", OrderIndex = 4, Status = 1, CreatedAt = DateTime.UtcNow },
+                new Category { CategoryName = "Gia vị & Đồ khô", Slug = "gia-vi-do-kho", OrderIndex = 5, Status = 1, CreatedAt = DateTime.UtcNow },
+                new Category { CategoryName = "Đồ dùng gia đình", Slug = "do-dung-gia-dinh", OrderIndex = 6, Status = 1, CreatedAt = DateTime.UtcNow }
+            };
+            await dbContext.Categories.AddRangeAsync(defaultCategories);
             await dbContext.SaveChangesAsync();
         }
 
-        // 7. Check if Suppliers exist
+        // 5. Seed default Suppliers lookup catalog
         if (!await dbContext.Suppliers.AnyAsync())
         {
-            var cocaSupplier = new Supplier 
-            { 
-                SupplierCode = "SUP001",
-                SupplierName = "Công ty TNHH Coca-Cola Việt Nam", 
-                ContactPerson = "Nguyễn Văn A", 
-                PhoneNumber = "02838111222", 
-                Email = "contact@cocacola.vn", 
-                Address = "Xa lộ Hà Nội, P. Linh Trung, TP. Thủ Đức, TP.HCM",
-                TaxCode = "0301234567",
-                LogoUrl = "/images/suppliers/coca-logo.png",
-                Status = 1,
-                CreatedAt = DateTime.UtcNow 
+            var defaultSuppliers = new[]
+            {
+                new Supplier { SupplierCode = "SUP001", SupplierName = "Công ty TNHH NGK Coca-Cola Việt Nam", ContactPerson = "Nguyễn Văn A", PhoneNumber = "0901234567", Status = 1, CreatedAt = DateTime.UtcNow },
+                new Supplier { SupplierCode = "SUP002", SupplierName = "Công ty CP Sữa Việt Nam (Vinamilk)", ContactPerson = "Trần Thị B", PhoneNumber = "0902345678", Status = 1, CreatedAt = DateTime.UtcNow },
+                new Supplier { SupplierCode = "SUP003", SupplierName = "Công ty Cổ phần Mondelez Kinh Đô", ContactPerson = "Lê Văn C", PhoneNumber = "0903456789", Status = 1, CreatedAt = DateTime.UtcNow },
+                new Supplier { SupplierCode = "SUP004", SupplierName = "Nhà cung cấp Nông sản Sạch Đà Lạt", ContactPerson = "Phạm Thị D", PhoneNumber = "0904567890", Status = 1, CreatedAt = DateTime.UtcNow }
             };
-            var vinamilkSupplier = new Supplier 
-            { 
-                SupplierCode = "SUP002",
-                SupplierName = "Công ty Cổ phần Sữa Vinamilk", 
-                ContactPerson = "Trần Thị B", 
-                PhoneNumber = "02854155555", 
-                Email = "vinamilk@vinamilk.com.vn", 
-                Address = "Số 10 Tân Trào, P. Tân Phú, Quận 7, TP.HCM",
-                TaxCode = "0307654321",
-                LogoUrl = "/images/suppliers/vinamilk-logo.png",
-                Status = 1,
-                CreatedAt = DateTime.UtcNow 
-            };
-
-            await dbContext.Suppliers.AddRangeAsync(cocaSupplier, vinamilkSupplier);
+            await dbContext.Suppliers.AddRangeAsync(defaultSuppliers);
             await dbContext.SaveChangesAsync();
         }
+    }
 
-        // 8. Check if Products exist
-        if (!await dbContext.Products.AnyAsync())
+    public static async Task ResetFullDatabaseAsync(AppDbContext dbContext)
+    {
+        try
         {
-            var beverageCategory = await dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName == "Nước giải khát");
-            var dairyCategory = await dbContext.Categories.FirstOrDefaultAsync(c => c.CategoryName == "Sữa & Sản phẩm từ sữa");
+            await EnsureTablesCreatedAsync(dbContext);
 
-            var cocaSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Coca-Cola"));
-            var vinamilkSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Vinamilk"));
+            string safeResetSql = @"
+                DO $$
+                DECLARE
+                    rec RECORD;
+                    users_tbl TEXT;
+                BEGIN
+                    FOR rec IN 
+                        SELECT table_name 
+                        FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                          AND table_type = 'BASE TABLE'
+                          AND LOWER(table_name) NOT IN ('users', '__efmigrationshistory')
+                    LOOP
+                        EXECUTE 'TRUNCATE TABLE ""' || rec.table_name || '"" RESTART IDENTITY CASCADE;';
+                    END LOOP;
 
-            if (beverageCategory != null)
-            {
-                var product1 = new Product
-                {
-                    ProductName = "Nước ngọt Coca-Cola Lon 330ml",
-                    Barcode = "8935001800012",
-                    CategoryId = beverageCategory.CategoryId,
-                    SupplierId = cocaSupplier?.SupplierId,
-                    Price = 10000.00m,
-                    CostPrice = 7500.00m,
-                    ImageUrl = "/images/products/coca_330ml.jpg",
-                    Unit = "lon",
-                    Status = ProductStatus.Active,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    SELECT table_name INTO users_tbl 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND LOWER(table_name) = 'users' 
+                    LIMIT 1;
 
-                await dbContext.Products.AddAsync(product1);
-            }
+                    IF users_tbl IS NOT NULL THEN
+                        EXECUTE 'DELETE FROM ""' || users_tbl || '"" WHERE ""Username"" != ''admin'';';
+                    END IF;
+                END $$;
+            ";
 
-            if (dairyCategory != null)
-            {
-                var product2 = new Product
-                {
-                    ProductName = "Sữa tươi tiệt trùng Vinamilk Có đường 1L",
-                    Barcode = "8934673123456",
-                    CategoryId = dairyCategory.CategoryId,
-                    SupplierId = vinamilkSupplier?.SupplierId,
-                    Price = 36000.00m,
-                    CostPrice = 29000.00m,
-                    ImageUrl = "/images/products/vinamilk_1l.jpg",
-                    Unit = "hộp",
-                    Status = ProductStatus.Active,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await dbContext.Products.AddAsync(product2);
-            }
-
-            await dbContext.SaveChangesAsync();
+            await dbContext.Database.ExecuteSqlRawAsync(safeResetSql);
         }
+        catch { }
+    }
 
-        // 9. Seed ProductCategory join entity
-        if (!await dbContext.ProductCategories.AnyAsync())
+    private static async Task EnsureTablesCreatedAsync(AppDbContext dbContext)
+    {
+        try
         {
-            var products = await dbContext.Products.ToListAsync();
-            foreach (var prod in products)
-            {
-                dbContext.ProductCategories.Add(new ProductCategory
-                {
-                    ProductId = prod.ProductId,
-                    CategoryId = prod.CategoryId
-                });
-            }
-            await dbContext.SaveChangesAsync();
-        }
+            string sql = @"
+                CREATE TABLE IF NOT EXISTS ""Shifts"" (
+                    ""ShiftId"" SERIAL PRIMARY KEY,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""Name"" VARCHAR(100) NOT NULL,
+                    ""StartTime"" INTERVAL NOT NULL,
+                    ""EndTime"" INTERVAL NOT NULL,
+                    ""BreakMinute"" INT NOT NULL DEFAULT 30,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Active'
+                );
 
-        // 10. Seed ProductSupplier join entity (Many-to-Many)
-        if (!await dbContext.ProductSuppliers.AnyAsync())
-        {
-            var products = await dbContext.Products.ToListAsync();
-            var cocaSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Coca-Cola"));
-            var vinamilkSupplier = await dbContext.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.Contains("Vinamilk"));
+                CREATE TABLE IF NOT EXISTS ""Employees"" (
+                    ""EmployeeId"" SERIAL PRIMARY KEY,
+                    ""EmployeeCode"" VARCHAR(50) NOT NULL,
+                    ""UserId"" INT NOT NULL,
+                    ""DepartmentId"" INT NULL,
+                    ""ShiftId"" INT NULL,
+                    ""Salary"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""HireDate"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""Department"" VARCHAR(100) NOT NULL DEFAULT 'Bán Hàng',
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Active'
+                );
 
-            foreach (var prod in products)
-            {
-                if (prod.ProductName.Contains("Coca-Cola") && cocaSupplier != null)
-                {
-                    dbContext.ProductSuppliers.Add(new ProductSupplier
-                    {
-                        ProductId = prod.ProductId,
-                        SupplierId = cocaSupplier.SupplierId,
-                        PurchasePrice = 7500.00m,
-                        SupplierProductCode = "KO-330",
-                        LeadTime = 2,
-                        MinimumOrderQuantity = 50,
-                        Rating = 4.80m,
-                        IsDefault = true,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-                else if (prod.ProductName.Contains("Vinamilk") && vinamilkSupplier != null)
-                {
-                    dbContext.ProductSuppliers.Add(new ProductSupplier
-                    {
-                        ProductId = prod.ProductId,
-                        SupplierId = vinamilkSupplier.SupplierId,
-                        PurchasePrice = 29000.00m,
-                        SupplierProductCode = "VNM-1L",
-                        LeadTime = 1,
-                        MinimumOrderQuantity = 20,
-                        Rating = 4.90m,
-                        IsDefault = true,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-            }
-            await dbContext.SaveChangesAsync();
+                CREATE TABLE IF NOT EXISTS ""Attendances"" (
+                    ""AttendanceId"" SERIAL PRIMARY KEY,
+                    ""EmployeeId"" INT NOT NULL,
+                    ""ShiftId"" INT NULL,
+                    ""CheckIn"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""CheckOut"" TIMESTAMPTZ NULL,
+                    ""LateMinute"" INT NOT NULL DEFAULT 0,
+                    ""WorkingMinute"" INT NOT NULL DEFAULT 0,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'OnTime'
+                );
+
+                CREATE TABLE IF NOT EXISTS ""InventoryBatches"" (
+                    ""BatchId"" SERIAL PRIMARY KEY,
+                    ""ProductId"" INT NOT NULL,
+                    ""BatchCode"" VARCHAR(100) NOT NULL,
+                    ""Quantity"" INT NOT NULL DEFAULT 0,
+                    ""ManufacturingDate"" TIMESTAMPTZ NOT NULL,
+                    ""ExpiryDate"" TIMESTAMPTZ NOT NULL,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Good',
+                    ""StorageLocation"" VARCHAR(100) NOT NULL DEFAULT 'Kệ A1'
+                );
+
+                CREATE TABLE IF NOT EXISTS ""ImportInvoices"" (
+                    ""ImportInvoiceId"" SERIAL PRIMARY KEY,
+                    ""InvoiceCode"" VARCHAR(100) NOT NULL,
+                    ""SupplierId"" INT NOT NULL,
+                    ""ImportDate"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""TotalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Completed',
+                    ""CreatedBy"" VARCHAR(100) NOT NULL DEFAULT 'Admin'
+                );
+
+                CREATE TABLE IF NOT EXISTS ""ImportInvoiceItems"" (
+                    ""ImportInvoiceItemId"" SERIAL PRIMARY KEY,
+                    ""ImportInvoiceId"" INT NOT NULL,
+                    ""ProductId"" INT NOT NULL,
+                    ""Quantity"" INT NOT NULL DEFAULT 0,
+                    ""CostPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""ExpiryDate"" TIMESTAMPTZ NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""AuditLogs"" (
+                    ""AuditLogId"" SERIAL PRIMARY KEY,
+                    ""Username"" VARCHAR(100) NOT NULL,
+                    ""Action"" VARCHAR(100) NOT NULL,
+                    ""EntityName"" VARCHAR(100) NOT NULL,
+                    ""Details"" TEXT NULL,
+                    ""Timestamp"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            ";
+
+            await dbContext.Database.ExecuteSqlRawAsync(sql);
         }
+        catch { }
     }
 }

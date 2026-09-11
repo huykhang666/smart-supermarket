@@ -20,7 +20,7 @@ public class ProductsView : UserControl
     private Button btnScanBarcode = null!;
     private DataGridView dgvProducts = null!;
     private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5000";
+    private readonly string _apiBaseUrl = "http://localhost:5137";
 
     public ProductsView()
     {
@@ -31,32 +31,42 @@ public class ProductsView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = Color.FromArgb(240, 242, 245);
+        this.BackColor = ThemeManager.Background;
         this.Padding = new Padding(20);
 
-        // --- Top Bar (Search & Actions) ---
+        // --- Top Bar (Search & Actions Card) ---
         pnlTopBar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 70,
-            BackColor = Color.White,
-            Padding = new Padding(15)
+            Height = 65,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(15),
+            Margin = new Padding(0, 0, 0, 15)
         };
+        ThemeManager.ApplyCardPanel(pnlTopBar);
 
         txtSearch = new TextBox
         {
-            PlaceholderText = "🔍 Tìm theo Tên sản phẩm hoặc Mã vạch (Barcode)...",
-            Font = new Font("Segoe UI", 10f),
-            Size = new Size(320, 32),
-            Location = new Point(15, 18),
+            PlaceholderText = "🔍 Tìm theo Tên sản phẩm hoặc Barcode...",
+            Font = ThemeManager.BodyFont,
+            Size = new Size(300, 32),
+            Location = new Point(15, 16),
             BorderStyle = BorderStyle.FixedSingle
+        };
+        txtSearch.KeyDown += (s, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                LoadDataAsync();
+            }
         };
 
         cbCategory = new ComboBox
         {
-            Font = new Font("Segoe UI", 9.5f),
+            Font = ThemeManager.BodyFont,
             Size = new Size(180, 32),
-            Location = new Point(345, 18),
+            Location = new Point(325, 16),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         cbCategory.Items.AddRange(new object[] { "Tất cả Danh mục", "Nước giải khát", "Sữa & Chế phẩm", "Rau củ quả tươi", "Bánh kẹo & Snack" });
@@ -64,9 +74,9 @@ public class ProductsView : UserControl
 
         cbStatus = new ComboBox
         {
-            Font = new Font("Segoe UI", 9.5f),
+            Font = ThemeManager.BodyFont,
             Size = new Size(150, 32),
-            Location = new Point(535, 18),
+            Location = new Point(515, 16),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         cbStatus.Items.AddRange(new object[] { "Tất cả Trạng thái", "Đang bán (Active)", "Ngừng bán (Inactive)" });
@@ -75,43 +85,28 @@ public class ProductsView : UserControl
         btnSearch = new Button
         {
             Text = "Tìm kiếm",
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(9, 109, 217),
-            FlatStyle = FlatStyle.Flat,
             Size = new Size(95, 32),
-            Location = new Point(695, 18),
-            Cursor = Cursors.Hand
+            Location = new Point(675, 16)
         };
-        btnSearch.FlatAppearance.BorderSize = 0;
+        ThemeManager.ApplyPrimaryButton(btnSearch);
         btnSearch.Click += (s, e) => LoadDataAsync();
 
         btnAddProduct = new Button
         {
             Text = "➕ Thêm Sản Phẩm (F1)",
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(56, 158, 13),
-            FlatStyle = FlatStyle.Flat,
             Size = new Size(170, 32),
-            Location = new Point(800, 18),
-            Cursor = Cursors.Hand
+            Location = new Point(780, 16)
         };
-        btnAddProduct.FlatAppearance.BorderSize = 0;
+        ThemeManager.ApplySecondaryButton(btnAddProduct);
         btnAddProduct.Click += BtnAddProduct_Click;
 
         btnScanBarcode = new Button
         {
-            Text = "📷 Quét Mã Vạch",
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(114, 46, 209),
-            FlatStyle = FlatStyle.Flat,
+            Text = "📷 Quét Barcode",
             Size = new Size(130, 32),
-            Location = new Point(980, 18),
-            Cursor = Cursors.Hand
+            Location = new Point(960, 16)
         };
-        btnScanBarcode.FlatAppearance.BorderSize = 0;
+        ThemeManager.ApplySecondaryButton(btnScanBarcode);
         btnScanBarcode.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Vui lòng quét barcode sản phẩm...");
 
         pnlTopBar.Controls.Add(txtSearch);
@@ -122,23 +117,8 @@ public class ProductsView : UserControl
         pnlTopBar.Controls.Add(btnScanBarcode);
 
         // --- DataGrid Products Table ---
-        dgvProducts = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            BackgroundColor = Color.White,
-            BorderStyle = BorderStyle.None,
-            AllowUserToAddRows = false,
-            ReadOnly = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            RowTemplate = { Height = 40 },
-            ColumnHeadersHeight = 42
-        };
-
-        dgvProducts.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(245, 247, 250);
-        dgvProducts.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-        dgvProducts.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(60, 70, 80);
-        dgvProducts.EnableHeadersVisualStyles = false;
+        dgvProducts = new DataGridView();
+        ThemeManager.ApplyGridStyle(dgvProducts);
 
         dgvProducts.Columns.Add("ProductId", "ID");
         dgvProducts.Columns.Add("Barcode", "Mã Vạch");
@@ -160,7 +140,13 @@ public class ProductsView : UserControl
 
         try
         {
-            string url = $"{_apiBaseUrl}/api/products?page=1&pageSize=50";
+            string searchParam = Uri.EscapeDataString(txtSearch.Text.Trim());
+            string url = $"{_apiBaseUrl}/api/products?page=1&pageSize=100";
+            if (!string.IsNullOrEmpty(searchParam))
+            {
+                url += $"&search={searchParam}";
+            }
+
             var response = await _httpClient.GetAsync(url);
             if (response.IsSuccessStatusCode)
             {
@@ -174,32 +160,32 @@ public class ProductsView : UserControl
                         int id = item.GetProperty("productId").GetInt32();
                         string barcode = item.GetProperty("barcode").GetString() ?? "";
                         string name = item.GetProperty("productName").GetString() ?? "";
-                        string category = item.TryGetProperty("categoryName", out var pCat) ? (pCat.GetString() ?? "") : "Chưa rõ";
+                        string category = item.TryGetProperty("categoryName", out var pCat) && pCat.ValueKind != JsonValueKind.Null ? (pCat.GetString() ?? "Chưa phân loại") : "Chưa phân loại";
                         decimal price = item.GetProperty("price").GetDecimal();
-                        decimal cost = item.TryGetProperty("costPrice", out var pCost) ? pCost.GetDecimal() : 0;
+                        decimal cost = item.TryGetProperty("costPrice", out var pCost) && pCost.ValueKind != JsonValueKind.Null ? pCost.GetDecimal() : 0;
                         string unit = item.GetProperty("unit").GetString() ?? "";
-                        string status = item.GetProperty("status").GetString() ?? "Active";
+
+                        string statusText = "🟢 Đang bán";
+                        if (item.TryGetProperty("status", out var pStatus))
+                        {
+                            if (pStatus.ValueKind == JsonValueKind.Number && pStatus.GetInt32() != 1)
+                                statusText = "🔴 Ngừng bán";
+                            else if (pStatus.ValueKind == JsonValueKind.String && pStatus.GetString()?.Equals("Active", StringComparison.OrdinalIgnoreCase) == false)
+                                statusText = "🔴 Ngừng bán";
+                        }
 
                         decimal marginPercent = price > 0 ? Math.Round(((price - cost) / price) * 100, 1) : 0;
                         string marginText = $"{marginPercent}% {(marginPercent < 0 ? "⚠️ Bán Lỗ" : "")}";
 
-                        dgvProducts.Rows.Add(id, barcode, name, category, $"{price:N0} đ", $"{cost:N0} đ", marginText, unit, status == "Active" ? "🟢 Đang bán" : "🔴 Ngừng bán");
+                        dgvProducts.Rows.Add(id, barcode, name, category, $"{price:N0} đ", $"{cost:N0} đ", marginText, unit, statusText);
                     }
-                    return;
                 }
             }
         }
         catch
         {
-            // API Server Fallback Demo Data
+            // API Connection offline or loading error - keep empty without fake mock data
         }
-
-        // Add Mock Demo Rows if API server offline
-        dgvProducts.Rows.Add(1, "8935001800012", "Nước ngọt Coca-Cola Lon 330ml", "Nước giải khát", "10.000 đ", "7.500 đ", "25.0%", "lon", "🟢 Đang bán");
-        dgvProducts.Rows.Add(2, "8934673123456", "Sữa tươi Vinamilk Có đường 1L", "Sữa & Chế phẩm", "36.000 đ", "29.000 đ", "19.4%", "hộp", "🟢 Đang bán");
-        dgvProducts.Rows.Add(3, "8934567890123", "Bánh mì tươi Kinh Đô 80g", "Bánh kẹo & Snack", "12.000 đ", "8.000 đ", "33.3%", "gói", "🟢 Đang bán");
-        dgvProducts.Rows.Add(4, "8938501234567", "Nước tương Chinsu Tỏi Ớt 250ml", "Gia vị & Khác", "19.500 đ", "14.800 đ", "24.1%", "chai", "🟢 Đang bán");
-        dgvProducts.Rows.Add(5, "8936001112233", "Sữa chua Vinamilk Nha Đam 100g", "Sữa & Chế phẩm", "8.500 đ", "6.500 đ", "23.5%", "hộp", "🔴 Ngừng bán");
     }
 
     private void BtnAddProduct_Click(object? sender, EventArgs e)

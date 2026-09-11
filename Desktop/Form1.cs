@@ -35,7 +35,7 @@ public partial class Form1 : Form
     private readonly HttpClient _httpClient = new();
     private readonly StringBuilder _scanBuffer = new();
     private DateTime _lastKeyTime = DateTime.MinValue;
-    private readonly string _apiBaseUrl = "http://localhost:5000";
+    private readonly string _apiBaseUrl = "http://localhost:5137";
 
     // Controls
     private TextBox txtBarcode = null!;
