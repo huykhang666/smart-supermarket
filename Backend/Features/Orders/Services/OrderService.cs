@@ -71,7 +71,6 @@ public class OrderService : IOrderService
             throw new ArgumentException("Đơn hàng phải chứa ít nhất một sản phẩm.");
         }
 
-        // --- 1. Validate products exist ---
         var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await _dbContext.Products
             .Where(p => productIds.Contains(p.ProductId))
@@ -85,7 +84,6 @@ public class OrderService : IOrderService
             }
         }
 
-        // --- 2. Validate inventory & deduct stock ---
         var inventoryItems = new List<(Domain.Entities.Inventory Inv, int Qty)>();
         foreach (var item in request.Items)
         {
@@ -100,7 +98,6 @@ public class OrderService : IOrderService
             inventoryItems.Add((inv, item.Quantity));
         }
 
-        // --- 3. Compute line items & total ---
         decimal totalAmount = 0;
         var orderDetails = new List<OrderDetail>();
 
@@ -120,7 +117,6 @@ public class OrderService : IOrderService
             });
         }
 
-        // --- 4. Apply voucher/promotion if provided ---
         decimal discountAmount = 0;
         int? resolvedVoucherId = request.VoucherId;
 
@@ -151,7 +147,6 @@ public class OrderService : IOrderService
                         discountAmount = totalAmount;
                     }
 
-                    // Map promotionId to VoucherId if not already set
                     resolvedVoucherId ??= promotion.PromotionId;
                 }
             }
@@ -159,7 +154,6 @@ public class OrderService : IOrderService
 
         decimal finalAmount = totalAmount - discountAmount;
 
-        // --- 5. Create order ---
         var order = new Order
         {
             EmployeeId = request.EmployeeId,
@@ -177,7 +171,6 @@ public class OrderService : IOrderService
 
         await _orderRepository.AddAsync(order, cancellationToken);
 
-        // --- 6. Deduct inventory & write stock history ---
         foreach (var (inv, qty) in inventoryItems)
         {
             int qtyBefore = inv.QuantityOnHand;
