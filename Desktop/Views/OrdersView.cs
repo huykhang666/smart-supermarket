@@ -30,7 +30,6 @@ public class OrdersView : UserControl
         this.BackColor = ThemeManager.Background;
         this.Padding = new Padding(20);
 
-        // Header Panel
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
@@ -51,7 +50,6 @@ public class OrdersView : UserControl
         };
         pnlHeader.Controls.Add(lblTitle);
 
-        // Toolbar Panel
         var pnlToolbar = new Panel
         {
             Dock = DockStyle.Top,
@@ -88,7 +86,6 @@ public class OrdersView : UserControl
         pnlToolbar.Controls.Add(btnCancel);
         pnlToolbar.Controls.Add(lblStatus);
 
-        // Grid Container
         var pnlGrid = new Panel
         {
             Dock = DockStyle.Fill,
@@ -110,13 +107,11 @@ public class OrdersView : UserControl
         dgvOrders.Columns.Add("PaymentMethod", "Thanh Toán");
         dgvOrders.Columns.Add("OrderDate", "Ngày Đặt");
         dgvOrders.Columns.Add("Status", "Trạng Thái");
-        // Hidden column to hold the real orderId for actions
         dgvOrders.Columns.Add("RawOrderId", "RawOrderId");
         dgvOrders.Columns["RawOrderId"].Visible = false;
 
         pnlGrid.Controls.Add(dgvOrders);
 
-        // Layout: top → header, then toolbar, then grid fills remaining
         this.Controls.Add(pnlGrid);
         this.Controls.Add(pnlToolbar);
         this.Controls.Add(pnlHeader);
@@ -136,7 +131,6 @@ public class OrdersView : UserControl
                 using var doc = JsonDocument.Parse(content);
                 var root = doc.RootElement;
 
-                // Response: { data: { items: [...], totalCount: x } }
                 if (root.TryGetProperty("data", out var data))
                 {
                     var itemsProp = data.TryGetProperty("items", out var items) ? items : data;

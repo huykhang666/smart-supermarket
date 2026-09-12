@@ -31,7 +31,6 @@ public class PromotionsView : UserControl
         this.BackColor = ThemeManager.Background;
         this.Padding = new Padding(20);
 
-        // Header
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
@@ -52,7 +51,6 @@ public class PromotionsView : UserControl
         };
         pnlHeader.Controls.Add(lblTitle);
 
-        // Toolbar
         var pnlToolbar = new Panel
         {
             Dock = DockStyle.Top,
@@ -89,7 +87,6 @@ public class PromotionsView : UserControl
         pnlToolbar.Controls.Add(btnDelete);
         pnlToolbar.Controls.Add(lblStatus);
 
-        // Grid
         var pnlGridContainer = new Panel
         {
             Dock = DockStyle.Fill,
@@ -110,7 +107,6 @@ public class PromotionsView : UserControl
         dgvPromotions.Columns.Add("MaxDiscount", "Giảm Tối Đa");
         dgvPromotions.Columns.Add("TimeRange", "Thời Gian Hiệu Lực");
         dgvPromotions.Columns.Add("Status", "Trạng Thái");
-        // Hidden columns for actions
         dgvPromotions.Columns.Add("RawId", "RawId");
         dgvPromotions.Columns["RawId"].Visible = false;
 
@@ -240,9 +236,6 @@ public class PromotionsView : UserControl
     }
 }
 
-// ============================================================
-// Form thêm mới khuyến mãi
-// ============================================================
 internal class AddPromotionForm : Form
 {
     private readonly string _apiBaseUrl;

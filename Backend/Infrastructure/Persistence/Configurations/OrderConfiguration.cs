@@ -22,7 +22,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasColumnType("decimal(18,2)");
 
         builder.Property(o => o.PaymentMethod)
-            .HasDefaultValue(1);
+            .HasDefaultValue(Domain.Enums.PaymentMethod.Cash);
 
         builder.HasMany(o => o.OrderDetails)
             .WithOne()
