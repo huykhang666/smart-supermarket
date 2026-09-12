@@ -121,6 +121,59 @@ public static class DbInitializer
             await dbContext.DiscountRules.AddRangeAsync(rule1, rule2);
             await dbContext.SaveChangesAsync();
         }
+
+        // 12. Seed sample Promotions / Vouchers
+        if (!await dbContext.Promotions.AnyAsync())
+        {
+            var now = DateTime.UtcNow;
+            var samplePromotions = new[]
+            {
+                new Promotion
+                {
+                    PromotionCode = "KATQ10",
+                    PromotionName = "Giảm 10% Đơn Hàng Siêu Thị",
+                    Description = "Áp dụng cho đơn hàng từ 200.000 VNĐ",
+                    DiscountType = "Percentage",
+                    DiscountValue = 10m,
+                    MinimumOrderAmount = 200000m,
+                    MaximumDiscountAmount = 100000m,
+                    StartDate = now.AddDays(-5),
+                    EndDate = now.AddDays(60),
+                    IsActive = true,
+                    CreatedAt = now
+                },
+                new Promotion
+                {
+                    PromotionCode = "FREESHIP",
+                    PromotionName = "Miễn Phí Giao Hàng Bán Lẻ",
+                    Description = "Giảm 30.000 VNĐ cho đơn hàng từ 500.000 VNĐ",
+                    DiscountType = "FixedAmount",
+                    DiscountValue = 30000m,
+                    MinimumOrderAmount = 500000m,
+                    MaximumDiscountAmount = null,
+                    StartDate = now.AddDays(-2),
+                    EndDate = now.AddDays(90),
+                    IsActive = true,
+                    CreatedAt = now
+                },
+                new Promotion
+                {
+                    PromotionCode = "CHAOHETUAN",
+                    PromotionName = "Voucher Chào Hè Tuần",
+                    Description = "Giảm 50.000 VNĐ cho đơn hàng từ 1.000.000 VNĐ",
+                    DiscountType = "FixedAmount",
+                    DiscountValue = 50000m,
+                    MinimumOrderAmount = 1000000m,
+                    MaximumDiscountAmount = null,
+                    StartDate = now.AddDays(-1),
+                    EndDate = now.AddDays(30),
+                    IsActive = true,
+                    CreatedAt = now
+                }
+            };
+            await dbContext.Promotions.AddRangeAsync(samplePromotions);
+            await dbContext.SaveChangesAsync();
+        }
     }
 
     public static async Task ResetFullDatabaseAsync(AppDbContext dbContext)
@@ -243,7 +296,24 @@ public static class DbInitializer
                     ""DiscountAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
                     ""VoucherId"" INT NULL,
                     ""FinalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
-                    ""Status"" INT NOT NULL DEFAULT 1
+                    ""Status"" INT NOT NULL DEFAULT 1,
+                    ""PaymentMethod"" INT NOT NULL DEFAULT 1
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Promotions"" (
+                    ""PromotionId"" SERIAL PRIMARY KEY,
+                    ""PromotionCode"" VARCHAR(50) NOT NULL,
+                    ""PromotionName"" VARCHAR(200) NOT NULL,
+                    ""Description"" TEXT NULL,
+                    ""DiscountType"" VARCHAR(50) NOT NULL DEFAULT 'Percentage',
+                    ""DiscountValue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""MinimumOrderAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""MaximumDiscountAmount"" DECIMAL(18,2) NULL,
+                    ""StartDate"" TIMESTAMPTZ NOT NULL,
+                    ""EndDate"" TIMESTAMPTZ NOT NULL,
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS ""OrderDetails"" (

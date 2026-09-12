@@ -14,6 +14,7 @@ public class Order
     public int? VoucherId { get; set; }
     public decimal FinalAmount { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Completed;
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
 
     // Navigation properties
     public List<OrderDetail> OrderDetails { get; set; } = new();
