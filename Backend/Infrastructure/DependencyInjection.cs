@@ -51,6 +51,17 @@ public static class DependencyInjection
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IPromotionService, PromotionService>();
 
+        // Module 05_Inventory
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IInventoryRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.InventoryRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IDiscountRuleRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.DiscountRuleRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IInventoryService, SmartSupermarket.Backend.Features.Inventory.Services.InventoryService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IDiscountRuleService, SmartSupermarket.Backend.Features.Inventory.Services.DiscountRuleService>();
+
+        // Module 06_Import
+        services.AddScoped<SmartSupermarket.Backend.Features.Import.Repositories.IImportReceiptRepository, SmartSupermarket.Backend.Features.Import.Repositories.ImportReceiptRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Import.Repositories.IImportDetailRepository, SmartSupermarket.Backend.Features.Import.Repositories.ImportDetailRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Import.Services.IImportReceiptService, SmartSupermarket.Backend.Features.Import.Services.ImportReceiptService>();
+
         return services;
     }
 }

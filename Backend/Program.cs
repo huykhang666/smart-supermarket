@@ -1,4 +1,5 @@
 using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using SmartSupermarket.Backend.Infrastructure;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 using SmartSupermarket.Backend.Infrastructure.Security;
@@ -31,9 +32,19 @@ builder.Services.AddSwaggerGen(options =>
 
     options.AddSecurityDefinition("Bearer", jwtSecurityScheme);
 
-    options.AddSecurityRequirement((doc) => new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        { new OpenApiSecuritySchemeReference("Bearer"), new List<string>() }
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
     });
 });
 
