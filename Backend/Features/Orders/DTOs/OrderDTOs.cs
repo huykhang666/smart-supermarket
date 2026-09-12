@@ -39,6 +39,8 @@ public class CreateOrderRequest
     public int? CustomerId { get; set; }
     public int BranchId { get; set; } = 1;
     public int? VoucherId { get; set; }
+    /// <summary>Mã khuyến mãi nhập từ thu ngân POS (nếu có)</summary>
+    public string? PromotionCode { get; set; }
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
     public List<CreateOrderDetailRequest> Items { get; set; } = new();
 }

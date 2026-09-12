@@ -21,6 +21,9 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.FinalAmount)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(o => o.PaymentMethod)
+            .HasDefaultValue(1);
+
         builder.HasMany(o => o.OrderDetails)
             .WithOne()
             .HasForeignKey(od => od.OrderId)

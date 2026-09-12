@@ -3,6 +3,8 @@ using SmartSupermarket.Backend.Domain.Entities;
 using SmartSupermarket.Backend.Domain.Enums;
 using SmartSupermarket.Backend.Features.Orders.DTOs;
 using SmartSupermarket.Backend.Features.Orders.Repositories;
+using SmartSupermarket.Backend.Features.Inventory.Repositories;
+using SmartSupermarket.Backend.Features.Promotions.Repositories;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 
 namespace SmartSupermarket.Backend.Features.Orders.Services;
@@ -10,11 +12,19 @@ namespace SmartSupermarket.Backend.Features.Orders.Services;
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IInventoryRepository _inventoryRepository;
+    private readonly IPromotionRepository _promotionRepository;
     private readonly AppDbContext _dbContext;
 
-    public OrderService(IOrderRepository orderRepository, AppDbContext dbContext)
+    public OrderService(
+        IOrderRepository orderRepository,
+        IInventoryRepository inventoryRepository,
+        IPromotionRepository promotionRepository,
+        AppDbContext dbContext)
     {
         _orderRepository = orderRepository;
+        _inventoryRepository = inventoryRepository;
+        _promotionRepository = promotionRepository;
         _dbContext = dbContext;
     }
 
@@ -61,6 +71,7 @@ public class OrderService : IOrderService
             throw new ArgumentException("Đơn hàng phải chứa ít nhất một sản phẩm.");
         }
 
+        // --- 1. Validate products exist ---
         var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await _dbContext.Products
             .Where(p => productIds.Contains(p.ProductId))
@@ -74,6 +85,22 @@ public class OrderService : IOrderService
             }
         }
 
+        // --- 2. Validate inventory & deduct stock ---
+        var inventoryItems = new List<(Domain.Entities.Inventory Inv, int Qty)>();
+        foreach (var item in request.Items)
+        {
+            var inv = await _inventoryRepository.GetByProductAndBranchAsync(item.ProductId, request.BranchId);
+            if (inv == null || inv.QuantityOnHand < item.Quantity)
+            {
+                var productName = products[item.ProductId].ProductName;
+                int available = inv?.QuantityOnHand ?? 0;
+                throw new InvalidOperationException(
+                    $"Sản phẩm '{productName}' không đủ tồn kho. Cần {item.Quantity}, còn {available}.");
+            }
+            inventoryItems.Add((inv, item.Quantity));
+        }
+
+        // --- 3. Compute line items & total ---
         decimal totalAmount = 0;
         var orderDetails = new List<OrderDetail>();
 
@@ -82,7 +109,6 @@ public class OrderService : IOrderService
             var product = products[item.ProductId];
             decimal unitPrice = item.UnitPrice > 0 ? item.UnitPrice : product.Price;
             decimal subTotal = unitPrice * item.Quantity;
-
             totalAmount += subTotal;
 
             orderDetails.Add(new OrderDetail
@@ -92,14 +118,48 @@ public class OrderService : IOrderService
                 UnitPrice = unitPrice,
                 SubTotal = subTotal
             });
-
-            product.UpdatedAt = DateTime.UtcNow;
-            _dbContext.Products.Update(product);
         }
 
+        // --- 4. Apply voucher/promotion if provided ---
         decimal discountAmount = 0;
+        int? resolvedVoucherId = request.VoucherId;
+
+        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+        {
+            var promotion = await _promotionRepository.GetByCodeAsync(request.PromotionCode, cancellationToken);
+            if (promotion != null && promotion.IsActive)
+            {
+                DateTime now = DateTime.UtcNow;
+                if (now >= promotion.StartDate && now <= promotion.EndDate
+                    && totalAmount >= promotion.MinimumOrderAmount)
+                {
+                    if (promotion.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+                    {
+                        discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                        if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                        {
+                            discountAmount = promotion.MaximumDiscountAmount.Value;
+                        }
+                    }
+                    else
+                    {
+                        discountAmount = promotion.DiscountValue;
+                    }
+
+                    if (discountAmount > totalAmount)
+                    {
+                        discountAmount = totalAmount;
+                    }
+
+                    // Map promotionId to VoucherId if not already set
+                    resolvedVoucherId ??= promotion.PromotionId;
+                }
+            }
+        }
+
         decimal finalAmount = totalAmount - discountAmount;
 
+        // --- 5. Create order ---
         var order = new Order
         {
             EmployeeId = request.EmployeeId,
@@ -108,13 +168,38 @@ public class OrderService : IOrderService
             OrderDate = DateTime.UtcNow,
             TotalAmount = totalAmount,
             DiscountAmount = discountAmount,
-            VoucherId = request.VoucherId,
+            VoucherId = resolvedVoucherId,
             FinalAmount = finalAmount,
+            PaymentMethod = request.PaymentMethod,
             Status = OrderStatus.Completed,
             OrderDetails = orderDetails
         };
 
         await _orderRepository.AddAsync(order, cancellationToken);
+
+        // --- 6. Deduct inventory & write stock history ---
+        foreach (var (inv, qty) in inventoryItems)
+        {
+            int qtyBefore = inv.QuantityOnHand;
+            inv.QuantityOnHand -= qty;
+            inv.LastUpdated = DateTime.UtcNow;
+            await _inventoryRepository.UpsertAsync(inv);
+
+            await _inventoryRepository.AddStockHistoryAsync(new StockHistory
+            {
+                ProductId = inv.ProductId,
+                BranchId = inv.BranchId,
+                ChangeType = StockChangeType.Sale,
+                QuantityChange = -qty,
+                QuantityBefore = qtyBefore,
+                QuantityAfter = inv.QuantityOnHand,
+                Note = $"Bán hàng - Đơn #{order.OrderId}",
+                CreatedByUserId = request.EmployeeId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _inventoryRepository.SaveChangesAsync();
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
         return await MapToDtoAsync(order, cancellationToken);
@@ -193,6 +278,7 @@ public class OrderService : IOrderService
             DiscountAmount = order.DiscountAmount,
             VoucherId = order.VoucherId,
             FinalAmount = order.FinalAmount,
+            PaymentMethod = order.PaymentMethod,
             Status = order.Status,
             OrderDetails = detailDtos
         };

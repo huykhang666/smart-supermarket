@@ -17,6 +17,7 @@ public class PosScanView : UserControl
     private DataGridView dgvCart = null!;
     private Label lblSubTotalVal = null!;
     private Label lblVatVal = null!;
+    private Label lblDiscountVal = null!;
     private Label lblGrandTotal = null!;
     private NumericUpDown numCashPaid = null!;
     private Label lblChangeVal = null!;
@@ -28,10 +29,15 @@ public class PosScanView : UserControl
     private Button btnQtyMinus = null!;
     private Button btnRemoveItem = null!;
     private Button btnClearCart = null!;
-    
+    private TextBox txtVoucherCode = null!;
+    private Button btnApplyVoucher = null!;
+    private Label lblVoucherStatus = null!;
+
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = "http://localhost:5137";
     private int _selectedPaymentMethod = 1; // 1 = Cash, 2 = Card, 3 = VietQR
+    private decimal _appliedDiscountAmount = 0m;
+    private string? _appliedVoucherCode = null;
 
     private readonly List<CartItem> _cart = new();
 
@@ -188,25 +194,48 @@ public class PosScanView : UserControl
         var lblVat = new Label { Text = "Thuế VAT (10%):", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 88), AutoSize = true };
         lblVatVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(160, 88), AutoSize = true };
 
-        var pnlDivider1 = new Panel { Location = new Point(15, 118), Size = new Size(270, 2), BackColor = ThemeManager.Border };
+        // Voucher / Promotion Code Input
+        var pnlVoucher = new Panel { Location = new Point(15, 115), Size = new Size(270, 60), BackColor = Color.FromArgb(235, 245, 255) };
+        var lblVoucherLbl = new Label { Text = "🎁 Mã khuyến mãi:", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.NavyBrand, Location = new Point(0, 0), AutoSize = true };
+        txtVoucherCode = new TextBox
+        {
+            Font = ThemeManager.BodyFont,
+            Location = new Point(0, 22),
+            Size = new Size(165, 26),
+            PlaceholderText = "Nhập mã voucher..."
+        };
+        txtVoucherCode.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) _ = ApplyVoucherAsync(); };
+        btnApplyVoucher = new Button { Text = "✅ Áp Dụng", Size = new Size(98, 26), Location = new Point(170, 22) };
+        ThemeManager.ApplyPrimaryButton(btnApplyVoucher);
+        btnApplyVoucher.Click += async (s, e) => await ApplyVoucherAsync();
+        lblVoucherStatus = new Label { Text = "", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.Success, Location = new Point(0, 52), AutoSize = true };
+        pnlVoucher.Controls.Add(lblVoucherLbl);
+        pnlVoucher.Controls.Add(txtVoucherCode);
+        pnlVoucher.Controls.Add(btnApplyVoucher);
+        pnlVoucher.Controls.Add(lblVoucherStatus);
 
-        var lblTotalTitle = new Label { Text = "TỔNG TIỀN THANH TOÁN", Font = ThemeManager.SubtitleFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 130), AutoSize = true };
+        var lblDiscount = new Label { Text = "Giảm giá (Voucher):", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 180), AutoSize = true };
+        lblDiscountVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.Success, Location = new Point(175, 180), AutoSize = true };
+
+        var pnlDivider1 = new Panel { Location = new Point(15, 205), Size = new Size(270, 2), BackColor = ThemeManager.Border };
+
+        var lblTotalTitle = new Label { Text = "TỔNG TIỀN THANH TOÁN", Font = ThemeManager.SubtitleFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 215), AutoSize = true };
         lblGrandTotal = new Label
         {
             Text = "0 VNĐ",
             Font = new Font("Segoe UI", 22F, FontStyle.Bold),
             ForeColor = ThemeManager.PrimaryHover,
-            Location = new Point(12, 155),
+            Location = new Point(12, 238),
             AutoSize = true
         };
 
-        var pnlDivider2 = new Panel { Location = new Point(15, 205), Size = new Size(270, 2), BackColor = ThemeManager.Border };
+        var pnlDivider2 = new Panel { Location = new Point(15, 288), Size = new Size(270, 2), BackColor = ThemeManager.Border };
 
         // Customer Cash Input & Change Calculation
-        var lblCashPaid = new Label { Text = "Tiền khách đưa (VNĐ):", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 215), AutoSize = true };
+        var lblCashPaid = new Label { Text = "Tiền khách đưa (VNĐ):", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 298), AutoSize = true };
         numCashPaid = new NumericUpDown
         {
-            Location = new Point(15, 240),
+            Location = new Point(15, 323),
             Size = new Size(265, 34),
             Font = new Font("Segoe UI", 12.5F, FontStyle.Bold),
             Maximum = 100000000,
@@ -216,21 +245,21 @@ public class PosScanView : UserControl
         };
         numCashPaid.ValueChanged += (s, e) => CalculateChange();
 
-        var lblChangeTitle = new Label { Text = "Tiền thừa trả lại khách:", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 282), AutoSize = true };
-        lblChangeVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.Success, Location = new Point(160, 282), AutoSize = true };
+        var lblChangeTitle = new Label { Text = "Tiền thừa trả lại khách:", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(15, 366), AutoSize = true };
+        lblChangeVal = new Label { Text = "0 VNĐ", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.Success, Location = new Point(175, 366), AutoSize = true };
 
         // Payment Method Options
-        var lblPayMethod = new Label { Text = "Hình thức thanh toán:", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 320), AutoSize = true };
+        var lblPayMethod = new Label { Text = "Hình thức thanh toán:", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(15, 400), AutoSize = true };
 
-        btnPayCash = new Button { Text = "💵 Tiền Mặt", Size = new Size(85, 36), Location = new Point(15, 348) };
+        btnPayCash = new Button { Text = "💵 Tiền Mặt", Size = new Size(85, 36), Location = new Point(15, 428) };
         ThemeManager.ApplyPrimaryButton(btnPayCash);
         btnPayCash.Click += (s, e) => SelectPaymentMethod(1);
 
-        btnPayCard = new Button { Text = "💳 Thẻ POS", Size = new Size(85, 36), Location = new Point(105, 348) };
+        btnPayCard = new Button { Text = "💳 Thẻ POS", Size = new Size(85, 36), Location = new Point(105, 428) };
         ThemeManager.ApplySecondaryButton(btnPayCard);
         btnPayCard.Click += (s, e) => SelectPaymentMethod(2);
 
-        btnPayQr = new Button { Text = "📱 VietQR", Size = new Size(85, 36), Location = new Point(195, 348) };
+        btnPayQr = new Button { Text = "📱 VietQR", Size = new Size(85, 36), Location = new Point(195, 428) };
         ThemeManager.ApplySecondaryButton(btnPayQr);
         btnPayQr.Click += (s, e) => SelectPaymentMethod(3);
 
@@ -240,7 +269,7 @@ public class PosScanView : UserControl
             Text = "💳 HOÀN TẤT THANH TOÁN & IN HÓA ĐƠN",
             Font = new Font("Segoe UI", 11.5F, FontStyle.Bold),
             Size = new Size(265, 52),
-            Location = new Point(15, 400)
+            Location = new Point(15, 475)
         };
         AppTheme.ApplyAccentButton(btnCheckout);
         btnCheckout.Click += BtnCheckout_Click;
@@ -250,6 +279,9 @@ public class PosScanView : UserControl
         pnlRight.Controls.Add(lblSubTotalVal);
         pnlRight.Controls.Add(lblVat);
         pnlRight.Controls.Add(lblVatVal);
+        pnlRight.Controls.Add(pnlVoucher);
+        pnlRight.Controls.Add(lblDiscount);
+        pnlRight.Controls.Add(lblDiscountVal);
         pnlRight.Controls.Add(pnlDivider1);
         pnlRight.Controls.Add(lblTotalTitle);
         pnlRight.Controls.Add(lblGrandTotal);
@@ -405,12 +437,75 @@ public class PosScanView : UserControl
     {
         decimal subTotal = _cart.Sum(i => i.Price * i.Quantity);
         decimal vatTotal = subTotal * 0.10m;
-        decimal grandTotal = subTotal + vatTotal;
+        decimal grandTotal = subTotal + vatTotal - _appliedDiscountAmount;
+        if (grandTotal < 0) grandTotal = 0;
         decimal cashPaid = numCashPaid.Value;
 
         decimal change = cashPaid - grandTotal;
         lblChangeVal.Text = change >= 0 ? $"{change:N0} VNĐ" : "0 VNĐ (Thiếu " + Math.Abs(change).ToString("N0") + " VNĐ)";
         lblChangeVal.ForeColor = change >= 0 ? ThemeManager.Success : ThemeManager.Danger;
+    }
+
+    private async Task ApplyVoucherAsync()
+    {
+        string code = txtVoucherCode.Text.Trim().ToUpper();
+        if (string.IsNullOrEmpty(code)) return;
+
+        decimal subTotal = _cart.Sum(i => i.Price * i.Quantity);
+        decimal vatTotal = subTotal * 0.10m;
+        decimal orderTotal = subTotal + vatTotal;
+
+        if (orderTotal <= 0)
+        {
+            lblVoucherStatus.Text = "⚠️ Giỏ hàng trống!";
+            lblVoucherStatus.ForeColor = ThemeManager.Danger;
+            return;
+        }
+
+        try
+        {
+            btnApplyVoucher.Enabled = false;
+            lblVoucherStatus.Text = "Đang kiểm tra...";
+            lblVoucherStatus.ForeColor = ThemeManager.TextSecondary;
+
+            var payload = JsonSerializer.Serialize(new { promotionCode = code, orderTotalAmount = orderTotal });
+            var response = await _httpClient.PostAsync(
+                $"{_apiBaseUrl}/api/v1/promotions/apply",
+                new StringContent(payload, System.Text.Encoding.UTF8, "application/json"));
+
+            var body = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var data = doc.RootElement.TryGetProperty("data", out var d) ? d : doc.RootElement;
+            bool isSuccess = data.TryGetProperty("isSuccess", out var s) && s.GetBoolean();
+            string message = data.TryGetProperty("message", out var m) ? (m.GetString() ?? "") : "";
+            decimal discountAmt = data.TryGetProperty("discountAmount", out var da) ? da.GetDecimal() : 0m;
+
+            if (isSuccess)
+            {
+                _appliedDiscountAmount = discountAmt;
+                _appliedVoucherCode = code;
+                lblVoucherStatus.Text = $"✅ Đã áp dụng! Giảm {discountAmt:N0} VNĐ";
+                lblVoucherStatus.ForeColor = ThemeManager.Success;
+                RefreshCartGrid();
+            }
+            else
+            {
+                _appliedDiscountAmount = 0;
+                _appliedVoucherCode = null;
+                lblVoucherStatus.Text = $"❌ {message}";
+                lblVoucherStatus.ForeColor = ThemeManager.Danger;
+                RefreshCartGrid();
+            }
+        }
+        catch
+        {
+            lblVoucherStatus.Text = "⚠️ Lỗi kết nối API";
+            lblVoucherStatus.ForeColor = ThemeManager.Danger;
+        }
+        finally
+        {
+            btnApplyVoucher.Enabled = true;
+        }
     }
 
     private void RefreshCartGrid()
@@ -431,9 +526,13 @@ public class PosScanView : UserControl
             dgvCart.Rows.Add(item.ProductId, item.Barcode, item.Name, $"{item.Price:N0} đ", item.Quantity, $"{item.VatPercent}%", $"{itemTotal:N0} đ");
         }
 
-        decimal grandTotal = subTotal + vatTotal;
+        decimal grandTotal = subTotal + vatTotal - _appliedDiscountAmount;
+        if (grandTotal < 0) grandTotal = 0;
+
         lblSubTotalVal.Text = $"{subTotal:N0} VNĐ";
         lblVatVal.Text = $"{vatTotal:N0} VNĐ";
+        lblDiscountVal.Text = _appliedDiscountAmount > 0 ? $"-{_appliedDiscountAmount:N0} VNĐ" : "0 VNĐ";
+        lblDiscountVal.ForeColor = _appliedDiscountAmount > 0 ? ThemeManager.Success : ThemeManager.TextSecondary;
         lblGrandTotal.Text = $"{grandTotal:N0} VNĐ";
 
         if (numCashPaid.Value == 0 || numCashPaid.Value < grandTotal)
@@ -454,7 +553,7 @@ public class PosScanView : UserControl
 
         decimal subTotal = _cart.Sum(i => i.Price * i.Quantity);
         decimal vatTotal = subTotal * 0.10m;
-        decimal grandTotal = subTotal + vatTotal;
+        decimal grandTotal = Math.Max(0, subTotal + vatTotal - _appliedDiscountAmount);
 
         if (numCashPaid.Value < grandTotal && _selectedPaymentMethod == 1)
         {
@@ -464,7 +563,9 @@ public class PosScanView : UserControl
 
         try
         {
-            // Post order to Backend API
+            btnCheckout.Enabled = false;
+            btnCheckout.Text = "⏳ Đang xử lý...";
+
             var orderItems = _cart.Select(i => new
             {
                 productId = i.ProductId,
@@ -472,38 +573,65 @@ public class PosScanView : UserControl
                 unitPrice = i.Price
             }).ToList();
 
+            // PaymentMethod mapping: 1=Cash, 2=QRCode(VietQR), 3=CreditCard(Thẻ)
+            int apiPayMethod = _selectedPaymentMethod == 3 ? 3 : (_selectedPaymentMethod == 2 ? 2 : 1);
+
             var orderPayload = new
             {
                 employeeId = 1,
                 branchId = 1,
-                paymentMethod = _selectedPaymentMethod,
+                paymentMethod = apiPayMethod,
+                promotionCode = _appliedVoucherCode,
                 items = orderItems
             };
 
             var content = new StringContent(JsonSerializer.Serialize(orderPayload), Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/orders", content);
+            var responseBody = await response.Content.ReadAsStringAsync();
 
-            string methodText = _selectedPaymentMethod == 1 ? "Tiền mặt" : (_selectedPaymentMethod == 2 ? "Thẻ POS" : "VietQR");
+            string methodText = _selectedPaymentMethod == 1 ? "Tiền mặt" : (_selectedPaymentMethod == 2 ? "VietQR" : "Thẻ POS");
             decimal changeAmount = Math.Max(0, numCashPaid.Value - grandTotal);
 
-            MessageBox.Show(
-                $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ THÀNH CÔNG!\n\n" +
-                $"• Tổng tiền: {grandTotal:N0} VNĐ\n" +
-                $"• Phương thức: {methodText}\n" +
-                $"• Tiền khách đưa: {numCashPaid.Value:N0} VNĐ\n" +
-                $"• Tiền thừa trả lại: {changeAmount:N0} VNĐ\n\n" +
-                $"Hệ thống đã lưu hóa đơn vào CSDL và đang in hóa đơn...",
-                "Thành công",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            if (response.IsSuccessStatusCode)
+            {
+                string voucherInfo = _appliedVoucherCode != null
+                    ? $"\n• Mã giảm giá: {_appliedVoucherCode} (-{_appliedDiscountAmount:N0} VNĐ)"
+                    : "";
 
-            _cart.Clear();
-            numCashPaid.Value = 0;
-            RefreshCartGrid();
+                MessageBox.Show(
+                    $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ THÀNH CÔNG!\n\n" +
+                    $"• Tổng tiền hàng: {(subTotal + vatTotal):N0} VNĐ" +
+                    voucherInfo +
+                    $"\n• Thực thu: {grandTotal:N0} VNĐ" +
+                    $"\n• Phương thức: {methodText}" +
+                    $"\n• Tiền khách đưa: {numCashPaid.Value:N0} VNĐ" +
+                    $"\n• Tiền thừa trả lại: {changeAmount:N0} VNĐ\n\n" +
+                    $"Hệ thống đã lưu hóa đơn vào CSDL và đã trừ tồn kho.",
+                    "Thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                _cart.Clear();
+                numCashPaid.Value = 0;
+                _appliedDiscountAmount = 0m;
+                _appliedVoucherCode = null;
+                txtVoucherCode.Clear();
+                lblVoucherStatus.Text = "";
+                RefreshCartGrid();
+            }
+            else
+            {
+                MessageBox.Show($"Lỗi tạo đơn hàng:\n{responseBody}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            MessageBox.Show("Đã xảy ra lỗi khi lưu đơn hàng vào hệ thống.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Lỗi kết nối: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            btnCheckout.Enabled = true;
+            btnCheckout.Text = "💳 HOÀN TẤT THANH TOÁN & IN HÓA ĐƠN";
         }
     }
 
