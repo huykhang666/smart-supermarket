@@ -61,9 +61,11 @@ public class EmployeesView : UserControl
         };
         btnAddEmployee.FlatAppearance.BorderSize = 0;
         btnAddEmployee.Click += (s, e) => {
-            var parentForm = this.FindForm();
-            if (parentForm != null) AntdUI.Message.info(parentForm, "Form tạo tài khoản nhân viên mới (Admin cấp Mã NV, Username, Mật khẩu & Phân ca).");
-            else MessageBox.Show("Form tạo tài khoản nhân viên mới (Admin cấp Mã NV, Username, Mật khẩu & Phân ca).", "Thông báo");
+            var form = new AddEmployeeForm(new System.Net.Http.HttpClient(), "http://localhost:5137");
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                LoadSampleData(); // Reload grid
+            }
         };
 
         pnlHeader.Controls.Add(lblTitle);

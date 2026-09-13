@@ -211,72 +211,24 @@ public class LoginForm : Form
                 pnlLogoBox.Region = new Region(path);
             }
         };
-        pnlLogoBox.Paint += (s, e) =>
+        var picLogo = new PictureBox
         {
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-            // --- Draw Monogram Icon Logo on Top/Center ---
-            int iconBoxX = (pnlLogoBox.Width - 68) / 2;
-            using var logoBrush = new LinearGradientBrush(
-                new Rectangle(iconBoxX, 10, 68, 60),
-                NavyBrand,
-                TealBrand,
-                45f);
-
-            // Draw Monogram KATQ Arch & Target Icon
-            using var mainPen = new Pen(logoBrush, 5.5f);
-            e.Graphics.DrawArc(mainPen, iconBoxX + 10, 12, 48, 38, 180, 180);
-            e.Graphics.DrawLine(mainPen, iconBoxX + 16, 25, iconBoxX + 52, 25);
-
-            // Bullseye Ring Target at Bottom of Monogram Icon
-            using var ringPen = new Pen(TealBrand, 3.5f);
-            e.Graphics.DrawEllipse(ringPen, iconBoxX + 24, 34, 20, 20);
-            using var dotBrush = new SolidBrush(TealBrand);
-            e.Graphics.FillEllipse(dotBrush, iconBoxX + 31, 41, 6, 6);
-
-            // --- Draw Brand Name "KATQ smart" ---
-            // 1. "KATQ" in Bold Deep Navy Blue (#0B2545)
-            using var fontKatq = new Font("Segoe UI", 21f, FontStyle.Bold);
-            using var katqBrush = new SolidBrush(NavyBrand);
-            string strKatq = "KATQ";
-            var szKatq = e.Graphics.MeasureString(strKatq, fontKatq);
-
-            // 2. "smart" in Lowercase Teal Cyan (#00A8CC)
-            using var fontSmart = new Font("Segoe UI", 16f, FontStyle.Bold);
-            using var smartBrush = new SolidBrush(TealBrand);
-            string strSmart = "smart";
-            var szSmart = e.Graphics.MeasureString(strSmart, fontSmart);
-
-            float totalBrandWidth = szKatq.Width + szSmart.Width - 10;
-            float startBrandX = (pnlLogoBox.Width - totalBrandWidth) / 2;
-
-            e.Graphics.DrawString(strKatq, fontKatq, katqBrush, startBrandX, 74);
-            e.Graphics.DrawString(strSmart, fontSmart, smartBrush, startBrandX + szKatq.Width - 12, 80);
-
-            // --- Draw Circuit Nodes "o--- RETAIL & POS SYSTEM ---o" ---
-            using var linePen = new Pen(TealBrand, 1.5f);
-            using var nodeBrush = new SolidBrush(Color.White);
-            using var nodeBorderPen = new Pen(TealBrand, 1.5f);
-
-            int nodeY = 126;
-            // Left Node Line
-            e.Graphics.DrawLine(linePen, 50, nodeY, 110, nodeY);
-            e.Graphics.FillEllipse(nodeBrush, 45, nodeY - 3, 6, 6);
-            e.Graphics.DrawEllipse(nodeBorderPen, 45, nodeY - 3, 6, 6);
-
-            // Center Subtag Text
-            using var fontSub = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-            using var subBrush = new SolidBrush(Color.FromArgb(90, 115, 140));
-            string subStr = "RETAIL & POS SYSTEM";
-            var szSub = e.Graphics.MeasureString(subStr, fontSub);
-            e.Graphics.DrawString(subStr, fontSub, subBrush, (pnlLogoBox.Width - szSub.Width) / 2, nodeY - 7);
-
-            // Right Node Line
-            e.Graphics.DrawLine(linePen, pnlLogoBox.Width - 110, nodeY, pnlLogoBox.Width - 50, nodeY);
-            e.Graphics.FillEllipse(nodeBrush, pnlLogoBox.Width - 51, nodeY - 3, 6, 6);
-            e.Graphics.DrawEllipse(nodeBorderPen, pnlLogoBox.Width - 51, nodeY - 3, 6, 6);
+            Dock = DockStyle.Fill,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            BackColor = Color.White
         };
+
+        try
+        {
+            string logoPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo_katq.png");
+            if (System.IO.File.Exists(logoPath))
+            {
+                picLogo.Image = Image.FromFile(logoPath);
+            }
+        }
+        catch { }
+
+        pnlLogoBox.Controls.Add(picLogo);
 
         pnlHeaderCard.Controls.Add(lblSystemTag);
         pnlHeaderCard.Controls.Add(lblSystemId);
@@ -504,9 +456,24 @@ public class LoginForm : Form
             };
             timer.Start();
         }
+        else if (username.Equals("nhanvien", StringComparison.OrdinalIgnoreCase) && password == "nhanvien123")
+        {
+            AntdUI.Message.success(this, "Đăng nhập thành công! Mở ca làm việc Thu Ngân...");
+
+            var timer = new System.Windows.Forms.Timer { Interval = 500 };
+            timer.Tick += (s, ev) =>
+            {
+                timer.Stop();
+                this.Hide();
+                var empForm = new EmployeeMainForm();
+                empForm.FormClosed += (s2, ev2) => this.Close();
+                empForm.Show();
+            };
+            timer.Start();
+        }
         else
         {
-            AntdUI.Message.error(this, "Tài khoản hoặc mật khẩu không chính xác! (Gợi ý: admin / admin123)");
+            AntdUI.Message.error(this, "Tài khoản không chính xác! (Gợi ý: admin/admin123 hoặc nhanvien/nhanvien123)");
         }
     }
 
