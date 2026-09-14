@@ -106,8 +106,8 @@ public class MainForm : Form
         lblAppTitle = new Label
         {
             Text = "Smart SuperMarket  |  ENTERPRISE ERP POS CONTROL CENTER",
-            Font = new Font("Segoe UI Semibold", 12.5f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(11, 37, 69),
+            Font = AppTheme.FontH2,
+            ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
             Location = new Point(175, 18)
         };
@@ -117,13 +117,13 @@ public class MainForm : Form
         {
             Size = new Size(220, 30),
             Location = new Point(620, 15),
-            BackColor = AppTheme.PrimaryGreenLight
+            BackColor = AppTheme.SuccessSubtle
         };
         var lblStatus = new Label
         {
             Text = "🟢 Ready (Active) • POS Server",
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            ForeColor = AppTheme.PrimaryGreenDark,
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Success,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter
         };
@@ -133,13 +133,13 @@ public class MainForm : Form
         btnNotification = new IconButton
         {
             IconChar = IconChar.Bell,
-            IconColor = AppTheme.PrimaryGreen,
+            IconColor = AppTheme.Primary,
             IconSize = 18,
             Text = " 🔔 (11)",
             TextImageRelation = TextImageRelation.ImageBeforeText,
             Font = AppTheme.FontBodyBold,
-            ForeColor = AppTheme.PrimaryGreen,
-            BackColor = AppTheme.PrimaryGreenLight,
+            ForeColor = AppTheme.Primary,
+            BackColor = AppTheme.PrimarySubtle,
             FlatStyle = FlatStyle.Flat,
             Size = new Size(95, 32),
             Location = new Point(860, 14),
@@ -161,7 +161,7 @@ public class MainForm : Form
         {
             Text = "👤 Nguyễn Huy Khang (Admin) ▼",
             Font = AppTheme.FontBodyBold,
-            ForeColor = Color.FromArgb(11, 37, 69),
+            ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
             Location = new Point(975, 20),
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
@@ -263,14 +263,14 @@ public class MainForm : Form
         var btn = new IconButton
         {
             Dock = DockStyle.Top,
-            Height = 46,
+            Height = 44,
             Text = "  " + text,
             IconChar = icon,
             IconColor = AppTheme.SidebarText,
             IconSize = 18,
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.SidebarText,
-            BackColor = ThemeManager.SidebarBg,
+            BackColor = AppTheme.SidebarBg,
             FlatStyle = FlatStyle.Flat,
             TextImageRelation = TextImageRelation.ImageBeforeText,
             ImageAlign = ContentAlignment.MiddleLeft,
@@ -284,9 +284,9 @@ public class MainForm : Form
         {
             if (btn == _activeNavButton)
             {
-                // Draw 4px Accent Orange indicator bar on left edge
-                using var orangeBar = new SolidBrush(AppTheme.AccentOrange);
-                e.Graphics.FillRectangle(orangeBar, 0, 0, 4, btn.Height);
+                // Draw 3px Accent bar on left edge (Fluent 2 Sidebar active indicator)
+                using var accentBar = new SolidBrush(AppTheme.SidebarAccent);
+                e.Graphics.FillRectangle(accentBar, 0, 6, 3, btn.Height - 12);
             }
         };
 
@@ -294,7 +294,7 @@ public class MainForm : Form
         {
             if (btn != _activeNavButton)
             {
-                btn.BackColor = AppTheme.PrimaryGreen;
+                btn.BackColor = AppTheme.SidebarHover;
                 btn.ForeColor = Color.White;
                 btn.IconColor = Color.White;
             }
@@ -304,7 +304,7 @@ public class MainForm : Form
         {
             if (btn != _activeNavButton)
             {
-                btn.BackColor = ThemeManager.SidebarBg;
+                btn.BackColor = AppTheme.SidebarBg;
                 btn.ForeColor = AppTheme.SidebarText;
                 btn.IconColor = AppTheme.SidebarText;
             }
@@ -317,7 +317,7 @@ public class MainForm : Form
     {
         if (_activeNavButton != null)
         {
-            _activeNavButton.BackColor = ThemeManager.SidebarBg;
+            _activeNavButton.BackColor = AppTheme.SidebarBg;
             _activeNavButton.ForeColor = AppTheme.SidebarText;
             _activeNavButton.IconColor = AppTheme.SidebarText;
             _activeNavButton.Font = AppTheme.FontBody;
@@ -325,7 +325,7 @@ public class MainForm : Form
         }
 
         _activeNavButton = navBtn;
-        _activeNavButton.BackColor = AppTheme.PrimaryGreen;
+        _activeNavButton.BackColor = AppTheme.SidebarActive;
         _activeNavButton.ForeColor = Color.White;
         _activeNavButton.IconColor = Color.White;
         _activeNavButton.Font = AppTheme.FontBodyBold;

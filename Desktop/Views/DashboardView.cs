@@ -46,8 +46,8 @@ public class DashboardView : UserControl
             Dock = DockStyle.Top,
             Height = 75,
             BackColor = ThemeManager.CardBg,
-            Padding = new Padding(20, 12, 20, 12),
-            Margin = new Padding(0, 0, 0, 20)
+            Padding = new Padding(16, 12, 16, 12),
+            Margin = new Padding(0, 0, 0, 6)
         };
         ThemeManager.ApplyCardPanel(pnlHeaderBanner);
 
@@ -90,7 +90,7 @@ public class DashboardView : UserControl
             Height = 110,
             ColumnCount = 4,
             RowCount = 1,
-            Margin = new Padding(0, 15, 0, 15)
+            Margin = new Padding(0, 6, 0, 6)
         };
         tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
         tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
@@ -108,8 +108,8 @@ public class DashboardView : UserControl
             Dock = DockStyle.Top,
             Height = 350,
             BackColor = ThemeManager.CardBg,
-            Padding = new Padding(20),
-            Margin = new Padding(0, 15, 0, 15)
+            Padding = new Padding(16),
+            Margin = new Padding(0, 6, 0, 6)
         };
         ThemeManager.ApplyCardPanel(pnlChartContainer);
 
@@ -136,8 +136,8 @@ public class DashboardView : UserControl
             Dock = DockStyle.Top,
             Height = 120,
             BackColor = ThemeManager.CardBg,
-            Padding = new Padding(20),
-            Margin = new Padding(0, 15, 0, 15)
+            Padding = new Padding(16),
+            Margin = new Padding(0, 6, 0, 6)
         };
         ThemeManager.ApplyCardPanel(pnlAiInsightsContainer);
 
@@ -174,8 +174,8 @@ public class DashboardView : UserControl
         {
             Dock = DockStyle.Fill,
             BackColor = ThemeManager.CardBg,
-            Margin = new Padding(8),
-            Padding = new Padding(16)
+            Margin = new Padding(6),
+            Padding = new Padding(14)
         };
         card.Paint += (s, e) =>
         {
