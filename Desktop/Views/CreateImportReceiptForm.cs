@@ -9,19 +9,41 @@ namespace Desktop.Views;
 
 public class CreateImportReceiptForm : Form
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _apiBaseUrl;
+    private readonly HttpClient? _httpClient;
+    private readonly string _apiBaseUrl = string.Empty;
 
     private ComboBox cbSupplier = null!;
     private TextBox txtNote = null!;
     private Button btnCreate = null!;
     private Button btnCancel = null!;
 
-    public CreateImportReceiptForm(HttpClient httpClient, string apiBaseUrl)
+    // 1. Constructor mặc định bắt buộc để mở Designer
+    public CreateImportReceiptForm()
+    {
+        InitializeComponent();
+    }
+
+    // 2. Constructor nhận tham số khi chạy thực tế
+    public CreateImportReceiptForm(HttpClient httpClient, string apiBaseUrl) : this()
     {
         _httpClient = httpClient;
         _apiBaseUrl = apiBaseUrl;
-        InitializeComponent();
+
+        // Dữ liệu mẫu khởi tạo ở constructor thay vì nhét vào Designer
+        LoadSuppliers();
+    }
+
+    private void LoadSuppliers()
+    {
+        cbSupplier.Items.Clear();
+        cbSupplier.Items.Add(new SupplierItem { Id = 1, Name = "Công ty TNHH Coca-Cola Việt Nam" });
+        cbSupplier.Items.Add(new SupplierItem { Id = 2, Name = "Công ty Cổ phần Sữa Vinamilk" });
+        cbSupplier.DisplayMember = "Name";
+        cbSupplier.ValueMember = "Id";
+        if (cbSupplier.Items.Count > 0)
+        {
+            cbSupplier.SelectedIndex = 0;
+        }
     }
 
     private void InitializeComponent()
@@ -41,11 +63,6 @@ public class CreateImportReceiptForm : Form
             Size = new Size(340, 30),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        cbSupplier.Items.Add(new { Id = 1, Name = "Công ty TNHH Coca-Cola Việt Nam" });
-        cbSupplier.Items.Add(new { Id = 2, Name = "Công ty Cổ phần Sữa Vinamilk" });
-        cbSupplier.DisplayMember = "Name";
-        cbSupplier.ValueMember = "Id";
-        cbSupplier.SelectedIndex = 0;
 
         Label lblNote = new Label { Text = "Ghi chú:", Location = new Point(20, 100), AutoSize = true };
         txtNote = new TextBox
@@ -73,7 +90,7 @@ public class CreateImportReceiptForm : Form
             Location = new Point(280, 210),
             Size = new Size(80, 35)
         };
-        btnCancel.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
+        btnCancel.Click += BtnCancel_Click;
 
         this.Controls.Add(lblSupplier);
         this.Controls.Add(cbSupplier);
@@ -83,10 +100,19 @@ public class CreateImportReceiptForm : Form
         this.Controls.Add(btnCancel);
     }
 
+    private void BtnCancel_Click(object? sender, EventArgs e)
+    {
+        this.DialogResult = DialogResult.Cancel;
+        this.Close();
+    }
+
     private async void BtnCreate_Click(object? sender, EventArgs e)
     {
-        var supplier = cbSupplier.SelectedItem;
-        int supplierId = supplier != null ? (int)supplier.GetType().GetProperty("Id")!.GetValue(supplier)! : 1;
+        int supplierId = 1;
+        if (cbSupplier.SelectedItem is SupplierItem item)
+        {
+            supplierId = item.Id;
+        }
 
         var payload = new
         {
@@ -96,6 +122,12 @@ public class CreateImportReceiptForm : Form
         };
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        if (_httpClient == null)
+        {
+            MessageBox.Show("Đang ở chế độ xem thiết kế (Designer).", "Thông báo");
+            return;
+        }
 
         try
         {
@@ -113,10 +145,16 @@ public class CreateImportReceiptForm : Form
         }
         catch (Exception)
         {
-            // Demo fallback
             MessageBox.Show("Giả lập: Đã tạo phiếu nháp thành công! (Do API offline)", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
+    }
+
+    // Class phụ trợ để chứa dữ liệu Combobox
+    private class SupplierItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }

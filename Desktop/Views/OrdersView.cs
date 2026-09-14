@@ -12,8 +12,9 @@ public class OrdersView : UserControl
 {
     private DataGridView dgvOrders = null!;
     private Button btnRefresh = null!;
-    private Button btnCancel = null!;
+    private Button btnPos = null!;
     private Button btnViewDetail = null!;
+    private Button btnCancel = null!;
     private Label lblStatus = null!;
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = "http://localhost:5137";
@@ -59,28 +60,38 @@ public class OrdersView : UserControl
         };
         ThemeManager.ApplyCardPanel(pnlToolbar);
 
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(110, 32), Location = new Point(10, 8) };
-        ThemeManager.ApplySecondaryButton(btnRefresh);
-        btnRefresh.Click += async (s, e) => await LoadOrdersAsync();
+        // Nút Mở POS Bán Hàng
+        btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(145, 32), Location = new Point(10, 8) };
+        ThemeManager.ApplyPrimaryButton(btnPos);
+        btnPos.Click += BtnPos_Click;
 
-        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(135, 32), Location = new Point(130, 8) };
+        // Nút Tải Lại
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(100, 32), Location = new Point(165, 8) };
+        ThemeManager.ApplySecondaryButton(btnRefresh);
+        btnRefresh.Click += BtnRefresh_Click;
+
+        // Nút Xem Chi Tiết
+        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Location = new Point(275, 8) };
         ThemeManager.ApplySecondaryButton(btnViewDetail);
         btnViewDetail.Click += BtnViewDetail_Click;
 
-        btnCancel = new Button { Text = "❌ Hủy Đơn Hàng", Size = new Size(140, 32), Location = new Point(275, 8) };
+        // Nút Hủy Đơn Hàng
+        btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(120, 32), Location = new Point(415, 8) };
         ThemeManager.ApplySecondaryButton(btnCancel);
         btnCancel.ForeColor = ThemeManager.Danger;
-        btnCancel.Click += async (s, e) => await CancelSelectedOrderAsync();
+        btnCancel.Click += BtnCancel_Click;
 
+        // Nhãn Trạng Thái
         lblStatus = new Label
         {
             Text = "Sẵn sàng",
             Font = ThemeManager.BodyFont,
             ForeColor = ThemeManager.TextSecondary,
-            Location = new Point(430, 14),
+            Location = new Point(550, 14),
             AutoSize = true
         };
 
+        pnlToolbar.Controls.Add(btnPos);
         pnlToolbar.Controls.Add(btnRefresh);
         pnlToolbar.Controls.Add(btnViewDetail);
         pnlToolbar.Controls.Add(btnCancel);
@@ -115,6 +126,25 @@ public class OrdersView : UserControl
         this.Controls.Add(pnlGrid);
         this.Controls.Add(pnlToolbar);
         this.Controls.Add(pnlHeader);
+    }
+
+    private void BtnPos_Click(object? sender, EventArgs e)
+    {
+        using var posForm = new PosOrderForm(_httpClient, _apiBaseUrl);
+        if (posForm.ShowDialog() == DialogResult.OK)
+        {
+            _ = LoadOrdersAsync();
+        }
+    }
+
+    private async void BtnRefresh_Click(object? sender, EventArgs e)
+    {
+        await LoadOrdersAsync();
+    }
+
+    private async void BtnCancel_Click(object? sender, EventArgs e)
+    {
+        await CancelSelectedOrderAsync();
     }
 
     private async Task LoadOrdersAsync()

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Net.Http;
 using System.Text;
@@ -246,6 +247,7 @@ internal class AddPromotionForm : Form
     private TextBox txtDesc = null!;
     private ComboBox cboType = null!;
     private NumericUpDown numValue = null!;
+    private Label lblUnitValue = null!;
     private NumericUpDown numMinOrder = null!;
     private NumericUpDown numMaxDiscount = null!;
     private DateTimePicker dtpStart = null!;
@@ -264,66 +266,119 @@ internal class AddPromotionForm : Form
     private void InitForm()
     {
         this.Text = "➕ Thêm Mã Khuyến Mãi";
-        this.Size = new Size(480, 530);
+        this.Size = new Size(620, 580);
         this.StartPosition = FormStartPosition.CenterParent;
         this.BackColor = ThemeManager.Background;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
 
         int y = 20;
-        int lw = 160, cw = 270, lx = 15, cx = 180;
+        int lx = 20;
+        int cx = 225; // Dời sang phải để nhãn 'Giảm tối đa (0=bỏ qua):' không bị dính
+        int cw = 320; // Nới rộng kích thước ô nhập liệu
 
-        Label Lbl(string text) => new Label { Text = text, Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(lx, y + 3), AutoSize = true };
-        void NextRow(int h = 40) { y += h; }
+        Label Lbl(string text) => new Label
+        {
+            Text = text,
+            Font = ThemeManager.BodyBold,
+            ForeColor = ThemeManager.TextPrimary,
+            Location = new Point(lx, y + 4),
+            AutoSize = true
+        };
 
+        void NextRow(int h = 44) { y += h; }
+
+        // 1. Mã Voucher
         this.Controls.Add(Lbl("Mã Voucher:"));
-        txtCode = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
+        txtCode = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, CharacterCasing = CharacterCasing.Upper };
         this.Controls.Add(txtCode); NextRow();
 
+        // 2. Tên chương trình
         this.Controls.Add(Lbl("Tên chương trình:"));
         txtName = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
         this.Controls.Add(txtName); NextRow();
 
+        // 3. Mô tả
         this.Controls.Add(Lbl("Mô tả:"));
         txtDesc = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
         this.Controls.Add(txtDesc); NextRow();
 
+        // 4. Loại giảm giá
         this.Controls.Add(Lbl("Loại giảm giá:"));
-        cboType = new ComboBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, DropDownStyle = ComboBoxStyle.DropDownList };
-        cboType.Items.AddRange(new object[] { "Percentage", "FixedAmount" });
+        cboType = new ComboBox
+        {
+            Location = new Point(cx, y),
+            Size = new Size(cw, 28),
+            Font = ThemeManager.BodyFont,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        cboType.Items.Add(new KeyValuePair<string, string>("Percentage", "Giảm theo % (Phần trăm)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("FixedAmount", "Giảm số tiền cố định (VNĐ)"));
+        cboType.DisplayMember = "Value";
+        cboType.ValueMember = "Key";
         cboType.SelectedIndex = 0;
+        cboType.SelectedIndexChanged += (s, e) =>
+        {
+            var selected = (KeyValuePair<string, string>)cboType.SelectedItem!;
+            if (selected.Key == "Percentage")
+            {
+                lblUnitValue.Text = "%";
+                numValue.Maximum = 100;
+            }
+            else
+            {
+                lblUnitValue.Text = "VNĐ";
+                numValue.Maximum = 100000000;
+            }
+        };
         this.Controls.Add(cboType); NextRow();
 
+        // 5. Giá trị giảm kèm Label Đơn Vị
         this.Controls.Add(Lbl("Giá trị giảm:"));
-        numValue = new NumericUpDown { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
-        this.Controls.Add(numValue); NextRow();
+        numValue = new NumericUpDown { Location = new Point(cx, y), Size = new Size(200, 28), Font = ThemeManager.BodyFont, Maximum = 100, DecimalPlaces = 0, ThousandsSeparator = true };
+        lblUnitValue = new Label { Text = "%", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextSecondary, Location = new Point(cx + 210, y + 4), AutoSize = true };
+        this.Controls.Add(numValue);
+        this.Controls.Add(lblUnitValue);
+        NextRow();
 
+        // 6. Đơn hàng tối thiểu kèm VNĐ
         this.Controls.Add(Lbl("Đơn hàng tối thiểu:"));
-        numMinOrder = new NumericUpDown { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
-        this.Controls.Add(numMinOrder); NextRow();
+        numMinOrder = new NumericUpDown { Location = new Point(cx, y), Size = new Size(200, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
+        var lblUnitMin = new Label { Text = "VNĐ", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(cx + 210, y + 4), AutoSize = true };
+        this.Controls.Add(numMinOrder);
+        this.Controls.Add(lblUnitMin);
+        NextRow();
 
-        this.Controls.Add(Lbl("Giảm tối đa (0=bỏ qua):"));
-        numMaxDiscount = new NumericUpDown { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
-        this.Controls.Add(numMaxDiscount); NextRow();
+        // 7. Giảm tối đa kèm VNĐ
+        this.Controls.Add(Lbl("Giảm tối đa:"));
+        numMaxDiscount = new NumericUpDown { Location = new Point(cx, y), Size = new Size(200, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
+        var lblUnitMax = new Label { Text = "VNĐ", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(cx + 210, y + 4), AutoSize = true };
+        this.Controls.Add(numMaxDiscount);
+        this.Controls.Add(lblUnitMax);
+        NextRow();
 
+        // 8. Ngày bắt đầu
         this.Controls.Add(Lbl("Ngày bắt đầu:"));
         dtpStart = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today };
         this.Controls.Add(dtpStart); NextRow();
 
+        // 9. Ngày kết thúc
         this.Controls.Add(Lbl("Ngày kết thúc:"));
         dtpEnd = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today.AddMonths(1) };
         this.Controls.Add(dtpEnd); NextRow();
 
+        // 10. Kích hoạt
         this.Controls.Add(Lbl("Kích hoạt:"));
-        chkActive = new CheckBox { Location = new Point(cx, y), Checked = true, Font = ThemeManager.BodyFont };
-        this.Controls.Add(chkActive); NextRow(35);
+        chkActive = new CheckBox { Location = new Point(cx, y + 2), Checked = true, Font = ThemeManager.BodyFont };
+        this.Controls.Add(chkActive); NextRow(40);
 
+        // Nút Lưu & Hủy
         btnSave = new Button { Text = "💾 Lưu", Size = new Size(110, 36), Location = new Point(cx, y) };
         ThemeManager.ApplyPrimaryButton(btnSave);
         btnSave.Click += async (s, e) => await SaveAsync();
         this.Controls.Add(btnSave);
 
-        btnCancel_ = new Button { Text = "Hủy", Size = new Size(80, 36), Location = new Point(cx + 120, y) };
+        btnCancel_ = new Button { Text = "Hủy", Size = new Size(85, 36), Location = new Point(cx + 125, y) };
         ThemeManager.ApplySecondaryButton(btnCancel_);
         btnCancel_.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
         this.Controls.Add(btnCancel_);
@@ -337,12 +392,14 @@ internal class AddPromotionForm : Form
             return;
         }
 
+        var selectedType = (KeyValuePair<string, string>)cboType.SelectedItem!;
+
         var payload = new
         {
             promotionCode = txtCode.Text.Trim().ToUpper(),
             promotionName = txtName.Text.Trim(),
             description = txtDesc.Text.Trim(),
-            discountType = cboType.SelectedItem?.ToString() ?? "Percentage",
+            discountType = selectedType.Key,
             discountValue = numValue.Value,
             minimumOrderAmount = numMinOrder.Value,
             maximumDiscountAmount = numMaxDiscount.Value > 0 ? (decimal?)numMaxDiscount.Value : null,

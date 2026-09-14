@@ -10,26 +10,34 @@ namespace Desktop.Views;
 public class InventoryAdjustForm : Form
 {
     private readonly int _productId;
-    private readonly HttpClient _httpClient;
-    private readonly string _apiBaseUrl;
+    private readonly HttpClient? _httpClient;
+    private readonly string _apiBaseUrl = string.Empty;
 
     private Label lblProductName = null!;
     private Label lblCurrentQty = null!;
+    private Label lblChange = null!;
     private NumericUpDown numQuantityChange = null!;
+    private Label lblNote = null!;
     private TextBox txtNote = null!;
     private Button btnSave = null!;
     private Button btnCancel = null!;
 
-    public InventoryAdjustForm(int productId, string productName, int currentQty, HttpClient httpClient, string apiBaseUrl)
+    public InventoryAdjustForm()
+    {
+        InitializeComponent();
+    }
+
+    public InventoryAdjustForm(int productId, string productName, int currentQty, HttpClient httpClient, string apiBaseUrl) : this()
     {
         _productId = productId;
         _httpClient = httpClient;
         _apiBaseUrl = apiBaseUrl;
 
-        InitializeComponent(productName, currentQty);
+        lblProductName.Text = $"Sản phẩm: {productName}";
+        lblCurrentQty.Text = $"Tồn kho hiện tại: {currentQty}";
     }
 
-    private void InitializeComponent(string productName, int currentQty)
+    private void InitializeComponent()
     {
         this.Text = "Điều chỉnh Tồn kho";
         this.Size = new Size(400, 350);
@@ -41,7 +49,7 @@ public class InventoryAdjustForm : Form
 
         lblProductName = new Label
         {
-            Text = $"Sản phẩm: {productName}",
+            Text = "Sản phẩm: --",
             Font = new Font("Segoe UI", 10f, FontStyle.Bold),
             Location = new Point(20, 20),
             AutoSize = true
@@ -49,13 +57,19 @@ public class InventoryAdjustForm : Form
 
         lblCurrentQty = new Label
         {
-            Text = $"Tồn kho hiện tại: {currentQty}",
+            Text = "Tồn kho hiện tại: --",
             Font = new Font("Segoe UI", 10f),
             Location = new Point(20, 50),
             AutoSize = true
         };
 
-        Label lblChange = new Label { Text = "Số lượng thay đổi (Âm/Dương):", Location = new Point(20, 90), AutoSize = true };
+        lblChange = new Label
+        {
+            Text = "Số lượng thay đổi (Âm/Dương):",
+            Location = new Point(20, 90),
+            AutoSize = true
+        };
+
         numQuantityChange = new NumericUpDown
         {
             Location = new Point(20, 115),
@@ -65,7 +79,13 @@ public class InventoryAdjustForm : Form
             Value = 0
         };
 
-        Label lblNote = new Label { Text = "Lý do điều chỉnh (Bắt buộc):", Location = new Point(20, 160), AutoSize = true };
+        lblNote = new Label
+        {
+            Text = "Lý do điều chỉnh (Bắt buộc):",
+            Location = new Point(20, 160),
+            AutoSize = true
+        };
+
         txtNote = new TextBox
         {
             Location = new Point(20, 185),
@@ -91,7 +111,7 @@ public class InventoryAdjustForm : Form
             Location = new Point(260, 260),
             Size = new Size(100, 35)
         };
-        btnCancel.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
+        btnCancel.Click += BtnCancel_Click;
 
         this.Controls.Add(lblProductName);
         this.Controls.Add(lblCurrentQty);
@@ -101,6 +121,12 @@ public class InventoryAdjustForm : Form
         this.Controls.Add(txtNote);
         this.Controls.Add(btnSave);
         this.Controls.Add(btnCancel);
+    }
+
+    private void BtnCancel_Click(object? sender, EventArgs e)
+    {
+        this.DialogResult = DialogResult.Cancel;
+        this.Close();
     }
 
     private async void BtnSave_Click(object? sender, EventArgs e)
@@ -114,6 +140,12 @@ public class InventoryAdjustForm : Form
         if (string.IsNullOrWhiteSpace(txtNote.Text))
         {
             MessageBox.Show("Vui lòng nhập lý do điều chỉnh.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        if (_httpClient == null)
+        {
+            MessageBox.Show("Chế độ Design hoặc HttpClient chưa được khởi tạo.", "Thông báo");
             return;
         }
 
@@ -142,7 +174,6 @@ public class InventoryAdjustForm : Form
         catch (Exception ex)
         {
             MessageBox.Show($"Không thể kết nối API: {ex.Message}", "Lỗi");
-            // For Demo, just close with OK
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
