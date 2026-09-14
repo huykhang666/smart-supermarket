@@ -100,27 +100,31 @@ public static class DbInitializer
         }
 
         // 11. Seed DiscountRule for Inventory Module
-        if (!await dbContext.DiscountRules.AnyAsync())
+        try
         {
-            var rule1 = new DiscountRule
+            if (!await dbContext.DiscountRules.AnyAsync())
             {
-                DaysBeforeExpiry = 7,
-                DiscountPercent = 50.00m,
-                Description = "Còn ≤ 7 ngày HSD — Giảm 50%",
-                IsActive = true
-            };
+                var rule1 = new DiscountRule
+                {
+                    DaysBeforeExpiry = 7,
+                    DiscountPercent = 50.00m,
+                    Description = "Còn ≤ 7 ngày HSD — Giảm 50%",
+                    IsActive = true
+                };
 
-            var rule2 = new DiscountRule
-            {
-                DaysBeforeExpiry = 15,
-                DiscountPercent = 20.00m,
-                Description = "Còn ≤ 15 ngày HSD — Giảm 20%",
-                IsActive = true
-            };
+                var rule2 = new DiscountRule
+                {
+                    DaysBeforeExpiry = 15,
+                    DiscountPercent = 20.00m,
+                    Description = "Còn ≤ 15 ngày HSD — Giảm 20%",
+                    IsActive = true
+                };
 
-            await dbContext.DiscountRules.AddRangeAsync(rule1, rule2);
-            await dbContext.SaveChangesAsync();
+                await dbContext.DiscountRules.AddRangeAsync(rule1, rule2);
+                await dbContext.SaveChangesAsync();
+            }
         }
+        catch { }
 
         // 12. Seed sample Promotions / Vouchers
         if (!await dbContext.Promotions.AnyAsync())
@@ -389,6 +393,14 @@ public static class DbInitializer
                 );
 
                 CREATE TABLE IF NOT EXISTS ""DiscountRule"" (
+                    ""DiscountRuleId"" SERIAL PRIMARY KEY,
+                    ""DaysBeforeExpiry"" INT NOT NULL,
+                    ""DiscountPercent"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""Description"" TEXT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""DiscountRules"" (
                     ""DiscountRuleId"" SERIAL PRIMARY KEY,
                     ""DaysBeforeExpiry"" INT NOT NULL,
                     ""DiscountPercent"" DECIMAL(18,2) NOT NULL DEFAULT 0,
