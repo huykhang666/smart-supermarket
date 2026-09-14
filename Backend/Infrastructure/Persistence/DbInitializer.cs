@@ -388,6 +388,62 @@ public static class DbInitializer
                     ""ExpiryDate"" TIMESTAMPTZ NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS ""DiscountRule"" (
+                    ""DiscountRuleId"" SERIAL PRIMARY KEY,
+                    ""DaysBeforeExpiry"" INT NOT NULL,
+                    ""DiscountPercent"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                    ""Description"" TEXT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Inventories"" (
+                    ""InventoryId"" SERIAL PRIMARY KEY,
+                    ""ProductId"" INT NOT NULL,
+                    ""BranchId"" INT NOT NULL DEFAULT 1,
+                    ""QuantityOnHand"" INT NOT NULL DEFAULT 0,
+                    ""MinStockLevel"" INT NOT NULL DEFAULT 10,
+                    ""LastUpdated"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS ""StockHistories"" (
+                    ""StockHistoryId"" SERIAL PRIMARY KEY,
+                    ""ProductId"" INT NOT NULL,
+                    ""BranchId"" INT NOT NULL DEFAULT 1,
+                    ""ChangeType"" INT NOT NULL,
+                    ""QuantityChange"" INT NOT NULL,
+                    ""QuantityBefore"" INT NOT NULL,
+                    ""QuantityAfter"" INT NOT NULL,
+                    ""ExpiryDate"" DATE NULL,
+                    ""ReferenceId"" INT NULL,
+                    ""Note"" TEXT NULL,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""CreatedByUserId"" INT NOT NULL DEFAULT 1
+                );
+
+                CREATE TABLE IF NOT EXISTS ""ImportReceipts"" (
+                    ""ImportReceiptId"" SERIAL PRIMARY KEY,
+                    ""ReceiptCode"" VARCHAR(100) NOT NULL,
+                    ""SupplierId"" INT NOT NULL,
+                    ""BranchId"" INT NOT NULL DEFAULT 1,
+                    ""ImportedByUserId"" INT NOT NULL DEFAULT 1,
+                    ""ImportDate"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""ConfirmedAt"" TIMESTAMPTZ NULL,
+                    ""ConfirmedByUserId"" INT NULL,
+                    ""TotalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""Status"" INT NOT NULL DEFAULT 1,
+                    ""Note"" TEXT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""ImportDetails"" (
+                    ""ImportDetailId"" SERIAL PRIMARY KEY,
+                    ""ImportReceiptId"" INT NOT NULL,
+                    ""ProductId"" INT NOT NULL,
+                    ""Quantity"" INT NOT NULL DEFAULT 0,
+                    ""CostPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""ExpiryDate"" DATE NULL,
+                    ""SubTotal"" DECIMAL(18,2) NOT NULL DEFAULT 0
+                );
+
                 CREATE TABLE IF NOT EXISTS ""AuditLogs"" (
                     ""AuditLogId"" SERIAL PRIMARY KEY,
                     ""Username"" VARCHAR(100) NOT NULL,
