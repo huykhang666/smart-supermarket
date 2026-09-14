@@ -9,14 +9,14 @@ public static class DbInitializer
 {
     public static async Task SeedDataAsync(AppDbContext dbContext, PasswordHasher passwordHasher)
     {
-        // 1. Ensure Database is created & migrations applied
+        // 1. Ensure DDL Tables & EF Migration History sync first
+        await EnsureTablesCreatedAsync(dbContext);
+
         try
         {
             await dbContext.Database.MigrateAsync();
         }
         catch { }
-
-        await EnsureTablesCreatedAsync(dbContext);
 
         // 2. Clear/Reset full database (0 business data records)
         await ResetFullDatabaseAsync(dbContext);
@@ -223,6 +223,36 @@ public static class DbInitializer
         try
         {
             string sql = @"
+                DO $$
+                BEGIN
+                    CREATE TABLE IF NOT EXISTS ""__EFMigrationsHistory"" (
+                        ""MigrationId"" VARCHAR(150) NOT NULL PRIMARY KEY,
+                        ""ProductVersion"" VARCHAR(32) NOT NULL
+                    );
+
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND LOWER(table_name) = 'users') THEN
+                        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES
+                            ('20260908161211_InitialCreate_UserCustomer', '9.0.0'),
+                            ('20260908163346_AddRefreshTokenToUser', '9.0.0')
+                        ON CONFLICT DO NOTHING;
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND LOWER(table_name) = 'products') THEN
+                        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES
+                            ('20260909095510_InitialCreate_ProductCategorySupplier', '9.0.0'),
+                            ('20260909113251_AddCategoryModuleDatabase', '9.0.0'),
+                            ('20260909120108_UpdateCategoryModuleSchema', '9.0.0'),
+                            ('20260909134300_AddSupplierAndProductSupplierModuleSchema', '9.0.0')
+                        ON CONFLICT DO NOTHING;
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND LOWER(table_name) IN ('discountrule', 'discountrules', 'inventories')) THEN
+                        INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES
+                            ('20260911134808_AddInventoryAndImportModule', '9.0.0')
+                        ON CONFLICT DO NOTHING;
+                    END IF;
+                END $$;
+
                 CREATE TABLE IF NOT EXISTS ""Users"" (
                     ""UserId"" SERIAL PRIMARY KEY,
                     ""Username"" VARCHAR(100) NOT NULL,
