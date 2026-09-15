@@ -19,7 +19,7 @@ public class CategoriesView : UserControl
     private Button btnDelete = null!;
     private Button btnAddChild = null!;
     private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5137";
+    private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
 
     public CategoriesView()
     {
@@ -30,36 +30,37 @@ public class CategoriesView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         // --- Left Tree Panel ---
         var pnlLeftTree = new Panel
         {
             Dock = DockStyle.Left,
             Width = 360,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15),
-            Margin = new Padding(0, 0, 15, 0)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(16),
+            Margin = new Padding(0, 0, 16, 0)
         };
-        ThemeManager.ApplyCardPanel(pnlLeftTree);
+        AppTheme.ApplyCardPanel(pnlLeftTree);
 
         var lblTreeHeader = new Label
         {
-            Text = "📁 CÂY DANH MỤC SẢN PHẨM",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.PrimaryHover,
+            Text = "📁 Cây Danh Mục Sản Phẩm",
+            Font = AppTheme.FontH2,
+            ForeColor = AppTheme.TextPrimary,
             Dock = DockStyle.Top,
-            Height = 40
+            Height = 36
         };
 
         tvCategories = new TreeView
         {
             Dock = DockStyle.Fill,
-            Font = ThemeManager.BodyFont,
+            Font = AppTheme.FontBody,
             BorderStyle = BorderStyle.None,
-            BackColor = ThemeManager.CardBg,
-            ForeColor = ThemeManager.TextPrimary
+            BackColor = AppTheme.SurfaceWhite,
+            ForeColor = AppTheme.TextPrimary,
+            ItemHeight = 28
         };
         tvCategories.AfterSelect += TvCategories_AfterSelect;
 
@@ -70,54 +71,54 @@ public class CategoriesView : UserControl
         pnlRightDetail = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(25)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(24)
         };
-        ThemeManager.ApplyCardPanel(pnlRightDetail);
+        AppTheme.ApplyCardPanel(pnlRightDetail);
 
         var lblDetailHeader = new Label
         {
-            Text = "CHI TIẾT DANH MỤC CHỌN",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.TextPrimary,
+            Text = "Chi Tiết Danh Mục Lựa Chọn",
+            Font = AppTheme.FontH2,
+            ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
-            Location = new Point(25, 20)
+            Location = new Point(24, 20)
         };
 
-        var lblName = new Label { Text = "Tên danh mục:", Font = ThemeManager.BodyBold, Location = new Point(25, 75), AutoSize = true, ForeColor = ThemeManager.TextPrimary };
-        txtCategoryName = new TextBox { Font = ThemeManager.BodyFont, Location = new Point(25, 100), Size = new Size(440, 32), BorderStyle = BorderStyle.FixedSingle };
+        var lblName = new Label { Text = "Tên danh mục:", Font = AppTheme.FontBodyBold, Location = new Point(24, 65), AutoSize = true, ForeColor = AppTheme.TextPrimary };
+        txtCategoryName = new TextBox { Font = AppTheme.FontBody, Location = new Point(24, 90), Size = new Size(460, 32), BorderStyle = BorderStyle.FixedSingle };
 
-        var lblSlug = new Label { Text = "Slug (SEO):", Font = ThemeManager.BodyBold, Location = new Point(25, 150), AutoSize = true, ForeColor = ThemeManager.TextPrimary };
-        txtSlug = new TextBox { Font = ThemeManager.BodyFont, Location = new Point(25, 175), Size = new Size(440, 32), BorderStyle = BorderStyle.FixedSingle, ReadOnly = true, BackColor = ColorTranslator.FromHtml("#F9FAFB") };
+        var lblSlug = new Label { Text = "Slug (SEO):", Font = AppTheme.FontBodyBold, Location = new Point(24, 135), AutoSize = true, ForeColor = AppTheme.TextPrimary };
+        txtSlug = new TextBox { Font = AppTheme.FontBody, Location = new Point(24, 160), Size = new Size(460, 32), BorderStyle = BorderStyle.FixedSingle, ReadOnly = true, BackColor = AppTheme.BackgroundGray };
 
-        var lblDesc = new Label { Text = "Mô tả chi tiết:", Font = ThemeManager.BodyBold, Location = new Point(25, 225), AutoSize = true, ForeColor = ThemeManager.TextPrimary };
-        txtDescription = new TextBox { Font = ThemeManager.BodyFont, Location = new Point(25, 250), Size = new Size(440, 80), Multiline = true, BorderStyle = BorderStyle.FixedSingle };
+        var lblDesc = new Label { Text = "Mô tả chi tiết:", Font = AppTheme.FontBodyBold, Location = new Point(24, 205), AutoSize = true, ForeColor = AppTheme.TextPrimary };
+        txtDescription = new TextBox { Font = AppTheme.FontBody, Location = new Point(24, 230), Size = new Size(460, 75), Multiline = true, BorderStyle = BorderStyle.FixedSingle };
 
         btnSave = new Button
         {
             Text = "💾 Lưu Thay Đổi",
-            Size = new Size(140, 40),
-            Location = new Point(25, 350)
+            Size = new Size(130, 32),
+            Location = new Point(24, 325)
         };
-        ThemeManager.ApplyPrimaryButton(btnSave);
+        AppTheme.ApplyPrimaryButton(btnSave);
         btnSave.Click += (s, e) => AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã cập nhật danh mục thành công!");
 
         btnAddChild = new Button
         {
             Text = "➕ Thêm Danh Mục Con",
-            Size = new Size(180, 40),
-            Location = new Point(180, 350)
+            Size = new Size(170, 32),
+            Location = new Point(165, 325)
         };
-        ThemeManager.ApplySecondaryButton(btnAddChild);
+        AppTheme.ApplySecondaryButton(btnAddChild);
         btnAddChild.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Vui lòng nhập thông tin danh mục con mới.");
 
         btnDelete = new Button
         {
             Text = "🗑️ Xóa Danh Mục",
-            Size = new Size(140, 40),
-            Location = new Point(375, 350)
+            Size = new Size(130, 32),
+            Location = new Point(345, 325)
         };
-        ThemeManager.ApplyDangerButton(btnDelete);
+        AppTheme.ApplyDangerButton(btnDelete);
         btnDelete.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Chức năng xóa yêu cầu xác nhận Admin.");
 
         pnlRightDetail.Controls.Add(lblDetailHeader);

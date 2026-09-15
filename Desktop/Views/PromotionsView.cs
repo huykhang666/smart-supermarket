@@ -18,7 +18,7 @@ public class PromotionsView : UserControl
     private Button btnDelete = null!;
     private Label lblStatus = null!;
     private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5137";
+    private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
 
     public PromotionsView()
     {
@@ -29,25 +29,22 @@ public class PromotionsView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 65,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15),
-            Margin = new Padding(0, 0, 0, 15)
+            Height = 46,
+            BackColor = Color.Transparent
         };
-        ThemeManager.ApplyCardPanel(pnlHeader);
 
         var lblTitle = new Label
         {
-            Text = "🎁 CHƯƠNG TRÌNH KHUYẾN MÃI & VOUCHER (PROMOTIONS)",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.PrimaryHover,
-            Location = new Point(15, 18),
+            Text = "Chương Trình Khuyến Mãi & Voucher",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 4),
             AutoSize = true
         };
         pnlHeader.Controls.Add(lblTitle);
@@ -55,31 +52,31 @@ public class PromotionsView : UserControl
         var pnlToolbar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 50,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10, 8, 10, 8)
+            Height = 52,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(12, 10, 12, 10),
+            Margin = new Padding(0, 0, 0, 8)
         };
-        ThemeManager.ApplyCardPanel(pnlToolbar);
+        AppTheme.ApplyCardPanel(pnlToolbar);
 
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(110, 32), Location = new Point(10, 8) };
-        ThemeManager.ApplySecondaryButton(btnRefresh);
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(100, 32), Location = new Point(12, 10) };
+        AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += async (s, e) => await LoadPromotionsAsync();
 
-        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", Size = new Size(160, 32), Location = new Point(130, 8) };
-        ThemeManager.ApplyPrimaryButton(btnAdd);
+        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", Size = new Size(170, 32), Location = new Point(120, 10) };
+        AppTheme.ApplyPrimaryButton(btnAdd);
         btnAdd.Click += BtnAdd_Click;
 
-        btnDelete = new Button { Text = "🗑️ Xóa Mã", Size = new Size(110, 32), Location = new Point(300, 8) };
-        ThemeManager.ApplySecondaryButton(btnDelete);
-        btnDelete.ForeColor = ThemeManager.Danger;
+        btnDelete = new Button { Text = "🗑️ Xóa Mã", Size = new Size(110, 32), Location = new Point(300, 10) };
+        AppTheme.ApplyDangerButton(btnDelete);
         btnDelete.Click += async (s, e) => await DeleteSelectedAsync();
 
         lblStatus = new Label
         {
             Text = "Sẵn sàng",
-            Font = ThemeManager.BodyFont,
-            ForeColor = ThemeManager.TextSecondary,
-            Location = new Point(425, 14),
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(425, 16),
             AutoSize = true
         };
 
@@ -91,13 +88,13 @@ public class PromotionsView : UserControl
         var pnlGridContainer = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(1)
         };
-        ThemeManager.ApplyCardPanel(pnlGridContainer);
+        AppTheme.ApplyCardPanel(pnlGridContainer);
 
         dgvPromotions = new DataGridView();
-        ThemeManager.ApplyGridStyle(dgvPromotions);
+        AppTheme.ApplyGridStyle(dgvPromotions);
         dgvPromotions.Dock = DockStyle.Fill;
 
         dgvPromotions.Columns.Add("Code", "Mã Voucher");

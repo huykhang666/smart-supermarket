@@ -39,100 +39,95 @@ public class AddEmployeeForm : Form
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
         this.MinimizeBox = false;
-        this.BackColor = Color.White;
+        this.BackColor = AppTheme.SurfaceWhite;
+        this.Font = AppTheme.FontBody;
 
         // Label Form
         var lblTitle = new Label
         {
-            Text = "CẤP TÀI KHOẢN NHÂN VIÊN",
-            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(11, 37, 69),
-            Location = new Point(30, 20),
+            Text = "Cấp Tài Khoản Nhân Viên Mới",
+            Font = AppTheme.FontH2,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(30, 18),
             AutoSize = true
         };
         this.Controls.Add(lblTitle);
 
-        int startY = 70;
-        int gapY = 55;
+        int startY = 60;
+        int gapY = 48;
         int currentY = startY;
 
         // Mã NV
-        this.Controls.Add(new Label { Text = "Mã Nhân Viên:", Location = new Point(30, currentY), AutoSize = true });
-        txtEmployeeCode = new TextBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25) };
+        this.Controls.Add(new Label { Text = "Mã Nhân Viên:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        txtEmployeeCode = new TextBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, BorderStyle = BorderStyle.FixedSingle };
         this.Controls.Add(txtEmployeeCode);
         currentY += gapY;
 
         // Họ Tên
-        this.Controls.Add(new Label { Text = "Họ & Tên:", Location = new Point(30, currentY), AutoSize = true });
-        txtFullName = new TextBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25) };
+        this.Controls.Add(new Label { Text = "Họ & Tên:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        txtFullName = new TextBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, BorderStyle = BorderStyle.FixedSingle };
         this.Controls.Add(txtFullName);
         currentY += gapY;
 
         // SĐT
-        this.Controls.Add(new Label { Text = "Số Điện Thoại:", Location = new Point(30, currentY), AutoSize = true });
-        txtPhone = new TextBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25) };
+        this.Controls.Add(new Label { Text = "Số Điện Thoại:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        txtPhone = new TextBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, BorderStyle = BorderStyle.FixedSingle };
         this.Controls.Add(txtPhone);
         currentY += gapY;
 
         // Chức Vụ
-        this.Controls.Add(new Label { Text = "Chức vụ (Role):", Location = new Point(30, currentY), AutoSize = true });
-        cbRole = new ComboBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25), DropDownStyle = ComboBoxStyle.DropDownList };
+        this.Controls.Add(new Label { Text = "Chức vụ (Role):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        cbRole = new ComboBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, DropDownStyle = ComboBoxStyle.DropDownList };
         cbRole.Items.AddRange(new object[] { "Manager", "Staff" });
         cbRole.SelectedIndex = 1;
         this.Controls.Add(cbRole);
         currentY += gapY;
 
         // Phòng Ban
-        this.Controls.Add(new Label { Text = "Phòng Ban:", Location = new Point(30, currentY), AutoSize = true });
-        cbDepartment = new ComboBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25), DropDownStyle = ComboBoxStyle.DropDownList };
+        this.Controls.Add(new Label { Text = "Phòng Ban:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        cbDepartment = new ComboBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, DropDownStyle = ComboBoxStyle.DropDownList };
         cbDepartment.Items.AddRange(new object[] { "Quản Lý", "Thu Ngân", "Kho Hàng", "CSKH" });
         cbDepartment.SelectedIndex = 1;
         this.Controls.Add(cbDepartment);
         currentY += gapY;
 
         // Phân Ca
-        this.Controls.Add(new Label { Text = "Ca Làm Việc:", Location = new Point(30, currentY), AutoSize = true });
-        cbShift = new ComboBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25), DropDownStyle = ComboBoxStyle.DropDownList };
+        this.Controls.Add(new Label { Text = "Ca Làm Việc:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        cbShift = new ComboBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, DropDownStyle = ComboBoxStyle.DropDownList };
         cbShift.Items.AddRange(new object[] { "S1 - Ca Sáng (07:00-15:00)", "S2 - Ca Chiều (15:00-23:00)" });
         cbShift.SelectedIndex = 0;
         this.Controls.Add(cbShift);
         currentY += gapY;
 
         // Tên Đăng Nhập
-        this.Controls.Add(new Label { Text = "Username:", Location = new Point(30, currentY), AutoSize = true });
-        txtUsername = new TextBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25) };
+        this.Controls.Add(new Label { Text = "Username:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        txtUsername = new TextBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, BorderStyle = BorderStyle.FixedSingle };
         this.Controls.Add(txtUsername);
         currentY += gapY;
 
         // Mật khẩu
-        this.Controls.Add(new Label { Text = "Mật Khẩu:", Location = new Point(30, currentY), AutoSize = true });
-        txtPassword = new TextBox { Location = new Point(150, currentY - 3), Size = new Size(300, 25), PasswordChar = '*' };
+        this.Controls.Add(new Label { Text = "Mật Khẩu:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(30, currentY + 4), AutoSize = true });
+        txtPassword = new TextBox { Location = new Point(160, currentY), Size = new Size(290, 32), Font = AppTheme.FontBody, PasswordChar = '•', BorderStyle = BorderStyle.FixedSingle };
         this.Controls.Add(txtPassword);
-        currentY += gapY + 10;
+        currentY += gapY + 8;
 
         // Buttons
         btnSave = new Button
         {
             Text = "Lưu & Cấp Tài Khoản",
-            BackColor = Color.FromArgb(9, 109, 217),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Location = new Point(150, currentY),
-            Size = new Size(180, 40),
-            Cursor = Cursors.Hand
+            Location = new Point(160, currentY),
+            Size = new Size(180, 32)
         };
+        AppTheme.ApplyPrimaryButton(btnSave);
         btnSave.Click += BtnSave_Click;
 
         btnCancel = new Button
         {
             Text = "Hủy Bỏ",
-            BackColor = Color.FromArgb(220, 224, 228),
-            ForeColor = Color.Black,
-            FlatStyle = FlatStyle.Flat,
-            Location = new Point(340, currentY),
-            Size = new Size(110, 40),
-            Cursor = Cursors.Hand
+            Location = new Point(350, currentY),
+            Size = new Size(100, 32)
         };
+        AppTheme.ApplySecondaryButton(btnCancel);
         btnCancel.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
 
         this.Controls.Add(btnSave);

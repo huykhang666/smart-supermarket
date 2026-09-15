@@ -44,7 +44,7 @@ public class AddProductForm : Form
 
     public ProductDto? CreatedProduct { get; private set; }
 
-    public AddProductForm(HttpClient httpClient, string apiBaseUrl)
+    public AddProductForm(HttpClient httpClient, string apiBaseUrl, string? initialBarcode = null)
     {
         _httpClient = httpClient;
         _apiBaseUrl = apiBaseUrl;
@@ -53,8 +53,16 @@ public class AddProductForm : Form
         KeyPress += AddProductForm_KeyPress;
         Shown += (s, e) =>
         {
-            txtBarcode.Focus();
-            txtBarcode.SelectAll();
+            if (!string.IsNullOrWhiteSpace(initialBarcode))
+            {
+                txtBarcode.Text = initialBarcode.Trim();
+                txtProductName.Focus();
+            }
+            else
+            {
+                txtBarcode.Focus();
+                txtBarcode.SelectAll();
+            }
         };
 
         InitializeComponentLayout();
@@ -62,26 +70,30 @@ public class AddProductForm : Form
 
     private void InitializeComponentLayout()
     {
-        Text = "📦 THÊM MÃ HÀNG MỚI (TẠO SẢN PHẨM & CẤU HÌNH GIÁ)";
+        Text = "Thêm Mã Hàng Mới (Sản Phẩm & Giá)";
         Size = new Size(720, 780);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        BackColor = Color.FromArgb(245, 247, 250);
+        BackColor = AppTheme.BackgroundGray;
 
         // 1. Header Panel
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 60,
-            BackColor = Color.FromArgb(24, 144, 255)
+            Height = 56,
+            BackColor = AppTheme.SurfaceWhite
+        };
+        pnlHeader.Paint += (s, e) => {
+            using var pen = new Pen(AppTheme.BorderLight, 1);
+            e.Graphics.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
         };
         var lblTitle = new Label
         {
-            Text = "🏷️ CẤU HÌNH MÃ HÀNG & THIẾT LẬP GIÁ SẢN PHẨM MỚI",
-            Font = new Font("Segoe UI", 13, FontStyle.Bold),
-            ForeColor = Color.White,
+            Text = "🏷️ Cấu Hình Mã Hàng & Thiết Lập Giá Sản Phẩm Mới",
+            Font = AppTheme.FontH2,
+            ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
             Location = new Point(20, 16)
         };
@@ -91,20 +103,20 @@ public class AddProductForm : Form
         // Main Container Panel
         var pnlContent = new Panel
         {
-            Location = new Point(20, 75),
-            Size = new Size(665, 645),
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.FixedSingle
+            Location = new Point(24, 70),
+            Size = new Size(660, 655),
+            BackColor = AppTheme.SurfaceWhite
         };
+        AppTheme.ApplyCardPanel(pnlContent);
 
-        int curY = 20;
+        int curY = 16;
 
         // Group 1: Barcode & Product Name
         var lblSection1 = new Label
         {
             Text = "1. THÔNG TIN MÃ VẠCH & TÊN SẢN PHẨM",
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            ForeColor = Color.FromArgb(24, 144, 255),
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Primary,
             Location = new Point(15, curY),
             AutoSize = true
         };
@@ -257,28 +269,50 @@ public class AddProductForm : Form
         cboSupplier = new ComboBox
         {
             Location = new Point(180, curY),
-            Size = new Size(463, 29),
+            Size = new Size(335, 29),
             DropDownStyle = ComboBoxStyle.DropDownList,
             Font = new Font("Segoe UI", 9.5f)
         };
-        cboSupplier.Items.AddRange(new object[] {
-            "Công ty TNHH NGK Coca-Cola Việt Nam",
-            "Công ty CP Sữa Việt Nam (Vinamilk)",
-            "Công ty Cổ phần Mondelez Kinh Đô",
-            "Nhà cung cấp Nông sản Sạch Đà Lạt",
-            "Chưa gán nhà cung cấp"
-        });
+
+        foreach (var s in DataStore.Suppliers)
+        {
+            cboSupplier.Items.Add(s.SupplierName);
+        }
+        cboSupplier.Items.Add("Chưa gán nhà cung cấp");
         cboSupplier.SelectedIndex = 0;
 
-        pnlContent.Controls.AddRange(new Control[] { lblSupplier, cboSupplier });
+        var btnAddSupplier = new Button
+        {
+            Text = "➕ Thêm NCC",
+            Location = new Point(523, curY - 1),
+            Size = new Size(120, 31),
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            BackColor = Color.FromArgb(230, 247, 255),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        btnAddSupplier.Click += (s, e) =>
+        {
+            using var dlg = new AddSupplierForm(_httpClient, _apiBaseUrl);
+            if (dlg.ShowDialog(this) == DialogResult.OK && !string.IsNullOrWhiteSpace(dlg.CreatedSupplierName))
+            {
+                if (!cboSupplier.Items.Contains(dlg.CreatedSupplierName))
+                {
+                    cboSupplier.Items.Insert(0, dlg.CreatedSupplierName);
+                }
+                cboSupplier.SelectedItem = dlg.CreatedSupplierName;
+            }
+        };
+
+        pnlContent.Controls.AddRange(new Control[] { lblSupplier, cboSupplier, btnAddSupplier });
         curY += 55;
 
         // Group 3: Pricing Setup (Cost Price & Selling Price)
         var lblSection3 = new Label
         {
             Text = "3. CẤU HÌNH GIÁ VỐN & GIÁ BÁN NIÊM YẾT (VNĐ)",
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            ForeColor = Color.FromArgb(24, 144, 255),
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Primary,
             Location = new Point(15, curY),
             AutoSize = true
         };
@@ -298,11 +332,10 @@ public class AddProductForm : Form
             Location = new Point(180, curY),
             Size = new Size(180, 29),
             Font = new Font("Segoe UI", 10),
-            Maximum = 1000000000,
+            Maximum = 100000000,
             Minimum = 0,
-            DecimalPlaces = 0,
             ThousandsSeparator = true,
-            Value = 8000
+            DecimalPlaces = 0
         };
         numCostPrice.ValueChanged += PriceInputs_ValueChanged;
 
@@ -317,12 +350,11 @@ public class AddProductForm : Form
         {
             Location = new Point(505, curY),
             Size = new Size(138, 29),
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            Maximum = 1000000000,
+            Font = new Font("Segoe UI", 10),
+            Maximum = 100000000,
             Minimum = 0,
-            DecimalPlaces = 0,
             ThousandsSeparator = true,
-            Value = 10000
+            DecimalPlaces = 0
         };
         numPrice.ValueChanged += PriceInputs_ValueChanged;
 
@@ -332,8 +364,8 @@ public class AddProductForm : Form
         // Profit Margin Display & Negative Margin Warning Box (BR-PROD-02)
         lblProfitMargin = new Label
         {
-            Text = "Tỷ lệ lợi nhuận gộp dự kiến: +20.00% (Lợi nhuận: 2.000 VNĐ / đơn vị)",
-            Font = new Font("Segoe UI", 9, FontStyle.Bold),
+            Text = "Biên lợi nhuận gộp: -- %",
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             ForeColor = Color.DarkGreen,
             Location = new Point(180, curY),
             AutoSize = true
@@ -345,7 +377,7 @@ public class AddProductForm : Form
         {
             Location = new Point(180, curY),
             Size = new Size(463, 35),
-            BackColor = Color.FromArgb(255, 251, 230),
+            BackColor = AppTheme.WarningSubtle,
             BorderStyle = BorderStyle.FixedSingle,
             Visible = false
         };
@@ -353,7 +385,7 @@ public class AddProductForm : Form
         {
             Text = "⚠️ CẢNH BÁO BÁN LỖ: Giá bán niêm yết thấp hơn Giá vốn nhập kho! (BR-PROD-02)",
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(212, 107, 8),
+            ForeColor = AppTheme.Warning,
             Location = new Point(8, 8),
             AutoSize = true
         };
@@ -365,8 +397,8 @@ public class AddProductForm : Form
         var lblSection4 = new Label
         {
             Text = "4. HÌNH ẢNH SẢN PHẨM & TRẠNG THÁI",
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            ForeColor = Color.FromArgb(24, 144, 255),
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Primary,
             Location = new Point(15, curY),
             AutoSize = true
         };
@@ -388,14 +420,17 @@ public class AddProductForm : Form
             Font = new Font("Segoe UI", 9.5f),
             Text = "/images/products/no-image.png"
         };
+        txtImageUrl.TextChanged += (s, e) => UpdateImagePreview();
+
         btnBrowseImage = new Button
         {
-            Text = "🖼️ Mẫu Ảnh",
+            Text = "📁 Chọn Ảnh...",
             Location = new Point(430, curY - 1),
             Size = new Size(110, 31),
-            Font = new Font("Segoe UI", 8.5f),
-            BackColor = Color.FromArgb(240, 240, 240),
-            FlatStyle = FlatStyle.Flat
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            BackColor = Color.FromArgb(230, 247, 255),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
         };
         btnBrowseImage.Click += BtnBrowseImage_Click;
 
@@ -435,26 +470,22 @@ public class AddProductForm : Form
         // Action Buttons: Save & Cancel
         btnSave = new Button
         {
-            Text = "💾 LƯU SẢN PHẨM & CẤU HÌNH GIÁ",
+            Text = "💾 Lưu Sản Phẩm & Cấu Hình Giá",
             Location = new Point(180, curY),
-            Size = new Size(280, 42),
-            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
-            BackColor = Color.FromArgb(24, 144, 255),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat
+            Size = new Size(280, 36)
         };
+        AppTheme.ApplyPrimaryButton(btnSave);
+        btnSave.Height = 36;
         btnSave.Click += BtnSave_Click;
 
         btnCancel = new Button
         {
-            Text = "❌ HỦY BỎ",
+            Text = "❌ Hủy Bỏ",
             Location = new Point(475, curY),
-            Size = new Size(168, 42),
-            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
-            BackColor = Color.FromArgb(240, 240, 240),
-            ForeColor = Color.Black,
-            FlatStyle = FlatStyle.Flat
+            Size = new Size(168, 36)
         };
+        AppTheme.ApplySecondaryButton(btnCancel);
+        btnCancel.Height = 36;
         btnCancel.Click += (s, e) => DialogResult = DialogResult.Cancel;
 
         pnlContent.Controls.AddRange(new Control[] { btnSave, btnCancel });
@@ -573,18 +604,34 @@ public class AddProductForm : Form
         }
     }
 
+    private void UpdateImagePreview()
+    {
+        string path = txtImageUrl.Text.Trim();
+        if (System.IO.File.Exists(path))
+        {
+            try
+            {
+                using var stream = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                picPreview.Image = Image.FromStream(stream);
+                return;
+            }
+            catch { }
+        }
+        picPreview.Image = null;
+    }
+
     private void BtnBrowseImage_Click(object? sender, EventArgs e)
     {
-        string[] sampleImages = new[]
+        using var ofd = new OpenFileDialog
         {
-            "/images/products/coca-330ml.png",
-            "/images/products/vinamilk-1l.png",
-            "/images/products/oreo-133g.png",
-            "/images/products/nuoc-suoi-aquafina.png",
-            "/images/products/no-image.png"
+            Filter = "Hình ảnh sản phẩm (*.jpg;*.jpeg;*.png;*.webp;*.bmp)|*.jpg;*.jpeg;*.png;*.webp;*.bmp|Tất cả tệp (*.*)|*.*",
+            Title = "Chọn tệp hình ảnh sản phẩm từ máy tính"
         };
-        string choice = sampleImages[new Random().Next(sampleImages.Length)];
-        txtImageUrl.Text = choice;
+        if (ofd.ShowDialog(this) == DialogResult.OK)
+        {
+            txtImageUrl.Text = ofd.FileName;
+            UpdateImagePreview();
+        }
     }
 
     private async void BtnSave_Click(object? sender, EventArgs e)
@@ -660,6 +707,7 @@ public class AddProductForm : Form
                 Status = statusEnum
             };
 
+            DataStore.AddProduct(CreatedProduct);
             DialogResult = DialogResult.OK;
         }
         catch
@@ -681,6 +729,7 @@ public class AddProductForm : Form
                 Status = statusEnum
             };
 
+            DataStore.AddProduct(CreatedProduct);
             DialogResult = DialogResult.OK;
         }
     }

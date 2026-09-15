@@ -15,51 +15,51 @@ public class WorkspaceView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = Color.FromArgb(244, 246, 249);
-        this.Padding = new Padding(15);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
         this.AutoScroll = true;
 
         // --- 1. Top Bar (Employee Profile & Status) ---
-        var pnlTop = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Color.White, Padding = new Padding(15) };
-        ThemeManager.ApplyCardPanel(pnlTop);
+        var pnlTop = new Panel { Dock = DockStyle.Top, Height = 90, BackColor = AppTheme.SurfaceWhite, Padding = new Padding(16) };
+        AppTheme.ApplyCardPanel(pnlTop);
         
-        var iconComputer = new IconPictureBox { IconChar = IconChar.Desktop, IconColor = Color.Teal, Size = new Size(50, 50), Location = new Point(20, 25), BackColor = Color.FromArgb(230, 245, 250) };
+        var iconComputer = new IconPictureBox { IconChar = IconChar.Desktop, IconColor = AppTheme.Primary, Size = new Size(42, 42), Location = new Point(20, 24), BackColor = AppTheme.PrimarySubtle };
         pnlTop.Controls.Add(iconComputer);
 
-        var lblTags = new Label { Text = "frmBanLamViecNhanVien.cs   POS-04 (Line 2 Tầng 1)   Ca Sáng [06:00 - 14:00]", Font = new Font("Segoe UI", 8f, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.FromArgb(160, 180, 200), AutoSize = true, Location = new Point(90, 15) };
-        var lblTitle = new Label { Text = "Trạm Máy Nhân Viên: Trần Thị Thu Thảo", Font = new Font("Segoe UI", 16f, FontStyle.Bold), ForeColor = Color.FromArgb(20, 30, 40), AutoSize = true, Location = new Point(85, 35) };
-        var lblSub = new Label { Text = "👨‍💼 Trưởng ca: Nguyễn Văn An   |   🟢 Đã điểm danh FaceID AI (05:58)", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(90, 68) };
+        var lblTags = new Label { Text = "TRẠM BÁN LẺ POS  •  PHIÊN LÀM VIỆC HIỆN TẠI", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, AutoSize = true, Location = new Point(80, 14) };
+        var lblTitle = new Label { Text = "Không Gian Làm Việc Nhân Viên (Staff Workspace)", Font = AppTheme.FontH2, ForeColor = AppTheme.TextPrimary, AutoSize = true, Location = new Point(78, 34) };
+        var lblSub = new Label { Text = "🟢 Sẵn sàng phục vụ khách hàng  |  Máy chủ POS: Hoạt động", Font = AppTheme.FontBody, ForeColor = AppTheme.Success, AutoSize = true, Location = new Point(80, 62) };
         
         pnlTop.Controls.Add(lblTags);
         pnlTop.Controls.Add(lblTitle);
         pnlTop.Controls.Add(lblSub);
 
-        var btnEmergency = new IconButton { Text = " Gọi Quản Lý / Khẩn Cấp (F11)", IconChar = IconChar.Bell, IconColor = Color.White, IconSize = 18, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), BackColor = Color.FromArgb(220, 53, 69), ForeColor = Color.White, Size = new Size(240, 36), Location = new Point(pnlTop.Width - 460, 35), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, TextImageRelation = TextImageRelation.ImageBeforeText };
-        btnEmergency.FlatAppearance.BorderSize = 0;
+        var btnEmergency = new Button { Text = "🔔 Gọi Quản Lý (F11)", Size = new Size(180, 32), Location = new Point(pnlTop.Width - 380, 30), Anchor = AnchorStyles.Top | AnchorStyles.Right };
+        AppTheme.ApplyDangerButton(btnEmergency);
         
-        var btnHandover = new IconButton { Text = " Bàn Giao Ca / Kết Ca (F12)", IconChar = IconChar.CheckCircle, IconColor = Color.White, IconSize = 18, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), BackColor = Color.FromArgb(0, 120, 150), ForeColor = Color.White, Size = new Size(220, 36), Location = new Point(pnlTop.Width - 210, 35), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, TextImageRelation = TextImageRelation.ImageBeforeText };
-        btnHandover.FlatAppearance.BorderSize = 0;
+        var btnHandover = new Button { Text = "✅ Kết Ca Bán Hàng (F12)", Size = new Size(180, 32), Location = new Point(pnlTop.Width - 190, 30), Anchor = AnchorStyles.Top | AnchorStyles.Right };
+        AppTheme.ApplyPrimaryButton(btnHandover);
 
         pnlTop.Controls.Add(btnEmergency);
         pnlTop.Controls.Add(btnHandover);
         this.Controls.Add(pnlTop);
 
         // Spacer
-        var pnlSpace1 = new Panel { Dock = DockStyle.Top, Height = 15, BackColor = Color.Transparent };
+        var pnlSpace1 = new Panel { Dock = DockStyle.Top, Height = 10, BackColor = Color.Transparent };
         this.Controls.Add(pnlSpace1);
 
         // --- 2. KPI Cards Row ---
-        var pnlKpi = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 140, BackColor = Color.Transparent, WrapContents = false };
+        var pnlKpi = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 115, BackColor = Color.Transparent, WrapContents = false };
         
-        pnlKpi.Controls.Add(CreateKpiCard("DOANH SỐ CA TRỰC", "18.650.000", "đ", "Tiến độ: 82% KPI ca (22.500.000đ)", "94 bill"));
-        pnlKpi.Controls.Add(CreateKpiCard("TỐC ĐỘ PHỤC VỤ POS", "38", "giây/khách", "Đánh giá: Đạt Chuẩn (5 Sao)", "Kỳ vọng < 45s"));
-        pnlKpi.Controls.Add(CreateKpiCard("CẬN HSD CẦN XỬ LÝ", "08", "mặt hàng", "Hạn chót dán tem: 10:00 Sáng", "GẤP", Color.FromArgb(255, 230, 230), Color.Red));
-        pnlKpi.Controls.Add(CreateKpiCard("YÊU CẦU HỖ TRỢ", "02", "việc chờ", "Khách đổi size (Q.3) • Đổi tiền 50k", "Chi tiết →"));
+        pnlKpi.Controls.Add(AppTheme.CreateKpiCard("DOANH SỐ CA TRỰC", "0 đ", "Chưa có doanh số", AppTheme.Primary));
+        pnlKpi.Controls.Add(AppTheme.CreateKpiCard("TỐC ĐỘ PHỤC VỤ POS", "0s", "Sẵn sàng phục vụ", AppTheme.Success));
+        pnlKpi.Controls.Add(AppTheme.CreateKpiCard("CẬN HSD CẦN XỬ LÝ", "0 SP", "Không có cảnh báo", AppTheme.Warning));
+        pnlKpi.Controls.Add(AppTheme.CreateKpiCard("YÊU CẦU HỖ TRỢ", "0 việc", "Hệ thống ổn định", AppTheme.Primary));
 
         this.Controls.Add(pnlKpi);
 
         // Spacer
-        var pnlSpace2 = new Panel { Dock = DockStyle.Top, Height = 15, BackColor = Color.Transparent };
+        var pnlSpace2 = new Panel { Dock = DockStyle.Top, Height = 10, BackColor = Color.Transparent };
         this.Controls.Add(pnlSpace2);
 
         // --- 3. Bottom Split Section ---
@@ -68,15 +68,15 @@ public class WorkspaceView : UserControl
         pnlSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
         // Left Panel (Tasks + Grid)
-        var pnlLeft = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 10, 0) };
+        var pnlLeft = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 8, 0) };
         pnlLeft.Controls.Add(CreateGridPanel());
-        pnlLeft.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 15 }); // Spacer
+        pnlLeft.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 10 }); // Spacer
         pnlLeft.Controls.Add(CreateTaskPanel());
         
         // Right Panel (Map + AI)
-        var pnlRight = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10, 0, 0, 0) };
+        var pnlRight = new Panel { Dock = DockStyle.Fill, Padding = new Padding(8, 0, 0, 0) };
         pnlRight.Controls.Add(CreateAiPanel());
-        pnlRight.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 15 });
+        pnlRight.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 10 });
         pnlRight.Controls.Add(CreateMapPanel());
 
         pnlSplit.Controls.Add(pnlLeft, 0, 0);
@@ -116,16 +116,13 @@ public class WorkspaceView : UserControl
         ThemeManager.ApplyCardPanel(pnl);
         
         var lblTitle = new Label { Text = "✔️ NHIỆM VỤ CA TRỰC & CHECK-LIST NHÂN VIÊN", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), ForeColor = Color.FromArgb(40, 50, 60), AutoSize = true, Location = new Point(15, 15) };
-        var lblProgress = new Label { Text = "Hoàn thành: 2/4", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), BackColor = Color.FromArgb(30, 80, 120), ForeColor = Color.White, AutoSize = true, Location = new Point(pnl.Width - 140, 15), Anchor = AnchorStyles.Right };
+        var lblProgress = new Label { Text = "Sẵn sàng", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), BackColor = Color.FromArgb(30, 80, 120), ForeColor = Color.White, AutoSize = true, Location = new Point(pnl.Width - 140, 15), Anchor = AnchorStyles.Right };
         
         pnl.Controls.Add(lblTitle);
         pnl.Controls.Add(lblProgress);
 
-        int y = 50;
-        pnl.Controls.Add(CreateTaskItem("Kiểm quỹ tiền lẻ đầu ca tại ngăn kéo (5.000.000 đ)", "06:05 • Xác nhận két an toàn: Đủ tiền niêm phong", true, "Đã xong", Color.SeaGreen, y));
-        pnl.Controls.Add(CreateTaskItem("Bán hàng cao điểm sáng & Hỗ trợ thanh toán QR/Ví", "07:00 - 09:30 • Đang phục vụ khách hàng lượt 95", false, "Đang chạy", Color.SteelBlue, y += 45));
-        pnl.Controls.Add(CreateTaskItem("Kiểm tra date khu vực rau củ tươi & Sữa tươi thanh trùng", "Trước 10:00 • Còn 8 mã sản phẩm cần rà soát", false, "Cần làm", Color.Crimson, y += 45));
-        pnl.Controls.Add(CreateTaskItem("Dán tem giảm giá AI (Markdown -30% / -50%) cho mặt hàng", "11:30 • Chờ AI Co-pilot phát hành biểu giá tối ưu", false, "Chờ tới giờ", Color.Gray, y += 45));
+        var lblEmpty = new Label { Text = "Hiện tại không có nhiệm vụ tồn đọng. Hệ thống vận hành bình thường.", Font = new Font("Segoe UI", 9.5f, FontStyle.Italic), ForeColor = Color.Gray, Location = new Point(20, 60), AutoSize = true };
+        pnl.Controls.Add(lblEmpty);
 
         return pnl;
     }
@@ -158,10 +155,6 @@ public class WorkspaceView : UserControl
         dgv.Columns.Add("Date", "HSD CÒN");
         dgv.Columns.Add("Qty", "TỒN QUẦY");
         dgv.Columns.Add("Price", "GIÁ GỐC -> ĐỀ XUẤT");
-        
-        dgv.Rows.Add("SUA-019", "Sữa Tươi Tiệt Trùng 900ml", "6 Giờ", "12 hộp", "29.000đ -> 20.300đ (-30%)");
-        dgv.Rows.Add("KATQ-BK-0082", "Bánh Mì Sandwich Lúa Mạch", "18 Giờ", "06 gói", "24.000đ -> 12.000đ (-50%)");
-        dgv.Rows.Add("KATQ-RAU-031", "Xà Lách Thủy Canh 300g", "22 Giờ", "15 khay", "19.500đ -> 15.600đ (-20%)");
         
         pnl.Controls.Add(lblTitle);
         pnl.Controls.Add(btnPrintAll);

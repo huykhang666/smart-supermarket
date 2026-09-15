@@ -17,7 +17,7 @@ public class OrdersView : UserControl
     private Button btnCancel = null!;
     private Label lblStatus = null!;
     private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5137";
+    private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
 
     public OrdersView()
     {
@@ -28,25 +28,22 @@ public class OrdersView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 65,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(20, 15, 20, 15),
-            Margin = new Padding(0, 0, 0, 15)
+            Height = 46,
+            BackColor = Color.Transparent
         };
-        ThemeManager.ApplyRoundedCardPanel(pnlHeader, 10);
 
         var lblTitle = new Label
         {
-            Text = "📦 QUẢN LÝ ĐƠN HÀNG & TIẾN TRÌNH (ORDERS & TIMELINE)",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.NavyBrand,
-            Location = new Point(20, 18),
+            Text = "Quản Lý Đơn Hàng & Lịch Sử POS",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 4),
             AutoSize = true
         };
         pnlHeader.Controls.Add(lblTitle);
@@ -54,40 +51,40 @@ public class OrdersView : UserControl
         var pnlToolbar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 50,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10, 8, 10, 8),
+            Height = 52,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(12, 10, 12, 10),
+            Margin = new Padding(0, 0, 0, 8)
         };
-        ThemeManager.ApplyCardPanel(pnlToolbar);
+        AppTheme.ApplyCardPanel(pnlToolbar);
 
         // Nút Mở POS Bán Hàng
-        btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(145, 32), Location = new Point(10, 8) };
-        ThemeManager.ApplyPrimaryButton(btnPos);
+        btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(150, 32), Location = new Point(12, 10) };
+        AppTheme.ApplyPrimaryButton(btnPos);
         btnPos.Click += BtnPos_Click;
 
         // Nút Tải Lại
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(100, 32), Location = new Point(165, 8) };
-        ThemeManager.ApplySecondaryButton(btnRefresh);
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(95, 32), Location = new Point(170, 10) };
+        AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += BtnRefresh_Click;
 
         // Nút Xem Chi Tiết
-        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Location = new Point(275, 8) };
-        ThemeManager.ApplySecondaryButton(btnViewDetail);
+        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Location = new Point(275, 10) };
+        AppTheme.ApplySecondaryButton(btnViewDetail);
         btnViewDetail.Click += BtnViewDetail_Click;
 
         // Nút Hủy Đơn Hàng
-        btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(120, 32), Location = new Point(415, 8) };
-        ThemeManager.ApplySecondaryButton(btnCancel);
-        btnCancel.ForeColor = ThemeManager.Danger;
+        btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Location = new Point(415, 10) };
+        AppTheme.ApplyDangerButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
 
         // Nhãn Trạng Thái
         lblStatus = new Label
         {
             Text = "Sẵn sàng",
-            Font = ThemeManager.BodyFont,
-            ForeColor = ThemeManager.TextSecondary,
-            Location = new Point(550, 14),
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(540, 16),
             AutoSize = true
         };
 
@@ -100,13 +97,13 @@ public class OrdersView : UserControl
         var pnlGrid = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(1)
         };
-        ThemeManager.ApplyCardPanel(pnlGrid);
+        AppTheme.ApplyCardPanel(pnlGrid);
 
         dgvOrders = new DataGridView();
-        ThemeManager.ApplyGridStyle(dgvOrders);
+        AppTheme.ApplyGridStyle(dgvOrders);
         dgvOrders.Dock = DockStyle.Fill;
 
         dgvOrders.Columns.Add("OrderId", "Mã Đơn");

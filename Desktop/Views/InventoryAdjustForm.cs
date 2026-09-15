@@ -40,40 +40,46 @@ public class InventoryAdjustForm : Form
     private void InitializeComponent()
     {
         this.Text = "Điều chỉnh Tồn kho";
-        this.Size = new Size(400, 350);
+        this.Size = new Size(420, 360);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
         this.MinimizeBox = false;
-        this.BackColor = Color.White;
+        this.BackColor = AppTheme.SurfaceWhite;
+        this.Font = AppTheme.FontBody;
 
         lblProductName = new Label
         {
             Text = "Sản phẩm: --",
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-            Location = new Point(20, 20),
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(24, 18),
             AutoSize = true
         };
 
         lblCurrentQty = new Label
         {
             Text = "Tồn kho hiện tại: --",
-            Font = new Font("Segoe UI", 10f),
-            Location = new Point(20, 50),
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(24, 46),
             AutoSize = true
         };
 
         lblChange = new Label
         {
             Text = "Số lượng thay đổi (Âm/Dương):",
-            Location = new Point(20, 90),
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(24, 80),
             AutoSize = true
         };
 
         numQuantityChange = new NumericUpDown
         {
-            Location = new Point(20, 115),
-            Size = new Size(150, 30),
+            Location = new Point(24, 104),
+            Size = new Size(160, 32),
+            Font = AppTheme.FontBody,
             Minimum = -10000,
             Maximum = 10000,
             Value = 0
@@ -82,35 +88,37 @@ public class InventoryAdjustForm : Form
         lblNote = new Label
         {
             Text = "Lý do điều chỉnh (Bắt buộc):",
-            Location = new Point(20, 160),
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(24, 150),
             AutoSize = true
         };
 
         txtNote = new TextBox
         {
-            Location = new Point(20, 185),
-            Size = new Size(340, 60),
-            Multiline = true
+            Location = new Point(24, 174),
+            Size = new Size(355, 65),
+            Font = AppTheme.FontBody,
+            Multiline = true,
+            BorderStyle = BorderStyle.FixedSingle
         };
 
         btnSave = new Button
         {
             Text = "Lưu Điều Chỉnh",
-            BackColor = Color.FromArgb(9, 109, 217),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Location = new Point(140, 260),
-            Size = new Size(110, 35)
+            Location = new Point(165, 260),
+            Size = new Size(130, 32)
         };
+        AppTheme.ApplyPrimaryButton(btnSave);
         btnSave.Click += BtnSave_Click;
 
         btnCancel = new Button
         {
             Text = "Hủy",
-            FlatStyle = FlatStyle.Flat,
-            Location = new Point(260, 260),
-            Size = new Size(100, 35)
+            Location = new Point(305, 260),
+            Size = new Size(74, 32)
         };
+        AppTheme.ApplySecondaryButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
 
         this.Controls.Add(lblProductName);

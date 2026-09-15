@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Desktop.Views;
 using FontAwesome.Sharp;
@@ -112,16 +113,27 @@ public class MainForm : Form
             Location = new Point(175, 18)
         };
 
+        // Right Controls Flow (Notification, Profile Chip, Logout)
+        var pnlHeaderRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 5, 10, 5)
+        };
+
         // Server Ready Pill Badge
         var pnlStatusBadge = new Panel
         {
-            Size = new Size(220, 30),
-            Location = new Point(620, 15),
+            Size = new Size(180, 32),
+            Margin = new Padding(0, 0, 10, 0),
             BackColor = AppTheme.SuccessSubtle
         };
         var lblStatus = new Label
         {
-            Text = "🟢 Ready (Active) • POS Server",
+            Text = "🟢 Ready • POS Server",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.Success,
             Dock = DockStyle.Fill,
@@ -135,61 +147,62 @@ public class MainForm : Form
             IconChar = IconChar.Bell,
             IconColor = AppTheme.Primary,
             IconSize = 18,
-            Text = " 🔔 (11)",
+            Text = " 🔔 (0)",
             TextImageRelation = TextImageRelation.ImageBeforeText,
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.Primary,
             BackColor = AppTheme.PrimarySubtle,
             FlatStyle = FlatStyle.Flat,
-            Size = new Size(95, 32),
-            Location = new Point(860, 14),
+            Size = new Size(85, 32),
+            Margin = new Padding(0, 0, 10, 0),
             Cursor = Cursors.Hand
         };
         btnNotification.FlatAppearance.BorderSize = 0;
         btnNotification.Click += (s, e) =>
         {
-            AntdUI.Message.info(this, 
-                "🔔 THÔNG BÁO HỆ THỐNG REALTIME:\n" +
-                "• 5 Sản phẩm sắp hết hàng (< 10 sp)\n" +
-                "• 3 Đơn hàng mới vừa tạo\n" +
-                "• 2 Sản phẩm đã hết hàng trong kho\n" +
-                "• 1 Lô hàng Sữa TH sắp hết hạn (3 ngày)");
+            ShowNotificationPopup();
         };
 
         // Admin User Profile Chip
         lblAdminProfile = new Label
         {
-            Text = "👤 Nguyễn Huy Khang (Admin) ▼",
+            Text = "👤 Quản trị viên (Admin)",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
-            Location = new Point(975, 20),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Margin = new Padding(0, 7, 12, 0),
             Cursor = Cursors.Hand
         };
 
         // Logout Button
         btnLogout = new Button
         {
-            Text = "Đăng Xuất",
-            Size = new Size(100, 32),
-            Location = new Point(1310, 14),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Text = "🚪 Đăng Xuất",
+            Font = AppTheme.FontBodyBold,
+            Size = new Size(115, 32),
+            Margin = new Padding(0, 0, 5, 0),
+            Cursor = Cursors.Hand
         };
-        AppTheme.ApplyAccentButton(btnLogout);
+        AppTheme.ApplyDangerButton(btnLogout);
         btnLogout.Click += (s, e) =>
         {
-            this.Hide();
-            var loginForm = new LoginForm();
-            loginForm.Show();
+            var result = MessageBox.Show("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?", "Xác nhận đăng xuất", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.Yes)
+            {
+                this.Hide();
+                var loginForm = new LoginForm();
+                loginForm.Show();
+            }
         };
 
+        pnlHeaderRight.Controls.Add(pnlStatusBadge);
+        pnlHeaderRight.Controls.Add(btnNotification);
+        pnlHeaderRight.Controls.Add(lblAdminProfile);
+        pnlHeaderRight.Controls.Add(btnLogout);
+
+        pnlHeader.Controls.Add(pnlHeaderRight);
         pnlHeader.Controls.Add(picLogo);
         pnlHeader.Controls.Add(lblAppTitle);
-        pnlHeader.Controls.Add(pnlStatusBadge);
-        pnlHeader.Controls.Add(btnNotification);
-        pnlHeader.Controls.Add(lblAdminProfile);
-        pnlHeader.Controls.Add(btnLogout);
 
         // --- 2. Left Sidebar Panel (Width 240px, Dark Navy #0B2545 Theme) ---
         pnlSidebar = new Panel
@@ -238,13 +251,37 @@ public class MainForm : Form
         pnlSidebar.Controls.Add(btnNavPromotions);
         pnlSidebar.Controls.Add(btnNavCustomers);
         pnlSidebar.Controls.Add(btnNavOrders);
-        pnlSidebar.Controls.Add(btnNavPosScan);
         pnlSidebar.Controls.Add(btnNavInventory);
         pnlSidebar.Controls.Add(btnNavImport);
         pnlSidebar.Controls.Add(btnNavSuppliers);
         pnlSidebar.Controls.Add(btnNavCategories);
         pnlSidebar.Controls.Add(btnNavProducts);
         pnlSidebar.Controls.Add(btnNavDashboard);
+
+        // Sidebar Bottom Logout Button
+        var btnSidebarLogout = new IconButton
+        {
+            Dock = DockStyle.Bottom,
+            Height = 44,
+            Text = "  Đăng Xuất",
+            IconChar = IconChar.SignOutAlt,
+            IconColor = AppTheme.Danger,
+            IconSize = 18,
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Danger,
+            BackColor = AppTheme.SidebarBg,
+            FlatStyle = FlatStyle.Flat,
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(16, 0, 0, 0),
+            Cursor = Cursors.Hand
+        };
+        btnSidebarLogout.FlatAppearance.BorderSize = 0;
+        btnSidebarLogout.MouseEnter += (s, e) => { btnSidebarLogout.BackColor = Color.FromArgb(45, 20, 25); };
+        btnSidebarLogout.MouseLeave += (s, e) => { btnSidebarLogout.BackColor = AppTheme.SidebarBg; };
+        btnSidebarLogout.Click += (s, e) => btnLogout.PerformClick();
+        pnlSidebar.Controls.Add(btnSidebarLogout);
 
         // --- 3. Content Panel ---
         pnlContent = new Panel
@@ -334,5 +371,152 @@ public class MainForm : Form
         pnlContent.Controls.Clear();
         view.Dock = DockStyle.Fill;
         pnlContent.Controls.Add(view);
+    }
+
+    private Form? _notificationPopup;
+
+    private void ShowNotificationPopup()
+    {
+        if (_notificationPopup != null && !_notificationPopup.IsDisposed)
+        {
+            _notificationPopup.Close();
+            _notificationPopup = null;
+            return;
+        }
+
+        var popup = new Form
+        {
+            FormBorderStyle = FormBorderStyle.None,
+            ShowInTaskbar = false,
+            StartPosition = FormStartPosition.Manual,
+            Size = new Size(360, 290),
+            BackColor = AppTheme.SurfaceWhite,
+            TopMost = true
+        };
+
+        // Position popup right below btnNotification
+        Point btnScreenLocation = btnNotification.PointToScreen(Point.Empty);
+        int popupX = btnScreenLocation.X + btnNotification.Width - popup.Width;
+        int popupY = btnScreenLocation.Y + btnNotification.Height + 6;
+        popup.Location = new Point(popupX, popupY);
+
+        // Border & shadow drawing
+        popup.Paint += (s, e) =>
+        {
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var borderPen = new Pen(AppTheme.BorderLight, 1.5f);
+            e.Graphics.DrawRectangle(borderPen, 0, 0, popup.Width - 1, popup.Height - 1);
+        };
+
+        // Header
+        var pnlHeader = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 44,
+            BackColor = AppTheme.BackgroundGray,
+            Padding = new Padding(14, 10, 14, 8)
+        };
+        var lblTitle = new Label
+        {
+            Text = "🔔 Thông Báo Hệ Thống",
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            AutoSize = true,
+            Location = new Point(14, 12)
+        };
+        var btnClose = new Button
+        {
+            Text = "✕",
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            ForeColor = AppTheme.TextSecondary,
+            FlatStyle = FlatStyle.Flat,
+            Size = new Size(26, 24),
+            Location = new Point(popup.Width - 36, 10),
+            Cursor = Cursors.Hand
+        };
+        btnClose.FlatAppearance.BorderSize = 0;
+        btnClose.Click += (s, e) => popup.Close();
+
+        pnlHeader.Controls.Add(lblTitle);
+        pnlHeader.Controls.Add(btnClose);
+
+        // Body Content
+        var pnlBody = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(16),
+            BackColor = AppTheme.SurfaceWhite
+        };
+
+        var picEmpty = new IconPictureBox
+        {
+            IconChar = IconChar.BellSlash,
+            IconColor = Color.FromArgb(160, 185, 205),
+            IconSize = 48,
+            Size = new Size(48, 48),
+            Location = new Point((popup.Width - 48) / 2, 35),
+            BackColor = Color.Transparent
+        };
+
+        var lblEmpty = new Label
+        {
+            Text = "Hiện tại không có thông báo mới nào",
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoSize = false,
+            Size = new Size(320, 24),
+            Location = new Point(10, 95)
+        };
+
+        var lblSub = new Label
+        {
+            Text = "Các cảnh báo về tồn kho, hết hạn sử dụng hoặc đơn hàng mới sẽ xuất hiện tại đây theo thời gian thực.",
+            Font = AppTheme.FontCaption,
+            ForeColor = AppTheme.TextSecondary,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AutoSize = false,
+            Size = new Size(300, 40),
+            Location = new Point(20, 120)
+        };
+
+        pnlBody.Controls.Add(picEmpty);
+        pnlBody.Controls.Add(lblEmpty);
+        pnlBody.Controls.Add(lblSub);
+
+        // Bottom action
+        var pnlBottom = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 42,
+            BackColor = AppTheme.BackgroundGray,
+            Padding = new Padding(10, 6, 10, 6)
+        };
+        var btnClearAll = new Button
+        {
+            Text = "Đánh dấu đã đọc tất cả",
+            Font = AppTheme.FontCaption,
+            ForeColor = AppTheme.Primary,
+            FlatStyle = FlatStyle.Flat,
+            Dock = DockStyle.Fill,
+            Cursor = Cursors.Hand
+        };
+        btnClearAll.FlatAppearance.BorderSize = 0;
+        btnClearAll.Click += (s, e) =>
+        {
+            popup.Close();
+            AntdUI.Message.success(this, "Đã xóa toàn bộ thông báo hệ thống.");
+        };
+        pnlBottom.Controls.Add(btnClearAll);
+
+        popup.Controls.Add(pnlBody);
+        popup.Controls.Add(pnlBottom);
+        popup.Controls.Add(pnlHeader);
+
+        // Close on blur (when user clicks outside)
+        popup.Deactivate += (s, e) => popup.Close();
+
+        _notificationPopup = popup;
+        popup.Show(this);
     }
 }

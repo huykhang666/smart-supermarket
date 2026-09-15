@@ -25,43 +25,35 @@ public class EmployeesView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = Color.FromArgb(240, 244, 248);
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 75,
-            BackColor = Color.White,
-            Padding = new Padding(15)
+            Height = 50,
+            BackColor = Color.Transparent
         };
 
         var lblTitle = new Label
         {
-            Text = "👥 QUẢN LÝ NHÂN VIÊN, CA TRỰC & CHẤM CÔNG (EMPLOYEE & ATTENDANCE)",
-            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(11, 37, 69),
-            Location = new Point(15, 12),
+            Text = "Nhân Viên, Ca Trực & Bảng Chấm Công",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 6),
             AutoSize = true
         };
 
-        var btnAddEmployee = new IconButton
+        var btnAddEmployee = new Button
         {
-            Text = " + Tạo Tài Khoản Nhân Viên",
-            IconChar = IconChar.UserPlus,
-            IconColor = Color.White,
-            IconSize = 18,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(0, 168, 204),
-            FlatStyle = FlatStyle.Flat,
-            Size = new Size(220, 36),
-            Location = new Point(15, 36),
-            Cursor = Cursors.Hand
+            Text = "➕ Tạo Tài Khoản Nhân Viên",
+            Size = new Size(210, 32),
+            Location = new Point(pnlHeader.Width - 210, 8),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
-        btnAddEmployee.FlatAppearance.BorderSize = 0;
+        AppTheme.ApplyPrimaryButton(btnAddEmployee);
         btnAddEmployee.Click += (s, e) => {
-            var form = new AddEmployeeForm(new System.Net.Http.HttpClient(), "http://localhost:5137");
+            var form = new AddEmployeeForm(new System.Net.Http.HttpClient(), AppTheme.ApiBaseUrl);
             if (form.ShowDialog() == DialogResult.OK)
             {
                 LoadSampleData(); // Reload grid
@@ -75,7 +67,7 @@ public class EmployeesView : UserControl
         tabControl = new TabControl
         {
             Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+            Font = AppTheme.FontBodyBold
         };
 
         tabEmployees = new TabPage("📋 Danh Sách Nhân Viên");
@@ -126,7 +118,7 @@ public class EmployeesView : UserControl
     private DataGridView CreateStyledGrid()
     {
         var grid = new DataGridView();
-        ThemeManager.ApplyGridStyle(grid);
+        AppTheme.ApplyGridStyle(grid);
         return grid;
     }
 
@@ -200,15 +192,7 @@ public class EmployeesView : UserControl
         }
         catch
         {
-            // API Offline Fallback
+            // API Offline Fallback - keep grids empty
         }
-
-        dgvEmployees.Rows.Add("NV-0001", "Quản trị viên Hệ thống", "0900000000", "Admin", "Ca Sáng (07:00-15:00)", "Quản Lý Siêu Thị", "🟢 Active");
-        dgvEmployees.Rows.Add("NV-0002", "Trần Thị Thu Ngân", "0904445566", "Staff", "Ca Sáng (07:00-15:00)", "Thu Ngân POS", "🟢 Active");
-
-        dgvShifts.Rows.Add("S1", "Ca Sáng (Morning)", "07:00:00", "15:00:00", "30 phút", "Active");
-        dgvShifts.Rows.Add("S2", "Ca Chiều (Afternoon)", "15:00:00", "23:00:00", "30 phút", "Active");
-
-        dgvAttendance.Rows.Add("NV-0002", "Trần Thị Thu Ngân", "Ca Sáng (S1)", "06:58:12", "15:02:10", "8.0 giờ", "0 phút", "🟢 Đúng Giờ");
     }
 }

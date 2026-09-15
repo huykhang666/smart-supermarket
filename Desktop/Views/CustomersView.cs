@@ -14,6 +14,14 @@ public class CustomersView : UserControl
     private DataGridView dgvCustomers = null!;
     private TextBox txtSearch = null!;
     private ComboBox cboTierFilter = null!;
+    private Label lblKpiTotalCustomers = null!;
+    private Label lblKpiTotalVip = null!;
+    private Label lblKpiPoints = null!;
+    private Label lblKpiVouchers = null!;
+    private Label lblNoteTotalCustomers = null!;
+    private Label lblNoteTotalVip = null!;
+    private Label lblNotePoints = null!;
+    private Label lblNoteVouchers = null!;
 
     public CustomersView()
     {
@@ -24,42 +32,34 @@ public class CustomersView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = Color.FromArgb(241, 245, 249); // Modern Slate background (#F1F5F9)
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         // --- 1. Header Panel ---
         pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 55,
+            Height = 50,
             BackColor = Color.Transparent
         };
 
         var lblTitle = new Label
         {
-            Text = "👥 QUẢN LÝ KHÁCH HÀNG THÂN THIẾT & TÍCH ĐIỂM LOYALTY",
-            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(15, 23, 42),
-            Location = new Point(0, 10),
+            Text = "Khách Hàng & Điểm Tích Lũy (Loyalty)",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 6),
             AutoSize = true
         };
 
-        var btnAddCustomer = new IconButton
+        var btnAddCustomer = new Button
         {
-            Text = " + Thêm Khách Hàng Mới",
-            IconChar = IconChar.UserPlus,
-            IconColor = Color.White,
-            IconSize = 16,
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(14, 165, 233), // Sky Blue Primary (#0EA5E9)
-            FlatStyle = FlatStyle.Flat,
-            Size = new Size(200, 36),
-            Location = new Point(pnlHeader.Width - 200, 5),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Cursor = Cursors.Hand
+            Text = "➕ Thêm Khách Hàng",
+            Size = new Size(180, 32),
+            Location = new Point(pnlHeader.Width - 180, 8),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
-        btnAddCustomer.FlatAppearance.BorderSize = 0;
+        AppTheme.ApplyPrimaryButton(btnAddCustomer);
         btnAddCustomer.Click += (s, e) => {
             var form = this.FindForm();
             if (form != null) AntdUI.Message.info(form, "Chức năng thêm hồ sơ Khách hàng mới.");
@@ -72,68 +72,62 @@ public class CustomersView : UserControl
         pnlKpiContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 90,
+            Height = 105,
             ColumnCount = 4,
             RowCount = 1,
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 0, 0, 15)
+            Margin = new Padding(0, 0, 0, 6)
         };
         pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
         pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
         pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
         pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        pnlKpiContainer.Controls.Add(CreateKpiCard("TỔNG KHÁCH HÀNG", "5,632", "👥 +128 tuần này", Color.FromArgb(14, 165, 233)), 0, 0);
-        pnlKpiContainer.Controls.Add(CreateKpiCard("THÀNH VIÊN VIP/GOLD", "1,280", "👑 22.7% tổng số", Color.FromArgb(245, 158, 11)), 1, 0);
-        pnlKpiContainer.Controls.Add(CreateKpiCard("ĐIỂM TÍCH LŨY DƯ", "145,800", "⭐ Quyết đổi quà", Color.FromArgb(16, 185, 129)), 2, 0);
-        pnlKpiContainer.Controls.Add(CreateKpiCard("VOUCHER ĐÃ PHÁT", "892 mã", "🎁 Còn 120 voucher", Color.FromArgb(139, 92, 246)), 3, 0);
+        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("TỔNG KHÁCH HÀNG", "0", "Hệ thống Loyalty", AppTheme.Primary, out lblKpiTotalCustomers, out lblNoteTotalCustomers), 0, 0);
+        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("THÀNH VIÊN VIP/GOLD", "0", "0% tổng số", AppTheme.Warning, out lblKpiTotalVip, out lblNoteTotalVip), 1, 0);
+        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("ĐIỂM TÍCH LŨY DƯ", "0", "Điểm đang lưu hành", AppTheme.Success, out lblKpiPoints, out lblNotePoints), 2, 0);
+        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("VOUCHER ĐÃ PHÁT", "0 mã", "Ví khách hàng", AppTheme.Primary, out lblKpiVouchers, out lblNoteVouchers), 3, 0);
 
         // --- 3. Filter & Search Card ---
         pnlFilter = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 60,
-            BackColor = Color.White,
-            Padding = new Padding(15, 12, 15, 12),
-            Margin = new Padding(0, 15, 0, 15)
+            Height = 58,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(15, 10, 15, 10),
+            Margin = new Padding(0, 6, 0, 6)
         };
+        AppTheme.ApplyCardPanel(pnlFilter);
 
-        var lblSearch = new Label { Text = "Tìm kiếm:", Location = new Point(15, 18), AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+        var lblSearch = new Label { Text = "Tìm kiếm:", Location = new Point(15, 16), AutoSize = true, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary };
         txtSearch = new TextBox
         {
-            Text = "Nhập Họ tên, Số điện thoại hoặc Mã KH...",
-            Font = new Font("Segoe UI", 9.5f),
-            ForeColor = Color.Gray,
-            Size = new Size(300, 30),
-            Location = new Point(90, 14)
+            PlaceholderText = "Nhập Họ tên, Số điện thoại hoặc Mã KH...",
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextPrimary,
+            Size = new Size(320, 32),
+            Location = new Point(90, 13),
+            BorderStyle = BorderStyle.FixedSingle
         };
 
-        var lblTier = new Label { Text = "Hạng thẻ:", Location = new Point(420, 18), AutoSize = true, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+        var lblTier = new Label { Text = "Hạng thẻ:", Location = new Point(430, 16), AutoSize = true, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary };
         cboTierFilter = new ComboBox
         {
-            Font = new Font("Segoe UI", 9.5f),
-            Size = new Size(160, 30),
-            Location = new Point(490, 14),
+            Font = AppTheme.FontBody,
+            Size = new Size(180, 32),
+            Location = new Point(505, 13),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         cboTierFilter.Items.AddRange(new[] { "-- Tất cả hạng thẻ --", "👑 Platinum VIP", "🥇 VIP Gold", "🥈 Silver", "🥉 Bronze" });
         cboTierFilter.SelectedIndex = 0;
 
-        var btnSearch = new IconButton
+        var btnSearch = new Button
         {
-            Text = " Tìm Kiếm",
-            IconChar = IconChar.Search,
-            IconColor = Color.White,
-            IconSize = 14,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(15, 23, 42),
-            FlatStyle = FlatStyle.Flat,
+            Text = "Tìm Kiếm",
             Size = new Size(100, 32),
-            Location = new Point(670, 13),
-            Cursor = Cursors.Hand
+            Location = new Point(700, 12)
         };
-        btnSearch.FlatAppearance.BorderSize = 0;
+        AppTheme.ApplySecondaryButton(btnSearch);
 
         pnlFilter.Controls.Add(lblSearch);
         pnlFilter.Controls.Add(txtSearch);
@@ -145,29 +139,13 @@ public class CustomersView : UserControl
         pnlGridContainer = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.White,
+            BackColor = AppTheme.SurfaceWhite,
             Padding = new Padding(1)
         };
+        AppTheme.ApplyCardPanel(pnlGridContainer);
 
-        dgvCustomers = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            BackgroundColor = Color.White,
-            BorderStyle = BorderStyle.None,
-            RowHeadersVisible = false,
-            AllowUserToAddRows = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            Font = new Font("Segoe UI", 9.5f),
-            RowTemplate = { Height = 45 },
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-        };
-        dgvCustomers.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(15, 23, 42); // Dark Navy Header
-        dgvCustomers.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-        dgvCustomers.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
-        dgvCustomers.ColumnHeadersHeight = 42;
-        dgvCustomers.EnableHeadersVisualStyles = false;
-        dgvCustomers.DefaultCellStyle.SelectionBackColor = Color.FromArgb(224, 242, 254);
-        dgvCustomers.DefaultCellStyle.SelectionForeColor = Color.FromArgb(15, 23, 42);
+        dgvCustomers = new DataGridView();
+        AppTheme.ApplyGridStyle(dgvCustomers);
 
         dgvCustomers.Columns.Add("Code", "Mã Khách Hàng");
         dgvCustomers.Columns.Add("FullName", "Họ & Tên");
@@ -185,40 +163,13 @@ public class CustomersView : UserControl
         this.Controls.Add(pnlHeader);
     }
 
-    private Panel CreateKpiCard(string title, string value, string subtext, Color accentColor)
-    {
-        var pnl = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Color.White,
-            Margin = new Padding(0, 0, 10, 0),
-            Padding = new Padding(15)
-        };
-        pnl.Paint += (s, e) =>
-        {
-            using var pen = new Pen(Color.FromArgb(226, 232, 240), 1);
-            e.Graphics.DrawRectangle(pen, 0, 0, pnl.Width - 1, pnl.Height - 1);
-            using var accentBrush = new SolidBrush(accentColor);
-            e.Graphics.FillRectangle(accentBrush, 0, 0, 4, pnl.Height);
-        };
-
-        var lblTitle = new Label { Text = title, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = Color.FromArgb(100, 116, 139), Location = new Point(12, 10), AutoSize = true };
-        var lblVal = new Label { Text = value, Font = new Font("Segoe UI", 16f, FontStyle.Bold), ForeColor = Color.FromArgb(15, 23, 42), Location = new Point(10, 28), AutoSize = true };
-        var lblSub = new Label { Text = subtext, Font = new Font("Segoe UI", 8f, FontStyle.Regular), ForeColor = accentColor, Location = new Point(12, 60), AutoSize = true };
-
-        pnl.Controls.Add(lblTitle);
-        pnl.Controls.Add(lblVal);
-        pnl.Controls.Add(lblSub);
-        return pnl;
-    }
-
     private async void LoadSampleData()
     {
         dgvCustomers.Rows.Clear();
         using var client = new System.Net.Http.HttpClient();
         try
         {
-            var response = await client.GetAsync("http://localhost:5137/api/customers");
+            var response = await client.GetAsync($"{AppTheme.ApiBaseUrl}/api/customers");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -226,8 +177,14 @@ public class CustomersView : UserControl
                 var root = doc.RootElement;
                 if (root.TryGetProperty("data", out var data) && data.ValueKind == System.Text.Json.JsonValueKind.Array)
                 {
+                    int totalCust = 0;
+                    int totalVip = 0;
+                    long totalPoints = 0;
+                    int totalVouchers = 0;
+
                     foreach (var item in data.EnumerateArray())
                     {
+                        totalCust++;
                         string code = item.GetProperty("customerCode").GetString() ?? "";
                         string name = item.GetProperty("fullName").GetString() ?? "";
                         string phone = item.GetProperty("phone").GetString() ?? "";
@@ -236,8 +193,24 @@ public class CustomersView : UserControl
                         int vouchers = item.GetProperty("vouchersCount").GetInt32();
                         string spent = item.GetProperty("totalSpent").GetString() ?? "0";
 
+                        totalPoints += points;
+                        totalVouchers += vouchers;
+                        if (tier.Contains("VIP") || tier.Contains("Platinum") || tier.Contains("Gold"))
+                        {
+                            totalVip++;
+                        }
+
                         dgvCustomers.Rows.Add(code, name, phone, $"{points:N0} điểm", tier, $"{vouchers} mã", spent);
                     }
+
+                    lblKpiTotalCustomers.Text = $"{totalCust:N0}";
+                    lblKpiTotalVip.Text = $"{totalVip:N0}";
+                    lblKpiPoints.Text = $"{totalPoints:N0}";
+                    lblKpiVouchers.Text = $"{totalVouchers:N0} mã";
+
+                    double vipPercent = totalCust > 0 ? (double)totalVip / totalCust * 100.0 : 0;
+                    lblNoteTotalVip.Text = $"👑 {vipPercent:F1}% tổng số";
+
                     ApplyRowColors();
                     return;
                 }
@@ -245,11 +218,14 @@ public class CustomersView : UserControl
         }
         catch
         {
-            // API Offline Fallback
+            // API Offline Fallback - keep real 0 values without fake mock data
         }
 
-        dgvCustomers.Rows.Add("KH-0001", "Lê Văn Khách Hàng", "0988776655", "150 điểm", "🥈 Silver", "1 mã", "1,500,000");
-        ApplyRowColors();
+        lblKpiTotalCustomers.Text = "0";
+        lblKpiTotalVip.Text = "0";
+        lblKpiPoints.Text = "0";
+        lblKpiVouchers.Text = "0 mã";
+        lblNoteTotalVip.Text = "0% tổng số";
     }
 
     private void ApplyRowColors()

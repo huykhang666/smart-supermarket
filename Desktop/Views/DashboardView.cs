@@ -30,7 +30,22 @@ public class DashboardView : UserControl
     public DashboardView()
     {
         InitializeComponent();
+        DataStore.OrderCompleted += (s, e) =>
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(() => UpdateLocalKpiMetrics()));
+                return;
+            }
+            UpdateLocalKpiMetrics();
+        };
         LoadRealtimeDataAsync();
+    }
+
+    private void UpdateLocalKpiMetrics()
+    {
+        lblRevenueValue.Text = $"{DataStore.TodayRevenue:N0} đ";
+        lblOrdersValue.Text = $"{DataStore.TodayOrdersCount} đơn";
     }
 
     private void InitializeComponent()

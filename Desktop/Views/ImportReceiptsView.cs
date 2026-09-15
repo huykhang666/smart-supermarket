@@ -14,7 +14,7 @@ public class ImportReceiptsView : UserControl
     private Button btnCreateReceipt = null!;
     private DataGridView dgvReceipts = null!;
     private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5000";
+    private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
 
     public ImportReceiptsView()
     {
@@ -25,23 +25,25 @@ public class ImportReceiptsView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = Color.FromArgb(240, 242, 245);
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         // --- Top Bar ---
         pnlTopBar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 70,
-            BackColor = Color.White,
-            Padding = new Padding(15)
+            Height = 62,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(15, 12, 15, 12),
+            Margin = new Padding(0, 0, 0, 8)
         };
+        AppTheme.ApplyCardPanel(pnlTopBar);
 
         cbStatus = new ComboBox
         {
-            Font = new Font("Segoe UI", 9.5f),
+            Font = AppTheme.FontBody,
             Size = new Size(180, 32),
-            Location = new Point(15, 18),
+            Location = new Point(15, 15),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         cbStatus.Items.AddRange(new object[] { "Tất cả Trạng thái", "Nháp (Draft)", "Đã Xác Nhận (Confirmed)", "Đã Hủy (Cancelled)" });
@@ -50,29 +52,19 @@ public class ImportReceiptsView : UserControl
         btnSearch = new Button
         {
             Text = "Lọc",
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(9, 109, 217),
-            FlatStyle = FlatStyle.Flat,
-            Size = new Size(100, 32),
-            Location = new Point(210, 18),
-            Cursor = Cursors.Hand
+            Size = new Size(90, 32),
+            Location = new Point(210, 15)
         };
-        btnSearch.FlatAppearance.BorderSize = 0;
+        AppTheme.ApplySecondaryButton(btnSearch);
         btnSearch.Click += (s, e) => LoadDataAsync();
 
         btnCreateReceipt = new Button
         {
             Text = "➕ Tạo Phiếu Nhập",
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(56, 158, 13),
-            FlatStyle = FlatStyle.Flat,
-            Size = new Size(180, 32),
-            Location = new Point(330, 18),
-            Cursor = Cursors.Hand
+            Size = new Size(170, 32),
+            Location = new Point(315, 15)
         };
-        btnCreateReceipt.FlatAppearance.BorderSize = 0;
+        AppTheme.ApplyPrimaryButton(btnCreateReceipt);
         btnCreateReceipt.Click += BtnCreateReceipt_Click;
 
         pnlTopBar.Controls.Add(cbStatus);
@@ -80,23 +72,8 @@ public class ImportReceiptsView : UserControl
         pnlTopBar.Controls.Add(btnCreateReceipt);
 
         // --- DataGrid ---
-        dgvReceipts = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            BackgroundColor = Color.White,
-            BorderStyle = BorderStyle.None,
-            AllowUserToAddRows = false,
-            ReadOnly = true,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            RowTemplate = { Height = 40 },
-            ColumnHeadersHeight = 42
-        };
-
-        dgvReceipts.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(245, 247, 250);
-        dgvReceipts.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-        dgvReceipts.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(60, 70, 80);
-        dgvReceipts.EnableHeadersVisualStyles = false;
+        dgvReceipts = new DataGridView();
+        AppTheme.ApplyGridStyle(dgvReceipts);
 
         dgvReceipts.Columns.Add("ReceiptId", "ID");
         dgvReceipts.Columns.Add("ReceiptCode", "Mã Phiếu");
@@ -152,10 +129,6 @@ public class ImportReceiptsView : UserControl
             }
         }
         catch { }
-
-        // Mock data
-        dgvReceipts.Rows.Add(1, "IMP-20231020-0001", "20/10/2023", "15,000,000 đ", "📝 Nháp");
-        dgvReceipts.Rows.Add(2, "IMP-20231021-0002", "21/10/2023", "2,500,000 đ", "✅ Đã Nhập Kho");
     }
 
     private async void DgvReceipts_CellClick(object? sender, DataGridViewCellEventArgs e)

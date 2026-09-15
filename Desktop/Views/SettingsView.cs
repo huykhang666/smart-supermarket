@@ -18,53 +18,49 @@ public class SettingsView : UserControl
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 65,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15),
-            Margin = new Padding(0, 0, 0, 15)
+            Height = 46,
+            BackColor = Color.Transparent
         };
-        ThemeManager.ApplyCardPanel(pnlHeader);
 
         var lblTitle = new Label
         {
-            Text = "⚙ CẤU HÌNH HỆ THỐNG, PHÂN QUYỀN & NHẬT KÝ (SYSTEM & AUDIT LOGS)",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.PrimaryHover,
-            Location = new Point(15, 18),
+            Text = "Cấu Hình Hệ Thống & Nhật Ký (Settings & Audit)",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 4),
             AutoSize = true
         };
-
         pnlHeader.Controls.Add(lblTitle);
 
         tabControl = new TabControl
         {
             Dock = DockStyle.Fill,
-            Font = ThemeManager.SubtitleFont
+            Font = AppTheme.FontBodyBold
         };
 
-        var tabConfig = new TabPage("⚙️ Cấu Hình Siêu Thị & VAT") { BackColor = ThemeManager.Background };
-        var tabAudit = new TabPage("📋 Nhật Ký Hệ Thống (Audit Logs)") { BackColor = ThemeManager.Background };
-        var tabBackup = new TabPage("💾 Sao Lưu & Khôi Phục Dữ Liệu") { BackColor = ThemeManager.Background };
+        var tabConfig = new TabPage("⚙️ Cấu Hình Siêu Thị & VAT") { BackColor = AppTheme.BackgroundGray };
+        var tabAudit = new TabPage("📋 Nhật Ký Hệ Thống (Audit Logs)") { BackColor = AppTheme.BackgroundGray };
+        var tabBackup = new TabPage("💾 Sao Lưu & Khôi Phục Dữ Liệu") { BackColor = AppTheme.BackgroundGray };
 
         // Tab Config Panel Card
         var pnlConfigCard = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(25)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(24)
         };
-        ThemeManager.ApplyCardPanel(pnlConfigCard);
+        AppTheme.ApplyCardPanel(pnlConfigCard);
 
-        var lblCompany = new Label { Text = "🏢 Tên Hệ Thống Siêu Thị: SMART SUPERMARKET KATQ", Font = ThemeManager.BodyBold, Location = new Point(25, 25), AutoSize = true, ForeColor = ThemeManager.TextPrimary };
-        var lblVAT = new Label { Text = "📊 Thuế VAT Mặc Định Bán Lẻ: 10%", Font = ThemeManager.BodyBold, Location = new Point(25, 65), AutoSize = true, ForeColor = ThemeManager.TextPrimary };
-        var lblBranch = new Label { Text = "📍 Chi Nhánh Hiện Tại: Chi Nhánh 01 - TP.Hồ Chí Minh", Font = ThemeManager.BodyBold, Location = new Point(25, 105), AutoSize = true, ForeColor = ThemeManager.TextPrimary };
-        var lblServer = new Label { Text = "🌐 Server Endpoint: http://localhost:5137 (Active)", Font = ThemeManager.BodyBold, Location = new Point(25, 145), AutoSize = true, ForeColor = ThemeManager.Success };
+        var lblCompany = new Label { Text = "🏢 Tên Hệ Thống Siêu Thị: SMART SUPERMARKET KATQ", Font = AppTheme.FontBodyBold, Location = new Point(24, 25), AutoSize = true, ForeColor = AppTheme.TextPrimary };
+        var lblVAT = new Label { Text = "📊 Thuế VAT Mặc Định Bán Lẻ: 8%", Font = AppTheme.FontBodyBold, Location = new Point(24, 65), AutoSize = true, ForeColor = AppTheme.TextPrimary };
+        var lblBranch = new Label { Text = "📍 Chi Nhánh Hiện Tại: Chi Nhánh 01 - TP.Hồ Chí Minh", Font = AppTheme.FontBodyBold, Location = new Point(24, 105), AutoSize = true, ForeColor = AppTheme.TextPrimary };
+        var lblServer = new Label { Text = $"🌐 Server Endpoint: {AppTheme.ApiBaseUrl} (Active)", Font = AppTheme.FontBodyBold, Location = new Point(24, 145), AutoSize = true, ForeColor = AppTheme.Success };
 
         pnlConfigCard.Controls.Add(lblCompany);
         pnlConfigCard.Controls.Add(lblVAT);
@@ -74,7 +70,7 @@ public class SettingsView : UserControl
 
         // Tab Audit Grid
         dgvAuditLogs = new DataGridView();
-        ThemeManager.ApplyGridStyle(dgvAuditLogs);
+        AppTheme.ApplyGridStyle(dgvAuditLogs);
 
         dgvAuditLogs.Columns.Add("Time", "Thời Gian");
         dgvAuditLogs.Columns.Add("User", "Tài Khoản Thực Hiện");
@@ -85,10 +81,10 @@ public class SettingsView : UserControl
         var pnlAuditCard = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(1)
         };
-        ThemeManager.ApplyCardPanel(pnlAuditCard);
+        AppTheme.ApplyCardPanel(pnlAuditCard);
         pnlAuditCard.Controls.Add(dgvAuditLogs);
         tabAudit.Controls.Add(pnlAuditCard);
 
@@ -96,18 +92,18 @@ public class SettingsView : UserControl
         var pnlBackupCard = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(25)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(24)
         };
-        ThemeManager.ApplyCardPanel(pnlBackupCard);
+        AppTheme.ApplyCardPanel(pnlBackupCard);
 
         var btnBackupNow = new Button
         {
-            Text = "💾 Sao Lưu Dữ Liệu PostgreSQL Ngay",
-            Size = new Size(300, 44),
-            Location = new Point(25, 25)
+            Text = "💾 Sao Lưu Dữ Liệu SQL Server Ngay",
+            Size = new Size(280, 32),
+            Location = new Point(24, 25)
         };
-        ThemeManager.ApplyPrimaryButton(btnBackupNow);
+        AppTheme.ApplyPrimaryButton(btnBackupNow);
         btnBackupNow.Click += (s, e) => {
             var parentForm = this.FindForm();
             if (parentForm != null) AntdUI.Message.success(parentForm, "Đã tạo bản sao lưu dữ liệu hệ thống SmartSupermarket_Backup.dump thành công!");
@@ -127,8 +123,5 @@ public class SettingsView : UserControl
     private void LoadSampleData()
     {
         dgvAuditLogs.Rows.Clear();
-        dgvAuditLogs.Rows.Add(DateTime.Now.AddMinutes(-15).ToString("yyyy-MM-dd HH:mm:ss"), "admin", "CREATE_ORDER", "Order #ORD-10028", "Tạo hóa đơn bán lẻ POS thành công - 148.000 VNĐ");
-        dgvAuditLogs.Rows.Add(DateTime.Now.AddHours(-2).ToString("yyyy-MM-dd HH:mm:ss"), "admin", "ADD_PRODUCT", "Product #8935001800012", "Thêm mới sản phẩm Coca-Cola Lon 330ml");
-        dgvAuditLogs.Rows.Add(DateTime.Now.AddHours(-5).ToString("yyyy-MM-dd HH:mm:ss"), "staff_pos_01", "CHECK_IN", "Attendance NV-0002", "Nhân viên Thu ngân Trần Thị Thu Ngân check-in ca sáng");
     }
 }

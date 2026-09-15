@@ -1,120 +1,155 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using FontAwesome.Sharp;
 
 namespace Desktop.Views;
 
 public class AiCopilotView : UserControl
 {
-    private RichTextBox rtbChatLog = null!;
-    private TextBox txtPrompt = null!;
-    private Button btnSend = null!;
+    private FlowLayoutPanel pnlRecommendations = null!;
 
     public AiCopilotView()
     {
         InitializeComponent();
+        LoadAiInsights();
     }
 
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
+        // --- 1. Page Header ---
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 70,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(20, 15, 20, 15),
-            Margin = new Padding(0, 0, 0, 15)
+            Height = 55,
+            BackColor = Color.Transparent
         };
-        ThemeManager.ApplyCardPanel(pnlHeader);
 
         var lblTitle = new Label
         {
-            Text = "🤖 TRUNG TÂM TRỢ LÝ AI & ĐIỀU HÀNH DỮ LIỆU CHUỖI SIÊU THỊ",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.PrimaryHover,
-            AutoSize = true,
-            Location = new Point(20, 18)
+            Text = "🤖 Trợ Lý Trí Tuệ Nhân Tạo (AI Assistant Co-Pilot)",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 4),
+            AutoSize = true
+        };
+
+        var lblSub = new Label
+        {
+            Text = "Đưa ra khuyến nghị & phân tích hành động thực tế dựa trên dữ liệu bán hàng, tồn kho và chu kỳ mua sắm",
+            Font = AppTheme.FontCaption,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(2, 34),
+            AutoSize = true
         };
 
         pnlHeader.Controls.Add(lblTitle);
+        pnlHeader.Controls.Add(lblSub);
 
-        var pnlBottomInput = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 70,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15),
-            Margin = new Padding(0, 15, 0, 0)
-        };
-        ThemeManager.ApplyCardPanel(pnlBottomInput);
-
-        txtPrompt = new TextBox
-        {
-            PlaceholderText = "💬 Nhập câu hỏi nghiệp vụ (Ví dụ: 'Mặt hàng nào có tỷ suất sinh lời cao nhất?', 'Dự báo doanh thu tuần tới')...",
-            Font = ThemeManager.BodyFont,
-            Size = new Size(780, 36),
-            Location = new Point(15, 16),
-            Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
-            BorderStyle = BorderStyle.FixedSingle
-        };
-        txtPrompt.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) BtnSend_Click(s, e); };
-
-        btnSend = new Button
-        {
-            Text = "GỬI (ENTER)",
-            Size = new Size(140, 36),
-            Location = new Point(pnlBottomInput.Width - 160, 16),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
-        };
-        ThemeManager.ApplyPrimaryButton(btnSend);
-        btnSend.Click += BtnSend_Click;
-
-        pnlBottomInput.Controls.Add(txtPrompt);
-        pnlBottomInput.Controls.Add(btnSend);
-
-        var pnlChatContainer = new Panel
+        // --- 2. Recommendations List Container ---
+        var pnlContainer = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(16),
+            Margin = new Padding(0, 8, 0, 0)
         };
-        ThemeManager.ApplyCardPanel(pnlChatContainer);
+        AppTheme.ApplyCardPanel(pnlContainer);
 
-        rtbChatLog = new RichTextBox
+        pnlRecommendations = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            BorderStyle = BorderStyle.None,
-            ReadOnly = true,
-            Font = ThemeManager.BodyFont,
-            Padding = new Padding(15)
+            AutoScroll = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            BackColor = Color.Transparent
         };
 
-        rtbChatLog.AppendText("🤖 Trợ lý Smart Supermarket AI Assistant sẵn sàng trợ giúp!\n\n");
-        rtbChatLog.AppendText("• AI Forecast: Doanh thu dự kiến tuần tới đạt 1.62 Tỷ VNĐ (+12% so với tuần trước).\n");
-        rtbChatLog.AppendText("• AI Recommendation: Khuyến nghị nhập thêm 250 lốc Coca-Cola Lon 330ml cho chi nhánh Quận 7.\n");
-        rtbChatLog.AppendText("• Dynamic Pricing: Đã tự động đề xuất giảm 15% cho 3 mặt hàng cận HSD 7 ngày để tối ưu vòng quay tồn kho.\n\n");
+        pnlContainer.Controls.Add(pnlRecommendations);
 
-        pnlChatContainer.Controls.Add(rtbChatLog);
-
-        this.Controls.Add(pnlChatContainer);
-        this.Controls.Add(pnlBottomInput);
+        this.Controls.Add(pnlContainer);
         this.Controls.Add(pnlHeader);
     }
 
-    private void BtnSend_Click(object? sender, EventArgs e)
+    private void LoadAiInsights()
     {
-        string text = txtPrompt.Text.Trim();
-        if (string.IsNullOrWhiteSpace(text)) return;
+        pnlRecommendations.Controls.Clear();
 
-        rtbChatLog.AppendText($"👤 Admin: {text}\n");
-        rtbChatLog.AppendText($"🤖 AI Copilot: Đang phân tích truy vấn dữ liệu '{text}'...\n");
-        rtbChatLog.AppendText("-> Kết quả: Nhóm hàng Nước Giải Khát & Chế Phẩm Sữa đóng góp 34.2% tổng lợi nhuận hệ thống!\n\n");
+        var lblEmpty = new Label
+        {
+            Text = "✨ Trợ lý AI đang phân tích dữ liệu siêu thị theo thời gian thực...\nHiện tại không có bất thường nào về tồn kho, hạn sử dụng hoặc đối soát đơn hàng cần xử lý gấp.",
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Primary,
+            Padding = new Padding(20),
+            AutoSize = true
+        };
+        pnlRecommendations.Controls.Add(lblEmpty);
+    }
 
-        txtPrompt.Clear();
+    private Panel CreateInsightCard(string title, string content, string actionText, Color accent, IconChar icon, Action onAction)
+    {
+        var card = new Panel
+        {
+            Size = new Size(1020, 110),
+            BackColor = AppTheme.BackgroundGray,
+            Margin = new Padding(0, 0, 0, 14),
+            Padding = new Padding(16)
+        };
+        card.Paint += (s, e) =>
+        {
+            using var b = new SolidBrush(accent);
+            e.Graphics.FillRectangle(b, 0, 0, 4, card.Height);
+        };
+
+        var pic = new IconPictureBox
+        {
+            IconChar = icon,
+            IconColor = accent,
+            IconSize = 28,
+            Size = new Size(28, 28),
+            Location = new Point(14, 16),
+            BackColor = Color.Transparent
+        };
+
+        var lblT = new Label
+        {
+            Text = title,
+            Font = AppTheme.FontBodyBold,
+            ForeColor = accent,
+            Location = new Point(50, 14),
+            AutoSize = true
+        };
+
+        var lblC = new Label
+        {
+            Text = content,
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(50, 42),
+            Size = new Size(card.Width - 270, 52),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+        };
+
+        var btnAction = new Button
+        {
+            Text = actionText,
+            Font = AppTheme.FontBodyBold,
+            Size = new Size(185, 34),
+            Location = new Point(card.Width - 200, 36),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
+        };
+        AppTheme.ApplyPrimaryButton(btnAction);
+        btnAction.Click += (s, e) => onAction();
+
+        card.Controls.Add(pic);
+        card.Controls.Add(lblT);
+        card.Controls.Add(lblC);
+        card.Controls.Add(btnAction);
+
+        return card;
     }
 }

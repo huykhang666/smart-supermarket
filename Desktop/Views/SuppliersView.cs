@@ -13,57 +13,90 @@ public class SuppliersView : UserControl
     private Button btnAddSupplier = null!;
     private Button btnImportSupplier = null!;
     private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5137";
+    private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
 
     public SuppliersView()
     {
         InitializeComponent();
+        DataStore.SupplierAdded += DataStore_SupplierAdded;
         _ = LoadDataAsync();
+    }
+
+    private void DataStore_SupplierAdded(object? sender, SupplierItem s)
+    {
+        if (this.InvokeRequired)
+        {
+            this.BeginInvoke(new Action(() => DataStore_SupplierAdded(sender, s)));
+            return;
+        }
+
+        // Check if row already exists
+        foreach (DataGridViewRow row in dgvSuppliers.Rows)
+        {
+            if (row.Cells["SupplierName"].Value?.ToString() == s.SupplierName)
+            {
+                return;
+            }
+        }
+
+        dgvSuppliers.Rows.Insert(0, s.SupplierId, s.SupplierCode, s.SupplierName, s.ContactPerson, s.Phone, s.Email, "⭐ 5.0 / 5.0", "🟢 Hoạt động");
     }
 
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
         var pnlTop = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 65,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15),
-            Margin = new Padding(0, 0, 0, 15)
+            Height = 60,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(16, 12, 16, 12),
+            Margin = new Padding(0, 0, 0, 8)
         };
-        ThemeManager.ApplyCardPanel(pnlTop);
+        AppTheme.ApplyCardPanel(pnlTop);
 
         var lblHeader = new Label
         {
-            Text = "🏢 QUẢN LÝ NHÀ CUNG CẤP & ĐỐI TÁC",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.PrimaryHover,
+            Text = "🏢 Nhà Cung Cấp & Đối Tác",
+            Font = AppTheme.FontH2,
+            ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
-            Location = new Point(15, 18)
+            Location = new Point(16, 16)
         };
 
         btnAddSupplier = new Button
         {
             Text = "➕ Thêm Nhà Cung Cấp",
-            Size = new Size(180, 36),
-            Location = new Point(pnlTop.Width - 370, 14),
+            Size = new Size(180, 32),
+            Location = new Point(pnlTop.Width - 365, 14),
             Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
-        ThemeManager.ApplyPrimaryButton(btnAddSupplier);
-        btnAddSupplier.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Mở form thêm mới nhà cung cấp...");
+        AppTheme.ApplyPrimaryButton(btnAddSupplier);
+        btnAddSupplier.Click += (s, e) =>
+        {
+            using var dlg = new AddSupplierForm(_httpClient, _apiBaseUrl);
+            if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK)
+            {
+                var sData = dlg.CreatedSupplierData;
+                if (!string.IsNullOrEmpty(sData.name))
+                {
+                    dgvSuppliers.Rows.Insert(0, sData.id, sData.code, sData.name, sData.contact, sData.phone, sData.email, "⭐ 5.0 / 5.0", "🟢 Hoạt động");
+                    AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã lưu nhà cung cấp '{sData.name}' thành công!");
+                }
+            }
+        };
 
         btnImportSupplier = new Button
         {
             Text = "📥 Import CSV/JSON",
-            Size = new Size(170, 36),
-            Location = new Point(pnlTop.Width - 185, 14),
+            Size = new Size(160, 32),
+            Location = new Point(pnlTop.Width - 175, 14),
             Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
-        ThemeManager.ApplySecondaryButton(btnImportSupplier);
+        AppTheme.ApplySecondaryButton(btnImportSupplier);
         btnImportSupplier.Click += (s, e) => AntdUI.Message.success(this.FindForm() ?? new Form(), "Chọn file CSV để import nhà cung cấp...");
 
         pnlTop.Controls.Add(lblHeader);
@@ -71,7 +104,7 @@ public class SuppliersView : UserControl
         pnlTop.Controls.Add(btnImportSupplier);
 
         dgvSuppliers = new DataGridView();
-        ThemeManager.ApplyGridStyle(dgvSuppliers);
+        AppTheme.ApplyGridStyle(dgvSuppliers);
 
         dgvSuppliers.Columns.Add("SupplierId", "ID");
         dgvSuppliers.Columns.Add("SupplierCode", "Mã NCC");
@@ -85,9 +118,10 @@ public class SuppliersView : UserControl
         var pnlGridContainer = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10)
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(1)
         };
+        AppTheme.ApplyCardPanel(pnlGridContainer);
         ThemeManager.ApplyCardPanel(pnlGridContainer);
         pnlGridContainer.Controls.Add(dgvSuppliers);
 
@@ -99,25 +133,37 @@ public class SuppliersView : UserControl
     {
         try
         {
-            dgvSuppliers.Rows.Clear();
             var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/suppliers");
             if (response.IsSuccessStatusCode)
             {
                 var json = await response.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("data", out var dataElem) && dataElem.TryGetProperty("items", out var itemsElem))
+                JsonElement itemsElem = default;
+
+                if (doc.RootElement.TryGetProperty("data", out var dataElem) && dataElem.TryGetProperty("items", out var subItems))
                 {
+                    itemsElem = subItems;
+                }
+                else if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                {
+                    itemsElem = doc.RootElement;
+                }
+
+                if (itemsElem.ValueKind == JsonValueKind.Array && itemsElem.GetArrayLength() > 0)
+                {
+                    dgvSuppliers.Rows.Clear();
                     foreach (var item in itemsElem.EnumerateArray())
                     {
-                        int id = item.TryGetProperty("supplierId", out var idProp) ? idProp.GetInt32() : 0;
+                        int id = item.TryGetProperty("supplierId", out var idProp) ? idProp.GetInt32() : (item.TryGetProperty("id", out var id2) ? id2.GetInt32() : 0);
                         string code = item.TryGetProperty("supplierCode", out var c) ? c.GetString() ?? "" : $"SUP{id:D5}";
-                        string name = item.TryGetProperty("supplierName", out var n) ? n.GetString() ?? "" : "";
+                        string name = item.TryGetProperty("supplierName", out var n) ? n.GetString() ?? "" : (item.TryGetProperty("name", out var n2) ? n2.GetString() ?? "" : "");
                         string contact = item.TryGetProperty("contactPerson", out var cp) ? cp.GetString() ?? "N/A" : "N/A";
                         string phone = item.TryGetProperty("phone", out var p) ? p.GetString() ?? "" : "";
                         string email = item.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
 
                         dgvSuppliers.Rows.Add(id, code, name, contact, phone, email, "⭐ 4.8 / 5.0", "🟢 Hoạt động");
                     }
+                    return;
                 }
             }
 
@@ -125,6 +171,15 @@ public class SuppliersView : UserControl
         catch
         {
             // Graceful fallback
+        }
+
+        // Load stored suppliers from DataStore if grid is empty
+        if (dgvSuppliers.Rows.Count == 0 && DataStore.Suppliers.Count > 0)
+        {
+            foreach (var s in DataStore.Suppliers)
+            {
+                dgvSuppliers.Rows.Add(s.SupplierId, s.SupplierCode, s.SupplierName, s.ContactPerson, s.Phone, s.Email, "⭐ 5.0 / 5.0", "🟢 Hoạt động");
+            }
         }
     }
 }

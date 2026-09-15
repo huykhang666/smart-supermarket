@@ -11,34 +11,34 @@ namespace Desktop;
 /// </summary>
 public static class AppTheme
 {
-    // --- Fluent 2 Color Tokens ---
-    public static readonly Color Primary = Color.FromArgb(0x0F, 0x6C, 0xBD);        // #0F6CBD - Primary Blue Accent
-    public static readonly Color PrimaryHover = Color.FromArgb(0x11, 0x5E, 0xA3);   // #115EA3 - Hover
-    public static readonly Color PrimaryPressed = Color.FromArgb(0x0C, 0x3B, 0x5E); // #0C3B5E - Pressed
-    public static readonly Color PrimarySubtle = Color.FromArgb(0xEB, 0xF3, 0xFC);  // #EBF3FC - Selected / KPI subtle bg
+    // --- KATQ Smart Sky Blue Design Tokens ---
+    public static readonly Color Primary = Color.FromArgb(0x00, 0x87, 0xE6);        // #0087E6 - KATQ Sky Blue Primary Accent
+    public static readonly Color PrimaryHover = Color.FromArgb(0x00, 0x76, 0xCC);   // #0076CC - Sky Blue Hover
+    public static readonly Color PrimaryPressed = Color.FromArgb(0x00, 0x5F, 0xB4); // #005FB4 - Sky Blue Pressed / Title Bar Blue
+    public static readonly Color PrimarySubtle = Color.FromArgb(0xEB, 0xF6, 0xFF);  // #EBF6FF - Soft Ice Blue Highlight / Selected Row
 
-    public static readonly Color Success = Color.FromArgb(0x10, 0x7C, 0x10);        // #107C10 - Success
+    public static readonly Color Success = Color.FromArgb(0x10, 0x7C, 0x10);        // #107C10 - Success Green
     public static readonly Color SuccessSubtle = Color.FromArgb(0xDF, 0xF6, 0xDD);  // #DFF6DD - Success Badge
-    public static readonly Color Warning = Color.FromArgb(0xF7, 0x63, 0x0C);        // #F7630C - Warning
+    public static readonly Color Warning = Color.FromArgb(0xF7, 0x63, 0x0C);        // #F7630C - Warning Amber
     public static readonly Color WarningSubtle = Color.FromArgb(0xFF, 0xF4, 0xE5);  // #FFF4E5 - Warning Badge
-    public static readonly Color Danger = Color.FromArgb(0xC4, 0x2B, 0x1C);         // #C42B1C - Danger
+    public static readonly Color Danger = Color.FromArgb(0xC4, 0x2B, 0x1C);         // #C42B1C - Danger Red
     public static readonly Color DangerSubtle = Color.FromArgb(0xFD, 0xE7, 0xE9);   // #FDE7E9 - Danger Badge
 
-    public static readonly Color SidebarBg = Color.FromArgb(0x1B, 0x1F, 0x23);      // #1B1F23 - Dark Charcoal Black Sidebar
-    public static readonly Color SidebarHover = Color.FromArgb(0x2D, 0x33, 0x38);   // #2D3338 - Sidebar Hover
-    public static readonly Color SidebarActive = Color.FromArgb(0x0F, 0x6C, 0xBD);  // #0F6CBD - Sidebar Active Item
-    public static readonly Color SidebarAccent = Color.FromArgb(0x5E, 0xB4, 0xF2);  // #5EB4F2 - 3px Active Bar
-    public static readonly Color SidebarText = Color.FromArgb(0xD6, 0xD6, 0xD6);    // #D6D6D6 - Sidebar Inactive Text
+    public static readonly Color SidebarBg = Color.FromArgb(0x0B, 0x25, 0x45);      // #0B2545 - Deep Navy KATQ Brand Sidebar
+    public static readonly Color SidebarHover = Color.FromArgb(0x13, 0x36, 0x60);   // #133660 - Sidebar Item Hover
+    public static readonly Color SidebarActive = Color.FromArgb(0x00, 0x87, 0xE6);  // #0087E6 - Sidebar Active Item Sky Blue
+    public static readonly Color SidebarAccent = Color.FromArgb(0x5E, 0xD4, 0xFF);  // #5ED4FF - 3px Glowing Cyan Active Indicator
+    public static readonly Color SidebarText = Color.FromArgb(0xC5, 0xE1, 0xFA);    // #C5E1FA - Soft Pastel Sky Inactive Text
     public static readonly Color SidebarTextActive = Color.White;
 
-    public static readonly Color BackgroundGray = Color.FromArgb(0xF5, 0xF5, 0xF5); // #F5F5F5 - Page Background
-    public static readonly Color SurfaceWhite = Color.White;                       // #FFFFFF - Card Surface
-    public static readonly Color BorderLight = Color.FromArgb(0xE0, 0xE0, 0xE0);    // #E0E0E0 - Border Lines
-    public static readonly Color GridHeaderBg = Color.FromArgb(0xF3, 0xF2, 0xF1);   // #F3F2F1 - Light Gray Header (NEVER Dark Blue)
+    public static readonly Color BackgroundGray = Color.FromArgb(0xE2, 0xF1, 0xFC); // #E2F1FC - Vibrant Fresh Sky Blue Tint Page Background
+    public static readonly Color SurfaceWhite = Color.White;                       // #FFFFFF - Crisp Clean Card Surface
+    public static readonly Color BorderLight = Color.FromArgb(0xBC, 0xE0, 0xFD);    // #BCE0FD - Harmonious Sky Blue Border Line
+    public static readonly Color GridHeaderBg = Color.FromArgb(0xD4, 0xEB, 0xFA);   // #D4EBFA - Clear Sky Blue Header Tint
 
-    public static readonly Color TextPrimary = Color.FromArgb(0x24, 0x24, 0x24);    // #242424 - Main Text
-    public static readonly Color TextSecondary = Color.FromArgb(0x61, 0x61, 0x61);  // #616161 - Subtitle Text
-    public static readonly Color TextDisabled = Color.FromArgb(0xBD, 0xBD, 0xBD);   // #BDBDBD - Disabled Text
+    public static readonly Color TextPrimary = Color.FromArgb(0x11, 0x22, 0x33);    // #112233 - Deep Navy-Charcoal Text for Crystal Clarity
+    public static readonly Color TextSecondary = Color.FromArgb(0x4A, 0x68, 0x85);  // #4A6885 - Cool Slate Blue Subtitle
+    public static readonly Color TextDisabled = Color.FromArgb(0x9E, 0xB5, 0xCB);   // #9EB5CB - Soft Steel Disabled Text
 
     // --- Backward Compatible Aliases ---
     public static Color PrimaryGreen => Primary;
@@ -50,15 +50,15 @@ public static class AppTheme
     public static Color WarningAmber => Warning;
     public static Color DangerRed => Danger;
 
-    // --- Typography Tokens (Microsoft Fluent 2 Segoe UI) ---
-    public static readonly Font FontTitle = new Font("Segoe UI", 20F, FontStyle.Bold);
-    public static readonly Font FontH1 = new Font("Segoe UI", 20F, FontStyle.Bold);
-    public static readonly Font FontH2 = new Font("Segoe UI", 14F, FontStyle.Bold);
-    public static readonly Font FontH3 = new Font("Segoe UI", 11F, FontStyle.Bold);
+    // --- Typography Tokens (Segoe UI Phân Cấp Rõ Ràng & Cân Đối) ---
+    public static readonly Font FontTitle = new Font("Segoe UI", 18F, FontStyle.Bold);
+    public static readonly Font FontH1 = new Font("Segoe UI", 16F, FontStyle.Bold);
+    public static readonly Font FontH2 = new Font("Segoe UI", 13F, FontStyle.Bold);
+    public static readonly Font FontH3 = new Font("Segoe UI", 10.5F, FontStyle.Bold);
     public static readonly Font FontBody = new Font("Segoe UI", 10F, FontStyle.Regular);
     public static readonly Font FontBodyBold = new Font("Segoe UI", 10F, FontStyle.Bold);
-    public static readonly Font FontKpi = new Font("Segoe UI", 24F, FontStyle.Bold);
-    public static readonly Font FontCaption = new Font("Segoe UI", 9.5F, FontStyle.Regular);
+    public static readonly Font FontKpi = new Font("Segoe UI", 22F, FontStyle.Bold);
+    public static readonly Font FontCaption = new Font("Segoe UI", 9F, FontStyle.Regular);
 
     public static void ApplyGridStyle(DataGridView dgv)
     {
@@ -154,6 +154,16 @@ public static class AppTheme
         btn.MouseLeave += (s, e) => btn.BackColor = Primary;
     }
 
+    // --- Spacing Tokens ---
+    public const int Space1 = 4;
+    public const int Space2 = 8;
+    public const int Space3 = 12;
+    public const int Space4 = 16;
+    public const int Space6 = 24;
+
+    // --- System Centralized API Base URL ---
+    public const string ApiBaseUrl = "http://localhost:5137";
+
     public static void ApplyOutlineButton(Button btn)
     {
         btn.Font = FontBodyBold;
@@ -169,7 +179,63 @@ public static class AppTheme
         btn.MouseLeave += (s, e) => btn.BackColor = SurfaceWhite;
     }
 
+    public static void ApplyComboBoxStyle(ComboBox cb, int height = 32)
+    {
+        cb.Font = FontBody;
+        cb.DropDownStyle = ComboBoxStyle.DropDownList;
+        cb.DrawMode = DrawMode.OwnerDrawFixed;
+        cb.ItemHeight = height - 8;
+        cb.Height = height;
+        cb.DrawItem += (s, e) =>
+        {
+            if (e.Index < 0) return;
+            e.DrawBackground();
+            bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+            using var bg = new SolidBrush(selected ? PrimarySubtle : SurfaceWhite);
+            using var fg = new SolidBrush(selected ? Primary : TextPrimary);
+            e.Graphics.FillRectangle(bg, e.Bounds);
+            string text = cb.Items[e.Index]?.ToString() ?? "";
+            TextRenderer.DrawText(e.Graphics, text, FontBody, new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height), fg.Color, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
+            e.DrawFocusRectangle();
+        };
+    }
+
+    public static void ApplySecondaryButton(Button btn) => ApplyOutlineButton(btn);
+
+    public static void ApplyDangerButton(Button btn)
+    {
+        btn.Font = FontBodyBold;
+        btn.ForeColor = Color.White;
+        btn.BackColor = Danger;
+        btn.FlatStyle = FlatStyle.Flat;
+        btn.FlatAppearance.BorderSize = 0;
+        btn.Cursor = Cursors.Hand;
+        btn.Height = 32;
+
+        btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(0xA4, 0x26, 0x1C);
+        btn.MouseLeave += (s, e) => btn.BackColor = Danger;
+    }
+
+    public static void ApplyGhostButton(Button btn)
+    {
+        btn.Font = FontBodyBold;
+        btn.ForeColor = Primary;
+        btn.BackColor = Color.Transparent;
+        btn.FlatStyle = FlatStyle.Flat;
+        btn.FlatAppearance.BorderSize = 0;
+        btn.Cursor = Cursors.Hand;
+        btn.Height = 32;
+
+        btn.MouseEnter += (s, e) => btn.BackColor = PrimarySubtle;
+        btn.MouseLeave += (s, e) => btn.BackColor = Color.Transparent;
+    }
+
     public static Panel CreateKpiCard(string title, string value, string note, Color accentColor)
+    {
+        return CreateKpiCard(title, value, note, accentColor, out _, out _);
+    }
+
+    public static Panel CreateKpiCard(string title, string value, string note, Color accentColor, out Label lblValue, out Label lblNote)
     {
         var card = new Panel
         {
@@ -205,7 +271,7 @@ public static class AppTheme
             AutoSize = true
         };
 
-        var lblValue = new Label
+        lblValue = new Label
         {
             Text = value,
             Font = FontKpi,
@@ -214,7 +280,7 @@ public static class AppTheme
             AutoSize = true
         };
 
-        var lblNote = new Label
+        lblNote = new Label
         {
             Text = note,
             Font = FontCaption,

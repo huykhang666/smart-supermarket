@@ -36,8 +36,10 @@ public class CreateImportReceiptForm : Form
     private void LoadSuppliers()
     {
         cbSupplier.Items.Clear();
-        cbSupplier.Items.Add(new SupplierItem { Id = 1, Name = "Công ty TNHH Coca-Cola Việt Nam" });
-        cbSupplier.Items.Add(new SupplierItem { Id = 2, Name = "Công ty Cổ phần Sữa Vinamilk" });
+        foreach (var s in DataStore.Suppliers)
+        {
+            cbSupplier.Items.Add(new SupplierItem { Id = s.SupplierId, Name = s.SupplierName });
+        }
         cbSupplier.DisplayMember = "Name";
         cbSupplier.ValueMember = "Id";
         if (cbSupplier.Items.Count > 0)
@@ -49,47 +51,49 @@ public class CreateImportReceiptForm : Form
     private void InitializeComponent()
     {
         this.Text = "Tạo Phiếu Nhập Hàng Mới";
-        this.Size = new Size(400, 300);
+        this.Size = new Size(420, 310);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
         this.MinimizeBox = false;
-        this.BackColor = Color.White;
+        this.BackColor = AppTheme.SurfaceWhite;
+        this.Font = AppTheme.FontBody;
 
-        Label lblSupplier = new Label { Text = "Nhà cung cấp:", Location = new Point(20, 30), AutoSize = true };
+        Label lblSupplier = new Label { Text = "Nhà cung cấp:", Font = AppTheme.FontBodyBold, Location = new Point(24, 20), AutoSize = true, ForeColor = AppTheme.TextPrimary };
         cbSupplier = new ComboBox
         {
-            Location = new Point(20, 55),
-            Size = new Size(340, 30),
+            Location = new Point(24, 46),
+            Size = new Size(355, 32),
+            Font = AppTheme.FontBody,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
 
-        Label lblNote = new Label { Text = "Ghi chú:", Location = new Point(20, 100), AutoSize = true };
+        Label lblNote = new Label { Text = "Ghi chú:", Font = AppTheme.FontBodyBold, Location = new Point(24, 90), AutoSize = true, ForeColor = AppTheme.TextPrimary };
         txtNote = new TextBox
         {
-            Location = new Point(20, 125),
-            Size = new Size(340, 60),
-            Multiline = true
+            Location = new Point(24, 114),
+            Size = new Size(355, 65),
+            Font = AppTheme.FontBody,
+            Multiline = true,
+            BorderStyle = BorderStyle.FixedSingle
         };
 
         btnCreate = new Button
         {
             Text = "Tạo Phiếu Nháp",
-            BackColor = Color.FromArgb(56, 158, 13),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Location = new Point(140, 210),
-            Size = new Size(130, 35)
+            Location = new Point(165, 200),
+            Size = new Size(130, 32)
         };
+        AppTheme.ApplyPrimaryButton(btnCreate);
         btnCreate.Click += BtnCreate_Click;
 
         btnCancel = new Button
         {
             Text = "Hủy",
-            FlatStyle = FlatStyle.Flat,
-            Location = new Point(280, 210),
-            Size = new Size(80, 35)
+            Location = new Point(305, 200),
+            Size = new Size(74, 32)
         };
+        AppTheme.ApplySecondaryButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
 
         this.Controls.Add(lblSupplier);

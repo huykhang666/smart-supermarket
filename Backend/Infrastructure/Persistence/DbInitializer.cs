@@ -99,85 +99,7 @@ public static class DbInitializer
             await dbContext.SaveChangesAsync();
         }
 
-        // 11. Seed DiscountRule for Inventory Module
-        try
-        {
-            if (!await dbContext.DiscountRules.AnyAsync())
-            {
-                var rule1 = new DiscountRule
-                {
-                    DaysBeforeExpiry = 7,
-                    DiscountPercent = 50.00m,
-                    Description = "Còn ≤ 7 ngày HSD — Giảm 50%",
-                    IsActive = true
-                };
-
-                var rule2 = new DiscountRule
-                {
-                    DaysBeforeExpiry = 15,
-                    DiscountPercent = 20.00m,
-                    Description = "Còn ≤ 15 ngày HSD — Giảm 20%",
-                    IsActive = true
-                };
-
-                await dbContext.DiscountRules.AddRangeAsync(rule1, rule2);
-                await dbContext.SaveChangesAsync();
-            }
-        }
-        catch { }
-
-        // 12. Seed sample Promotions / Vouchers
-        if (!await dbContext.Promotions.AnyAsync())
-        {
-            var now = DateTime.UtcNow;
-            var samplePromotions = new[]
-            {
-                new Promotion
-                {
-                    PromotionCode = "KATQ10",
-                    PromotionName = "Giảm 10% Đơn Hàng Siêu Thị",
-                    Description = "Áp dụng cho đơn hàng từ 200.000 VNĐ",
-                    DiscountType = "Percentage",
-                    DiscountValue = 10m,
-                    MinimumOrderAmount = 200000m,
-                    MaximumDiscountAmount = 100000m,
-                    StartDate = now.AddDays(-5),
-                    EndDate = now.AddDays(60),
-                    IsActive = true,
-                    CreatedAt = now
-                },
-                new Promotion
-                {
-                    PromotionCode = "FREESHIP",
-                    PromotionName = "Miễn Phí Giao Hàng Bán Lẻ",
-                    Description = "Giảm 30.000 VNĐ cho đơn hàng từ 500.000 VNĐ",
-                    DiscountType = "FixedAmount",
-                    DiscountValue = 30000m,
-                    MinimumOrderAmount = 500000m,
-                    MaximumDiscountAmount = null,
-                    StartDate = now.AddDays(-2),
-                    EndDate = now.AddDays(90),
-                    IsActive = true,
-                    CreatedAt = now
-                },
-                new Promotion
-                {
-                    PromotionCode = "CHAOHETUAN",
-                    PromotionName = "Voucher Chào Hè Tuần",
-                    Description = "Giảm 50.000 VNĐ cho đơn hàng từ 1.000.000 VNĐ",
-                    DiscountType = "FixedAmount",
-                    DiscountValue = 50000m,
-                    MinimumOrderAmount = 1000000m,
-                    MaximumDiscountAmount = null,
-                    StartDate = now.AddDays(-1),
-                    EndDate = now.AddDays(30),
-                    IsActive = true,
-                    CreatedAt = now
-                }
-            };
-            await dbContext.Promotions.AddRangeAsync(samplePromotions);
-            await dbContext.SaveChangesAsync();
-        }
+        // 11. Discount rules & Promotions: Left completely empty (0 fake/sample records)
     }
 
     public static async Task ResetFullDatabaseAsync(AppDbContext dbContext)
@@ -333,6 +255,14 @@ public static class DbInitializer
                     ""Status"" INT NOT NULL DEFAULT 1,
                     ""PaymentMethod"" INT NOT NULL DEFAULT 1
                 );
+
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""PaymentMethod"" INT NOT NULL DEFAULT 1;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""EmployeeId"" INT NOT NULL DEFAULT 1;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""CustomerId"" INT NULL;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""BranchId"" INT NOT NULL DEFAULT 1;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""DiscountAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""VoucherId"" INT NULL;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""FinalAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0;
 
                 CREATE TABLE IF NOT EXISTS ""Promotions"" (
                     ""PromotionId"" SERIAL PRIMARY KEY,

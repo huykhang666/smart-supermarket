@@ -1,130 +1,156 @@
 using System;
 using System.Drawing;
-using System.Net.Http;
-using System.Text.Json;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using FontAwesome.Sharp;
 
 namespace Desktop.Views;
 
 public class InventoryView : UserControl
 {
-    private Panel pnlHeader = null!;
-    private TextBox txtSearch = null!;
-    private ComboBox cboWarehouse = null!;
-    private DataGridView dgvInventory = null!;
-    private readonly HttpClient _httpClient = new();
-    private readonly string _apiBaseUrl = "http://localhost:5137";
+    private TabControl tabInventory = null!;
+    private TabPage tabStockList = null!;
+    private TabPage tabAudit = null!;
+    private TabPage tabExpiry = null!;
+    private TabPage tabTransfer = null!;
 
     public InventoryView()
     {
         InitializeComponent();
-        _ = LoadDataAsync();
+        LoadStockData();
     }
 
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
-        this.BackColor = ThemeManager.Background;
-        this.Padding = new Padding(20);
+        this.BackColor = AppTheme.BackgroundGray;
+        this.Padding = new Padding(24);
 
-        // Header Panel
-        pnlHeader = new Panel
+        // --- 1. Page Header ---
+        var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 75,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(15),
-            Margin = new Padding(0, 0, 0, 15)
+            Height = 55,
+            BackColor = Color.Transparent
         };
-        ThemeManager.ApplyCardPanel(pnlHeader);
 
         var lblTitle = new Label
         {
-            Text = "🏬 QUẢN LÝ TỒN KHO & LÔ HÀNG (INVENTORY & BATCHES)",
-            Font = ThemeManager.HeaderFont,
-            ForeColor = ThemeManager.PrimaryHover,
-            Location = new Point(15, 12),
+            Text = "📦 Quản Lý Kho Hàng & Hạn Sử Dụng (Warehouse ERP)",
+            Font = AppTheme.FontH1,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(0, 4),
             AutoSize = true
         };
 
-        cboWarehouse = new ComboBox
+        var lblSub = new Label
         {
-            Font = ThemeManager.BodyFont,
-            Size = new Size(180, 32),
-            Location = new Point(15, 38),
-            DropDownStyle = ComboBoxStyle.DropDownList
-        };
-        cboWarehouse.Items.AddRange(new[] { "Kho Tổng Siêu Thị", "Kệ Hàng A1 - A5", "Kho Lạnh Thực Phẩm" });
-        cboWarehouse.SelectedIndex = 0;
-
-        txtSearch = new TextBox
-        {
-            Font = ThemeManager.BodyFont,
-            Size = new Size(280, 32),
-            Location = new Point(210, 38),
-            PlaceholderText = "🔍 Tìm tên sản phẩm / Mã lô...",
-            BorderStyle = BorderStyle.FixedSingle
+            Text = "Kiểm soát lượng tồn thực tế, theo dõi date hàng nhập, phân vùng kệ hàng và điều phối kho nội bộ",
+            Font = AppTheme.FontCaption,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(2, 34),
+            AutoSize = true
         };
 
         pnlHeader.Controls.Add(lblTitle);
-        pnlHeader.Controls.Add(cboWarehouse);
-        pnlHeader.Controls.Add(txtSearch);
+        pnlHeader.Controls.Add(lblSub);
 
-        // DataGridView
-        dgvInventory = new DataGridView();
-        ThemeManager.ApplyGridStyle(dgvInventory);
+        // --- 2. Dashboard Nhỏ: 4 KPI Cards (Tổng sản phẩm 0, Hết hàng 0, Sắp hết 0, HSD ≤ 5 ngày 0) ---
+        var pnlKpis = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 105,
+            ColumnCount = 4,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 8, 0, 8)
+        };
+        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        dgvInventory.Columns.Add("BatchCode", "Mã Lô Hàng");
-        dgvInventory.Columns.Add("ProductName", "Tên Sản Phẩm");
-        dgvInventory.Columns.Add("Quantity", "Số Lượng Tồn");
-        dgvInventory.Columns.Add("ExpiryDate", "Hạn Sử Dụng");
-        dgvInventory.Columns.Add("Location", "Vị Trí Kệ");
-        dgvInventory.Columns.Add("Status", "Trạng Thái Cảnh Báo");
+        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("TỔNG SẢN PHẨM KHO", "0", "📦 Toàn bộ SKU đang lưu", AppTheme.Primary), 0, 0);
+        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("HẾT HÀNG TỒN QUẦY", "0", "🔴 Cần châm hàng ngay", AppTheme.Danger), 1, 0);
+        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("SẮP HẾT HÀNG", "0", "⚠️ Dưới mức tồn an toàn", AppTheme.Warning), 2, 0);
+        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("CẬN HSD (≤ 5 NGÀY)", "0", "⏳ Cần xả hàng / dán tem", AppTheme.Warning), 3, 0);
 
-        var pnlGridContainer = new Panel
+        // --- 3. TabControl Kho (Danh sách tồn, Kiểm kê, HSD, Chuyển kho) ---
+        tabInventory = new TabControl
         {
             Dock = DockStyle.Fill,
-            BackColor = ThemeManager.CardBg,
-            Padding = new Padding(10)
+            Font = AppTheme.FontBodyBold
         };
-        ThemeManager.ApplyCardPanel(pnlGridContainer);
-        pnlGridContainer.Controls.Add(dgvInventory);
 
-        this.Controls.Add(pnlGridContainer);
+        tabStockList = new TabPage("📋 Danh Sách Tồn Kho");
+        tabAudit = new TabPage("🔍 Kiểm Kê Nhanh");
+        tabExpiry = new TabPage("⏳ Cảnh Báo Hạn Sử Dụng (HSD)");
+        tabTransfer = new TabPage("🔄 Chuyển Kho Nội Bộ");
+
+        BuildStockListTab();
+        BuildExpiryTab();
+        BuildTransferTab();
+
+        // Integrate StockAuditView into tabAudit
+        var auditControl = new StockAuditView { Dock = DockStyle.Fill, Padding = new Padding(12) };
+        tabAudit.Controls.Add(auditControl);
+
+        tabInventory.TabPages.Add(tabStockList);
+        tabInventory.TabPages.Add(tabAudit);
+        tabInventory.TabPages.Add(tabExpiry);
+        tabInventory.TabPages.Add(tabTransfer);
+
+        this.Controls.Add(tabInventory);
+        this.Controls.Add(pnlKpis);
         this.Controls.Add(pnlHeader);
     }
 
-    private async Task LoadDataAsync()
+    private void BuildStockListTab()
     {
-        try
-        {
-            dgvInventory.Rows.Clear();
-            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/inventory/batches");
-            if (response.IsSuccessStatusCode)
-            {
-                var json = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("data", out var dataElem))
-                {
-                    foreach (var item in dataElem.EnumerateArray())
-                    {
-                        string code = item.TryGetProperty("batchCode", out var c) ? c.GetString() ?? "" : "";
-                        string name = item.TryGetProperty("productName", out var n) ? n.GetString() ?? "" : "";
-                        string qty = item.TryGetProperty("quantity", out var q) ? q.GetString() ?? "" : "";
-                        string exp = item.TryGetProperty("expiryDate", out var e) ? e.GetString() ?? "" : "";
-                        string loc = item.TryGetProperty("location", out var l) ? l.GetString() ?? "" : "";
-                        string st = item.TryGetProperty("status", out var s) ? s.GetString() ?? "" : "";
+        var dgv = new DataGridView();
+        AppTheme.ApplyGridStyle(dgv);
+        dgv.Dock = DockStyle.Fill;
+        dgv.Columns.Add("Barcode", "Mã Barcode");
+        dgv.Columns.Add("Name", "Tên Sản Phẩm");
+        dgv.Columns.Add("Stock", "Số Lượng Tồn");
+        dgv.Columns.Add("Location", "Vị Trí Kệ");
+        dgv.Columns.Add("Status", "Trạng Thái");
 
-                        dgvInventory.Rows.Add(code, name, qty, exp, loc, st);
-                    }
-                }
-            }
+        tabStockList.Controls.Add(dgv);
+    }
 
-        }
-        catch
+    private void BuildExpiryTab()
+    {
+        var dgv = new DataGridView();
+        AppTheme.ApplyGridStyle(dgv);
+        dgv.Dock = DockStyle.Fill;
+        dgv.Columns.Add("Batch", "Mã Lô Hàng");
+        dgv.Columns.Add("Name", "Tên Sản Phẩm");
+        dgv.Columns.Add("Qty", "SL Còn Lại");
+        dgv.Columns.Add("ExpiryDate", "Hạn Sử Dụng");
+        dgv.Columns.Add("DaysLeft", "Số Ngày Còn Lại");
+        dgv.Columns.Add("Action", "Khuyến Nghị AI");
+
+        tabExpiry.Controls.Add(dgv);
+    }
+
+    private void BuildTransferTab()
+    {
+        var pnl = new Panel { Dock = DockStyle.Fill, BackColor = AppTheme.SurfaceWhite, Padding = new Padding(24) };
+        var lblInfo = new Label
         {
-            // Graceful fallback
-        }
+            Text = "🔄 Chức Năng Điều Chuyển Hàng Nội Bộ (Kho Tổng → Kho Bán Lẻ Quầy):\n\n" +
+                   "• Hỗ trợ tạo phiếu điều chuyển hàng hóa từ Kho lưu trữ tầng hầm lên quầy kệ trưng bày POS.\n" +
+                   "• Cập nhật số liệu tức thì giữa các phân khu trong siêu thị.\n\n" +
+                   "Hiện tại kho quầy đang ở trạng thái ổn định.",
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextPrimary,
+            Dock = DockStyle.Fill
+        };
+        pnl.Controls.Add(lblInfo);
+        tabTransfer.Controls.Add(pnl);
+    }
+
+    private void LoadStockData()
+    {
     }
 }

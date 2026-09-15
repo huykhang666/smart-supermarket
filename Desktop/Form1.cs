@@ -22,7 +22,7 @@ public class CartItem
     public string ImageUrl { get; set; } = string.Empty;
     public int StockQuantity { get; set; } = 100;
     public int Quantity { get; set; } = 1;
-    public double VatRate { get; set; } = 0.10; // 10% VAT
+    public double VatRate { get; set; } = 0.08; // 8% VAT
     public decimal SubTotal => Price * Quantity;
     public decimal VatAmount => SubTotal * (decimal)VatRate;
     public decimal TotalAmount => SubTotal + VatAmount;
@@ -614,7 +614,7 @@ public partial class Form1 : Form
         lblProductName.Text = item.ProductName;
         lblBarcode.Text = $"Barcode: {item.Barcode}";
         lblPrice.Text = $"Đơn giá: {item.Price:N0} VNĐ / {item.Unit}";
-        lblVat.Text = $"VAT (10%): {item.Price * 0.1m:N0} VNĐ";
+        lblVat.Text = $"VAT (8%): {item.Price * 0.08m:N0} VNĐ";
         lblStock.Text = $"Tồn kho: {item.StockQuantity} {item.Unit}";
 
         // Draw simple visual thumbnail icon on PictureBox
@@ -656,7 +656,7 @@ public partial class Form1 : Form
 
         lblItemCount.Text = $"Tổng mặt hàng: {_cartItems.Count} sản phẩm ({totalItems} món)";
         lblSubTotal.Text = $"Tiền hàng (chưa VAT): {subTotal:N0} VNĐ";
-        lblTotalVat.Text = $"Thuế VAT (10%): {totalVat:N0} VNĐ";
+        lblTotalVat.Text = $"Thuế VAT (8%): {totalVat:N0} VNĐ";
         lblGrandTotal.Text = $"{(subTotal + totalVat):N0} VNĐ";
     }
 

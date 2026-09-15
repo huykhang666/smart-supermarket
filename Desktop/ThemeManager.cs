@@ -38,8 +38,8 @@ public static class ThemeManager
     public static void ApplyCardPanel(Panel panel) => AppTheme.ApplyCardPanel(panel);
     public static void ApplyRoundedCardPanel(Panel panel, int radius = 8) => AppTheme.ApplyCardPanel(panel, radius);
     public static void ApplyPrimaryButton(Button btn) => AppTheme.ApplyPrimaryButton(btn);
-    public static void ApplySecondaryButton(Button btn) => AppTheme.ApplyOutlineButton(btn);
-    public static void ApplyDangerButton(Button btn) => AppTheme.ApplyOutlineButton(btn);
+    public static void ApplySecondaryButton(Button btn) => AppTheme.ApplySecondaryButton(btn);
+    public static void ApplyDangerButton(Button btn) => AppTheme.ApplyDangerButton(btn);
     public static Panel CreateKpiStatCard(string title, string value, string badgeText, Color badgeColor) => AppTheme.CreateKpiCard(title, value, badgeText, badgeColor);
     public static GraphicsPath GetRoundedPath(Rectangle rect, int radius) => AppTheme.GetRoundedPath(rect, radius);
 }
