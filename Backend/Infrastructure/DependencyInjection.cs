@@ -31,7 +31,7 @@ public static class DependencyInjection
         // Register EF Core DbContext with PostgreSQL
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString)
+            options.UseInMemoryDatabase("SmartSupermarketDb")
                    .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         // Register Security Services & JWT Authentication / Authorization
@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IDiscountRuleRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.DiscountRuleRepository>();
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IInventoryService, SmartSupermarket.Backend.Features.Inventory.Services.InventoryService>();
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IDiscountRuleService, SmartSupermarket.Backend.Features.Inventory.Services.DiscountRuleService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IStockAuditService, SmartSupermarket.Backend.Features.Inventory.Services.StockAuditService>();
 
         // Module 06_Import
         services.AddScoped<SmartSupermarket.Backend.Features.Import.Repositories.IImportReceiptRepository, SmartSupermarket.Backend.Features.Import.Repositories.ImportReceiptRepository>();

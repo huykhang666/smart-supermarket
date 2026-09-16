@@ -104,9 +104,20 @@ public class StockAuditView : UserControl
             Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
         AppTheme.ApplyPrimaryButton(btnCompleteAudit);
-        btnCompleteAudit.Click += (s, e) =>
+        btnCompleteAudit.Click += async (s, e) =>
         {
-            MessageBox.Show("✅ Đã chốt và lưu biên bản kiểm kê kho thành công!\nDữ liệu tồn kho hệ thống đã được đồng bộ lại.", "Hoàn tất kiểm kê", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (_currentAuditId == null) return;
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                var resp = await http.PostAsync($"http://localhost:5137/api/stock-audit/{_currentAuditId}/complete", null);
+                if (resp.IsSuccessStatusCode)
+                {
+                    MessageBox.Show("✅ Đã chốt và lưu biên bản kiểm kê kho thành công!\nTrạng thái đã chuyển thành Completed.", "Hoàn tất kiểm kê", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LoadSampleAuditData(); // Tạo draft mới
+                }
+            }
+            catch { }
         };
 
         pnlToolbar.Controls.Add(lblZone);
@@ -160,15 +171,36 @@ public class StockAuditView : UserControl
         this.Controls.Add(pnlHeader);
     }
 
-    private void LoadSampleAuditData()
+    private Guid? _currentAuditId;
+
+    private async void LoadSampleAuditData()
     {
+        try
+        {
+            var req = new { CreatedBy = "NV-8821", Zone = "Default", Notes = "" };
+            var json = System.Text.Json.JsonSerializer.Serialize(req);
+            var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            using var http = new System.Net.Http.HttpClient();
+            var resp = await http.PostAsync("http://localhost:5137/api/stock-audit", content);
+            
+            if (resp.IsSuccessStatusCode)
+            {
+                var respStr = await resp.Content.ReadAsStringAsync();
+                var doc = System.Text.Json.JsonDocument.Parse(respStr);
+                var idStr = doc.RootElement.GetProperty("id").GetString();
+                _currentAuditId = Guid.Parse(idStr!);
+            }
+        }
+        catch { }
+
         dgvAudit.Rows.Clear();
         lblTotalChecked.Text = "Tổng sản phẩm đã kiểm: 0 mặt hàng  |  ";
         lblMatchCount.Text = "Khớp tồn: 0  |  ";
         lblDiffCount.Text = "Chênh lệch: 0";
     }
 
-    private void ProcessScan()
+    private async void ProcessScan()
     {
         string code = txtBarcodeScan.Text.Trim();
         if (string.IsNullOrEmpty(code))
@@ -176,25 +208,64 @@ public class StockAuditView : UserControl
             code = "893456011111"; // Default quick test
         }
 
-        bool found = false;
+        if (_currentAuditId == null) return;
+
+        int currentAct = 1;
         foreach (DataGridViewRow row in dgvAudit.Rows)
         {
             if (row.Cells["Barcode"].Value?.ToString() == code)
             {
-                found = true;
-                string currentAct = row.Cells["ActualQty"].Value?.ToString() ?? "0";
-                int num = int.TryParse(currentAct.Replace(" lon", "").Replace(" gói", "").Replace(" hộp", "").Trim(), out var n) ? n : 0;
-                num++;
-                row.Cells["ActualQty"].Value = $"{num}";
-                AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã kiểm đếm +1 cho {row.Cells["Name"].Value}");
+                string act = row.Cells["ActualQty"].Value?.ToString() ?? "0";
+                int.TryParse(act, out int n);
+                currentAct = n + 1;
                 break;
             }
         }
 
-        if (!found)
+        try
         {
-            AntdUI.Message.warn(this.FindForm() ?? new Form(), $"Mã vạch {code} chưa có trong danh mục kiểm kê kệ này!");
+            var req = new { Barcode = code, ActualQty = currentAct };
+            var json = System.Text.Json.JsonSerializer.Serialize(req);
+            var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            using var http = new System.Net.Http.HttpClient();
+            var resp = await http.PostAsync($"http://localhost:5137/api/stock-audit/{_currentAuditId}/details", content);
+            
+            if (resp.IsSuccessStatusCode)
+            {
+                var respStr = await resp.Content.ReadAsStringAsync();
+                var doc = System.Text.Json.JsonDocument.Parse(respStr);
+                var details = doc.RootElement.GetProperty("details").EnumerateArray();
+                
+                dgvAudit.Rows.Clear();
+                int match = 0, diff = 0;
+
+                foreach(var d in details)
+                {
+                    string bar = d.GetProperty("barcode").GetString() ?? "";
+                    string name = d.GetProperty("productName").GetString() ?? "";
+                    int sys = d.GetProperty("systemQty").GetInt32();
+                    int act = d.GetProperty("actualQty").GetInt32();
+                    int dif = d.GetProperty("varianceQty").GetInt32();
+                    string stat = dif == 0 ? "✅ Khớp" : (dif > 0 ? "⚠️ Thừa" : "❌ Thiếu");
+
+                    dgvAudit.Rows.Add(bar, name, sys, act, dif, stat);
+
+                    if (dif == 0) match++; else diff++;
+                }
+
+                lblTotalChecked.Text = $"Tổng sản phẩm đã kiểm: {dgvAudit.Rows.Count} mặt hàng  |  ";
+                lblMatchCount.Text = $"Khớp tồn: {match}  |  ";
+                lblDiffCount.Text = $"Chênh lệch: {diff}";
+
+                AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã kiểm đếm +1 cho mã {code}");
+            }
+            else
+            {
+                AntdUI.Message.error(this.FindForm() ?? new Form(), $"Mã vạch {code} chưa có trong hệ thống!");
+            }
         }
+        catch { }
 
         txtBarcodeScan.Clear();
         txtBarcodeScan.Focus();

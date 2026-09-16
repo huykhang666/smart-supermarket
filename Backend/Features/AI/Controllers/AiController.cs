@@ -42,4 +42,11 @@ public class AiController : ControllerBase
         var result = await _aiService.GenerateProductAnalysisAsync(request, cancellationToken);
         return Ok(ApiResult<AiResponse>.Success(result, "AI phân tích sản phẩm thành công"));
     }
+
+    [HttpPost("expiry-markdown")]
+    public async Task<ActionResult<ApiResult<AiResponse>>> ExpiryMarkdown(CancellationToken cancellationToken = default)
+    {
+        var result = await _aiService.GenerateExpiryMarkdownAsync(cancellationToken);
+        return Ok(ApiResult<AiResponse>.Success(result, "AI đề xuất giảm giá hàng cận date thành công"));
+    }
 }

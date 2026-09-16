@@ -120,6 +120,17 @@ public class InventoryView : UserControl
 
     private void BuildExpiryTab()
     {
+        var pnlTop = new Panel { Dock = DockStyle.Top, Height = 60, Padding = new Padding(10) };
+        var btnAiInsights = new Button
+        {
+            Text = "🤖 Phân tích AI Gợi Ý Cận Date",
+            Size = new Size(240, 40),
+            Location = new Point(10, 10),
+            Cursor = Cursors.Hand
+        };
+        AppTheme.ApplyPrimaryButton(btnAiInsights);
+        pnlTop.Controls.Add(btnAiInsights);
+
         var dgv = new DataGridView();
         AppTheme.ApplyGridStyle(dgv);
         dgv.Dock = DockStyle.Fill;
@@ -130,7 +141,42 @@ public class InventoryView : UserControl
         dgv.Columns.Add("DaysLeft", "Số Ngày Còn Lại");
         dgv.Columns.Add("Action", "Khuyến Nghị AI");
 
+        btnAiInsights.Click += async (s, e) =>
+        {
+            try
+            {
+                btnAiInsights.Text = "⏳ Đang phân tích...";
+                btnAiInsights.Enabled = false;
+
+                using var http = new System.Net.Http.HttpClient();
+                var resp = await http.PostAsync("http://localhost:5137/api/v1/ai/expiry-markdown", null);
+                
+                if (resp.IsSuccessStatusCode)
+                {
+                    var json = await resp.Content.ReadAsStringAsync();
+                    var jsonObj = System.Text.Json.JsonDocument.Parse(json);
+                    string aiText = jsonObj.RootElement.GetProperty("data").GetProperty("content").GetString() ?? "";
+
+                    MessageBox.Show(aiText, "🤖 Báo Cáo AI", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Có lỗi xảy ra khi gọi AI", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi: {ex.Message}");
+            }
+            finally
+            {
+                btnAiInsights.Text = "🤖 Phân tích AI Gợi Ý Cận Date";
+                btnAiInsights.Enabled = true;
+            }
+        };
+
         tabExpiry.Controls.Add(dgv);
+        tabExpiry.Controls.Add(pnlTop);
     }
 
     private void BuildTransferTab()

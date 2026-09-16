@@ -35,6 +35,8 @@ public class AppDbContext : DbContext
     public DbSet<ImportInvoice> ImportInvoices => Set<ImportInvoice>();
     public DbSet<ImportInvoiceItem> ImportInvoiceItems => Set<ImportInvoiceItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<StockAudit> StockAudits => Set<StockAudit>();
+    public DbSet<StockAuditDetail> StockAuditDetails => Set<StockAuditDetail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

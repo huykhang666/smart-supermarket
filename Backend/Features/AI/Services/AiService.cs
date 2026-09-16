@@ -165,4 +165,46 @@ public class AiService : IAiService
         string content = await _gemini.GenerateAsync(prompt, cancellationToken);
         return new AiResponse { Content = content, Model = "gemini-1.5-flash" };
     }
+
+    public async Task<AiResponse> GenerateExpiryMarkdownAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var next30Days = now.AddDays(30);
+
+        var expiringBatches = await _dbContext.InventoryBatches
+            .Include(b => b.Product)
+            .Where(b => b.Quantity > 0 && b.ExpiryDate >= now && b.ExpiryDate <= next30Days)
+            .Select(b => new {
+                b.Product.ProductName,
+                b.Quantity,
+                b.ExpiryDate,
+                b.Product.Price,
+                DaysLeft = (b.ExpiryDate - now).TotalDays
+            })
+            .ToListAsync(cancellationToken);
+
+        if (!expiringBatches.Any())
+        {
+            return new AiResponse { Content = "Kho không có sản phẩm nào cận date trong 30 ngày tới.", Model = "gemini-1.5-flash" };
+        }
+
+        string dataPrompt = string.Join("\n", expiringBatches.Select(b => 
+            $"- {b.ProductName}: Tồn {b.Quantity}, Giá {b.Price}đ, Còn {(int)b.DaysLeft} ngày (Date: {b.ExpiryDate:dd/MM/yyyy})"));
+
+        string prompt = $"""
+            Bạn là một trợ lý AI quản trị kho của siêu thị.
+            Dưới đây là danh sách các mặt hàng CẬN DATE (trong vòng 30 ngày tới).
+            
+            {dataPrompt}
+
+            Hãy tạo một báo cáo Markdown:
+            1. Liệt kê các mặt hàng cần chú ý gấp nhất (ưu tiên thời gian còn ngắn và số lượng tồn nhiều).
+            2. Đề xuất chiến lược giảm giá (Ví dụ: còn < 3 ngày giảm 50%, còn < 10 ngày giảm 30%, hoặc mua 1 tặng 1).
+            3. Trình bày dưới dạng bảng (Markdown Table) có các cột: Sản phẩm, Tồn, Ngày hết hạn, Đề xuất Giảm giá %.
+            4. Trình bày rõ ràng, dễ đọc cho nhân viên.
+            """;
+
+        string content = await _gemini.GenerateAsync(prompt, cancellationToken);
+        return new AiResponse { Content = content, Model = "gemini-1.5-flash" };
+    }
 }

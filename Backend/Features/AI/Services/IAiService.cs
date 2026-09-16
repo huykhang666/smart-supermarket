@@ -7,4 +7,5 @@ public interface IAiService
     Task<AiResponse> GenerateImportForecastAsync(AiImportForecastRequest request, CancellationToken cancellationToken = default);
     Task<AiResponse> GenerateRevenueReportAsync(AiRevenueReportRequest request, CancellationToken cancellationToken = default);
     Task<AiResponse> GenerateProductAnalysisAsync(AiProductAnalysisRequest request, CancellationToken cancellationToken = default);
+    Task<AiResponse> GenerateExpiryMarkdownAsync(CancellationToken cancellationToken = default);
 }
