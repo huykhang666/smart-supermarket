@@ -17,6 +17,10 @@ using SmartSupermarket.Backend.Features.Orders.Repositories;
 using SmartSupermarket.Backend.Features.Orders.Services;
 using SmartSupermarket.Backend.Features.Promotions.Repositories;
 using SmartSupermarket.Backend.Features.Promotions.Services;
+using SmartSupermarket.Backend.Features.Customers.Repositories;
+using SmartSupermarket.Backend.Features.Customers.Services;
+using SmartSupermarket.Backend.Features.AI.Services;
+using SmartSupermarket.Backend.Infrastructure.External.AI;
 
 namespace SmartSupermarket.Backend.Infrastructure;
 
@@ -50,6 +54,10 @@ public static class DependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IPromotionService, PromotionService>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddSingleton<GeminiService>();
+        services.AddScoped<IAiService, AiService>();
 
         // Module 05_Inventory
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IInventoryRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.InventoryRepository>();

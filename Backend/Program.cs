@@ -1,4 +1,3 @@
-using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using SmartSupermarket.Backend.Infrastructure;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
