@@ -1,0 +1,2626 @@
+﻿==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Domain\Entities\Order.cs ====================
+using SmartSupermarket.Backend.Domain.Enums;
+
+namespace SmartSupermarket.Backend.Domain.Entities;
+
+public class Order
+{
+    public int OrderId { get; set; }
+    public int EmployeeId { get; set; }
+    public int? CustomerId { get; set; }
+    public int BranchId { get; set; }
+    public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+    public decimal TotalAmount { get; set; }
+    public decimal DiscountAmount { get; set; } = 0;
+    public int? VoucherId { get; set; }
+    public decimal FinalAmount { get; set; }
+    public OrderStatus Status { get; set; } = OrderStatus.Completed;
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+
+    // Navigation properties
+    public List<OrderDetail> OrderDetails { get; set; } = new();
+}
+
+public class OrderDetail
+{
+    public int OrderDetailId { get; set; }
+    public int OrderId { get; set; }
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal SubTotal { get; set; }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Domain\Entities\Promotion.cs ====================
+namespace SmartSupermarket.Backend.Domain.Entities;
+
+public class Promotion
+{
+    public int PromotionId { get; set; }
+    public string PromotionCode { get; set; } = string.Empty;
+    public string PromotionName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string DiscountType { get; set; } = "Percentage"; // "Percentage" or "FixedAmount"
+    public decimal DiscountValue { get; set; }
+    public decimal MinimumOrderAmount { get; set; } = 0;
+    public decimal? MaximumDiscountAmount { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Domain\Enums\OrderStatus.cs ====================
+namespace SmartSupermarket.Backend.Domain.Enums;
+
+public enum OrderStatus
+{
+    Completed = 1,
+    Cancelled = 2
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Orders\Controllers\OrderController.cs ====================
+using Microsoft.AspNetCore.Mvc;
+using SmartSupermarket.Backend.Common.Results;
+using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Orders.DTOs;
+using SmartSupermarket.Backend.Features.Orders.Services;
+
+namespace SmartSupermarket.Backend.Features.Orders.Controllers;
+
+[ApiController]
+[Route("api/v1/orders")]
+public class OrderController : ControllerBase
+{
+    private readonly IOrderService _orderService;
+
+    public OrderController(IOrderService orderService)
+    {
+        _orderService = orderService;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResult<OrderPagedResult>>> GetPaged(
+        [FromQuery] int? employeeId,
+        [FromQuery] int? customerId,
+        [FromQuery] OrderStatus? status,
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _orderService.GetPagedAsync(employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
+        return Ok(ApiResult<OrderPagedResult>.Success(result, "Lấy danh sách đơn hàng thành công"));
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ApiResult<OrderDto>>> GetById(int id, CancellationToken cancellationToken = default)
+    {
+        var order = await _orderService.GetByIdAsync(id, cancellationToken);
+        if (order == null)
+        {
+            return NotFound(ApiResult<OrderDto>.Failure($"Không tìm thấy đơn hàng có ID = {id}"));
+        }
+        return Ok(ApiResult<OrderDto>.Success(order, "Lấy thông tin đơn hàng thành công"));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResult<OrderDto>>> Create(
+        [FromBody] CreateOrderRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var created = await _orderService.CreateOrderAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = created.OrderId }, ApiResult<OrderDto>.Success(created, "Tạo đơn hàng thành công"));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResult<OrderDto>.Failure(ex.Message));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResult<OrderDto>.Failure(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResult<OrderDto>.Failure(ex.Message));
+        }
+    }
+
+    [HttpPost("{id:int}/cancel")]
+    public async Task<ActionResult<ApiResult<bool>>> Cancel(int id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var success = await _orderService.CancelOrderAsync(id, cancellationToken);
+            return Ok(ApiResult<bool>.Success(success, "Hủy đơn hàng thành công"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResult<bool>.Failure(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResult<bool>.Failure(ex.Message));
+        }
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Orders\DTOs\OrderDTOs.cs ====================
+using SmartSupermarket.Backend.Domain.Enums;
+
+namespace SmartSupermarket.Backend.Features.Orders.DTOs;
+
+public class OrderDto
+{
+    public int OrderId { get; set; }
+    public int EmployeeId { get; set; }
+    public string? EmployeeName { get; set; }
+    public int? CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+    public int BranchId { get; set; }
+    public DateTime OrderDate { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public int? VoucherId { get; set; }
+    public decimal FinalAmount { get; set; }
+    public OrderStatus Status { get; set; }
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public List<OrderDetailDto> OrderDetails { get; set; } = new();
+}
+
+public class OrderDetailDto
+{
+    public int OrderDetailId { get; set; }
+    public int OrderId { get; set; }
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public string Barcode { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal SubTotal { get; set; }
+}
+
+public class CreateOrderRequest
+{
+    public int EmployeeId { get; set; }
+    public int? CustomerId { get; set; }
+    public int BranchId { get; set; } = 1;
+    public int? VoucherId { get; set; }
+    /// <summary>Mã khuyến mãi nhập từ thu ngân POS (nếu có)</summary>
+    public string? PromotionCode { get; set; }
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public List<CreateOrderDetailRequest> Items { get; set; } = new();
+}
+
+public class CreateOrderDetailRequest
+{
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+}
+
+public class OrderPagedResult
+{
+    public IEnumerable<OrderDto> Items { get; set; } = new List<OrderDto>();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Orders\Repositories\IOrderRepository.cs ====================
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Domain.Enums;
+
+namespace SmartSupermarket.Backend.Features.Orders.Repositories;
+
+public interface IOrderRepository
+{
+    Task<Order?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
+        int? employeeId,
+        int? customerId,
+        OrderStatus? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+    Task AddAsync(Order order, CancellationToken cancellationToken = default);
+    void Update(Order order);
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Orders\Repositories\OrderRepository.cs ====================
+using Microsoft.EntityFrameworkCore;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Infrastructure.Persistence;
+
+namespace SmartSupermarket.Backend.Features.Orders.Repositories;
+
+public class OrderRepository : IOrderRepository
+{
+    private readonly AppDbContext _dbContext;
+
+    public OrderRepository(AppDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Order?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Orders
+            .Include(o => o.OrderDetails)
+            .FirstOrDefaultAsync(o => o.OrderId == id, cancellationToken);
+    }
+
+    public async Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
+        int? employeeId,
+        int? customerId,
+        OrderStatus? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Orders
+            .Include(o => o.OrderDetails)
+            .AsQueryable();
+
+        if (employeeId.HasValue)
+        {
+            query = query.Where(o => o.EmployeeId == employeeId.Value);
+        }
+
+        if (customerId.HasValue)
+        {
+            query = query.Where(o => o.CustomerId == customerId.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(o => o.Status == status.Value);
+        }
+
+        if (startDate.HasValue)
+        {
+            query = query.Where(o => o.OrderDate >= startDate.Value);
+        }
+
+        if (endDate.HasValue)
+        {
+            query = query.Where(o => o.OrderDate <= endDate.Value);
+        }
+
+        int totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(o => o.OrderDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task AddAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.Orders.AddAsync(order, cancellationToken);
+    }
+
+    public void Update(Order order)
+    {
+        _dbContext.Orders.Update(order);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Orders\Services\IOrderService.cs ====================
+using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Orders.DTOs;
+
+namespace SmartSupermarket.Backend.Features.Orders.Services;
+
+public interface IOrderService
+{
+    Task<OrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<OrderPagedResult> GetPagedAsync(
+        int? employeeId,
+        int? customerId,
+        OrderStatus? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+    Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default);
+    Task<bool> CancelOrderAsync(int orderId, CancellationToken cancellationToken = default);
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Orders\Services\OrderService.cs ====================
+using Microsoft.EntityFrameworkCore;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Orders.DTOs;
+using SmartSupermarket.Backend.Features.Orders.Repositories;
+using SmartSupermarket.Backend.Features.Inventory.Repositories;
+using SmartSupermarket.Backend.Features.Promotions.Repositories;
+using SmartSupermarket.Backend.Infrastructure.Persistence;
+
+namespace SmartSupermarket.Backend.Features.Orders.Services;
+
+public class OrderService : IOrderService
+{
+    private readonly IOrderRepository _orderRepository;
+    private readonly IInventoryRepository _inventoryRepository;
+    private readonly IPromotionRepository _promotionRepository;
+    private readonly AppDbContext _dbContext;
+
+    public OrderService(
+        IOrderRepository orderRepository,
+        IInventoryRepository inventoryRepository,
+        IPromotionRepository promotionRepository,
+        AppDbContext dbContext)
+    {
+        _orderRepository = orderRepository;
+        _inventoryRepository = inventoryRepository;
+        _promotionRepository = promotionRepository;
+        _dbContext = dbContext;
+    }
+
+    public async Task<OrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+        if (order == null) return null;
+
+        return await MapToDtoAsync(order, cancellationToken);
+    }
+
+    public async Task<OrderPagedResult> GetPagedAsync(
+        int? employeeId,
+        int? customerId,
+        OrderStatus? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var (items, totalCount) = await _orderRepository.GetPagedAsync(
+            employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
+
+        var dtos = new List<OrderDto>();
+        foreach (var order in items)
+        {
+            dtos.Add(await MapToDtoAsync(order, cancellationToken));
+        }
+
+        return new OrderPagedResult
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.Items == null || !request.Items.Any())
+        {
+            throw new ArgumentException("Đơn hàng phải chứa ít nhất một sản phẩm.");
+        }
+
+        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await _dbContext.Products
+            .Where(p => productIds.Contains(p.ProductId))
+            .ToDictionaryAsync(p => p.ProductId, cancellationToken);
+
+        foreach (var item in request.Items)
+        {
+            if (!products.TryGetValue(item.ProductId, out _))
+            {
+                throw new KeyNotFoundException($"Không tìm thấy sản phẩm có ID = {item.ProductId}");
+            }
+        }
+
+        var inventoryItems = new List<(Domain.Entities.Inventory Inv, int Qty)>();
+        foreach (var item in request.Items)
+        {
+            var inv = await _inventoryRepository.GetByProductAndBranchAsync(item.ProductId, request.BranchId);
+            if (inv == null || inv.QuantityOnHand < item.Quantity)
+            {
+                var productName = products[item.ProductId].ProductName;
+                int available = inv?.QuantityOnHand ?? 0;
+                throw new InvalidOperationException(
+                    $"Sản phẩm '{productName}' không đủ tồn kho. Cần {item.Quantity}, còn {available}.");
+            }
+            inventoryItems.Add((inv, item.Quantity));
+        }
+
+        decimal totalAmount = 0;
+        var orderDetails = new List<OrderDetail>();
+
+        foreach (var item in request.Items)
+        {
+            var product = products[item.ProductId];
+            decimal unitPrice = item.UnitPrice > 0 ? item.UnitPrice : product.Price;
+            decimal subTotal = unitPrice * item.Quantity;
+            totalAmount += subTotal;
+
+            orderDetails.Add(new OrderDetail
+            {
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                UnitPrice = unitPrice,
+                SubTotal = subTotal
+            });
+        }
+
+        decimal discountAmount = 0;
+        int? resolvedVoucherId = request.VoucherId;
+
+        if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+        {
+            var promotion = await _promotionRepository.GetByCodeAsync(request.PromotionCode, cancellationToken);
+            if (promotion != null && promotion.IsActive)
+            {
+                DateTime now = DateTime.UtcNow;
+                if (now >= promotion.StartDate && now <= promotion.EndDate
+                    && totalAmount >= promotion.MinimumOrderAmount)
+                {
+                    if (promotion.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+                    {
+                        discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                        if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                        {
+                            discountAmount = promotion.MaximumDiscountAmount.Value;
+                        }
+                    }
+                    else
+                    {
+                        discountAmount = promotion.DiscountValue;
+                    }
+
+                    if (discountAmount > totalAmount)
+                    {
+                        discountAmount = totalAmount;
+                    }
+
+                    resolvedVoucherId ??= promotion.PromotionId;
+                }
+            }
+        }
+
+        decimal finalAmount = totalAmount - discountAmount;
+
+        var order = new Order
+        {
+            EmployeeId = request.EmployeeId,
+            CustomerId = request.CustomerId,
+            BranchId = request.BranchId,
+            OrderDate = DateTime.UtcNow,
+            TotalAmount = totalAmount,
+            DiscountAmount = discountAmount,
+            VoucherId = resolvedVoucherId,
+            FinalAmount = finalAmount,
+            PaymentMethod = request.PaymentMethod,
+            Status = OrderStatus.Completed,
+            OrderDetails = orderDetails
+        };
+
+        await _orderRepository.AddAsync(order, cancellationToken);
+
+        foreach (var (inv, qty) in inventoryItems)
+        {
+            int qtyBefore = inv.QuantityOnHand;
+            inv.QuantityOnHand -= qty;
+            inv.LastUpdated = DateTime.UtcNow;
+            await _inventoryRepository.UpsertAsync(inv);
+
+            await _inventoryRepository.AddStockHistoryAsync(new StockHistory
+            {
+                ProductId = inv.ProductId,
+                BranchId = inv.BranchId,
+                ChangeType = StockChangeType.Sale,
+                QuantityChange = -qty,
+                QuantityBefore = qtyBefore,
+                QuantityAfter = inv.QuantityOnHand,
+                Note = $"Bán hàng - Đơn #{order.OrderId}",
+                CreatedByUserId = request.EmployeeId,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _inventoryRepository.SaveChangesAsync();
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return await MapToDtoAsync(order, cancellationToken);
+    }
+
+    public async Task<bool> CancelOrderAsync(int orderId, CancellationToken cancellationToken = default)
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken);
+        if (order == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy đơn hàng có ID = {orderId}");
+        }
+
+        if (order.Status == OrderStatus.Cancelled)
+        {
+            throw new InvalidOperationException("Đơn hàng đã được hủy trước đó.");
+        }
+
+        order.Status = OrderStatus.Cancelled;
+        _orderRepository.Update(order);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    private async Task<OrderDto> MapToDtoAsync(Order order, CancellationToken cancellationToken)
+    {
+        var productIds = order.OrderDetails.Select(od => od.ProductId).Distinct().ToList();
+        var products = await _dbContext.Products
+            .Where(p => productIds.Contains(p.ProductId))
+            .ToDictionaryAsync(p => p.ProductId, cancellationToken);
+
+        string? employeeName = null;
+        if (order.EmployeeId > 0)
+        {
+            var user = await _dbContext.Users.FindAsync(new object[] { order.EmployeeId }, cancellationToken);
+            employeeName = user?.FullName;
+        }
+
+        string? customerName = null;
+        if (order.CustomerId.HasValue)
+        {
+            var customer = await _dbContext.Customers
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId.Value, cancellationToken);
+            customerName = customer?.User?.FullName;
+        }
+
+        var detailDtos = order.OrderDetails.Select(od =>
+        {
+            products.TryGetValue(od.ProductId, out var p);
+            return new OrderDetailDto
+            {
+                OrderDetailId = od.OrderDetailId,
+                OrderId = od.OrderId,
+                ProductId = od.ProductId,
+                ProductName = p?.ProductName ?? string.Empty,
+                Barcode = p?.Barcode ?? string.Empty,
+                Unit = p?.Unit ?? string.Empty,
+                Quantity = od.Quantity,
+                UnitPrice = od.UnitPrice,
+                SubTotal = od.SubTotal
+            };
+        }).ToList();
+
+        return new OrderDto
+        {
+            OrderId = order.OrderId,
+            EmployeeId = order.EmployeeId,
+            EmployeeName = employeeName,
+            CustomerId = order.CustomerId,
+            CustomerName = customerName,
+            BranchId = order.BranchId,
+            OrderDate = order.OrderDate,
+            TotalAmount = order.TotalAmount,
+            DiscountAmount = order.DiscountAmount,
+            VoucherId = order.VoucherId,
+            FinalAmount = order.FinalAmount,
+            PaymentMethod = order.PaymentMethod,
+            Status = order.Status,
+            OrderDetails = detailDtos
+        };
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Promotions\Controllers\PromotionController.cs ====================
+using Microsoft.AspNetCore.Mvc;
+using SmartSupermarket.Backend.Common.Results;
+using SmartSupermarket.Backend.Features.Promotions.DTOs;
+using SmartSupermarket.Backend.Features.Promotions.Services;
+
+namespace SmartSupermarket.Backend.Features.Promotions.Controllers;
+
+[ApiController]
+[Route("api/v1/promotions")]
+public class PromotionController : ControllerBase
+{
+    private readonly IPromotionService _promotionService;
+
+    public PromotionController(IPromotionService promotionService)
+    {
+        _promotionService = promotionService;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResult<PromotionPagedResult>>> GetPaged(
+        [FromQuery] string? search,
+        [FromQuery] bool? isActive,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _promotionService.GetPagedAsync(search, isActive, page, pageSize, cancellationToken);
+        return Ok(ApiResult<PromotionPagedResult>.Success(result, "Lấy danh sách khuyến mãi thành công"));
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ApiResult<PromotionDto>>> GetById(int id, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionService.GetByIdAsync(id, cancellationToken);
+        if (promotion == null)
+        {
+            return NotFound(ApiResult<PromotionDto>.Failure($"Không tìm thấy khuyến mãi có ID = {id}"));
+        }
+        return Ok(ApiResult<PromotionDto>.Success(promotion, "Lấy thông tin khuyến mãi thành công"));
+    }
+
+    [HttpGet("code/{code}")]
+    public async Task<ActionResult<ApiResult<PromotionDto>>> GetByCode(string code, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionService.GetByCodeAsync(code, cancellationToken);
+        if (promotion == null)
+        {
+            return NotFound(ApiResult<PromotionDto>.Failure($"Không tìm thấy khuyến mãi có mã '{code}'"));
+        }
+        return Ok(ApiResult<PromotionDto>.Success(promotion, "Lấy thông tin khuyến mãi thành công"));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResult<PromotionDto>>> Create(
+        [FromBody] CreatePromotionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var created = await _promotionService.CreateAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = created.PromotionId }, ApiResult<PromotionDto>.Success(created, "Tạo khuyến mãi thành công"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResult<PromotionDto>.Failure(ex.Message));
+        }
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ApiResult<PromotionDto>>> Update(
+        int id,
+        [FromBody] UpdatePromotionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var updated = await _promotionService.UpdateAsync(id, request, cancellationToken);
+            return Ok(ApiResult<PromotionDto>.Success(updated, "Cập nhật khuyến mãi thành công"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResult<PromotionDto>.Failure(ex.Message));
+        }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<ApiResult<bool>>> Delete(int id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var success = await _promotionService.DeleteAsync(id, cancellationToken);
+            return Ok(ApiResult<bool>.Success(success, "Xóa khuyến mãi thành công"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResult<bool>.Failure(ex.Message));
+        }
+    }
+
+    [HttpPost("apply")]
+    public async Task<ActionResult<ApiResult<ApplyPromotionResponse>>> Apply(
+        [FromBody] ApplyPromotionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _promotionService.ApplyPromotionAsync(request, cancellationToken);
+        return Ok(ApiResult<ApplyPromotionResponse>.Success(result, result.Message));
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Promotions\DTOs\PromotionDTOs.cs ====================
+namespace SmartSupermarket.Backend.Features.Promotions.DTOs;
+
+public class PromotionDto
+{
+    public int PromotionId { get; set; }
+    public string PromotionCode { get; set; } = string.Empty;
+    public string PromotionName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string DiscountType { get; set; } = "Percentage";
+    public decimal DiscountValue { get; set; }
+    public decimal MinimumOrderAmount { get; set; }
+    public decimal? MaximumDiscountAmount { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreatePromotionRequest
+{
+    public string PromotionCode { get; set; } = string.Empty;
+    public string PromotionName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string DiscountType { get; set; } = "Percentage";
+    public decimal DiscountValue { get; set; }
+    public decimal MinimumOrderAmount { get; set; } = 0;
+    public decimal? MaximumDiscountAmount { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public class UpdatePromotionRequest
+{
+    public string PromotionName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string DiscountType { get; set; } = "Percentage";
+    public decimal DiscountValue { get; set; }
+    public decimal MinimumOrderAmount { get; set; }
+    public decimal? MaximumDiscountAmount { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class ApplyPromotionRequest
+{
+    public string PromotionCode { get; set; } = string.Empty;
+    public decimal OrderTotalAmount { get; set; }
+}
+
+public class ApplyPromotionResponse
+{
+    public bool IsSuccess { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string PromotionCode { get; set; } = string.Empty;
+    public decimal DiscountAmount { get; set; }
+    public decimal FinalAmount { get; set; }
+}
+
+public class PromotionPagedResult
+{
+    public IEnumerable<PromotionDto> Items { get; set; } = new List<PromotionDto>();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Promotions\Repositories\IPromotionRepository.cs ====================
+using SmartSupermarket.Backend.Domain.Entities;
+
+namespace SmartSupermarket.Backend.Features.Promotions.Repositories;
+
+public interface IPromotionRepository
+{
+    Task<Promotion?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<Promotion?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+    Task<(IEnumerable<Promotion> Items, int TotalCount)> GetPagedAsync(
+        string? search,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+    Task AddAsync(Promotion promotion, CancellationToken cancellationToken = default);
+    void Update(Promotion promotion);
+    void Delete(Promotion promotion);
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Promotions\Repositories\PromotionRepository.cs ====================
+using Microsoft.EntityFrameworkCore;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Infrastructure.Persistence;
+
+namespace SmartSupermarket.Backend.Features.Promotions.Repositories;
+
+public class PromotionRepository : IPromotionRepository
+{
+    private readonly AppDbContext _dbContext;
+
+    public PromotionRepository(AppDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Promotion?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Promotions.FirstOrDefaultAsync(p => p.PromotionId == id, cancellationToken);
+    }
+
+    public async Task<Promotion?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        var codeTrim = code.Trim().ToUpper();
+        return await _dbContext.Promotions
+            .FirstOrDefaultAsync(p => p.PromotionCode.ToUpper() == codeTrim, cancellationToken);
+    }
+
+    public async Task<(IEnumerable<Promotion> Items, int TotalCount)> GetPagedAsync(
+        string? search,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Promotions.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchTrim = search.Trim().ToLower();
+            query = query.Where(p =>
+                p.PromotionCode.ToLower().Contains(searchTrim) ||
+                p.PromotionName.ToLower().Contains(searchTrim));
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(p => p.IsActive == isActive.Value);
+        }
+
+        int totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task AddAsync(Promotion promotion, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.Promotions.AddAsync(promotion, cancellationToken);
+    }
+
+    public void Update(Promotion promotion)
+    {
+        _dbContext.Promotions.Update(promotion);
+    }
+
+    public void Delete(Promotion promotion)
+    {
+        _dbContext.Promotions.Remove(promotion);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Promotions\Services\IPromotionService.cs ====================
+using SmartSupermarket.Backend.Features.Promotions.DTOs;
+
+namespace SmartSupermarket.Backend.Features.Promotions.Services;
+
+public interface IPromotionService
+{
+    Task<PromotionDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<PromotionDto?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+    Task<PromotionPagedResult> GetPagedAsync(
+        string? search,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+    Task<PromotionDto> CreateAsync(CreatePromotionRequest request, CancellationToken cancellationToken = default);
+    Task<PromotionDto> UpdateAsync(int id, UpdatePromotionRequest request, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
+    Task<ApplyPromotionResponse> ApplyPromotionAsync(ApplyPromotionRequest request, CancellationToken cancellationToken = default);
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Features\Promotions\Services\PromotionService.cs ====================
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Features.Promotions.DTOs;
+using SmartSupermarket.Backend.Features.Promotions.Repositories;
+
+namespace SmartSupermarket.Backend.Features.Promotions.Services;
+
+public class PromotionService : IPromotionService
+{
+    private readonly IPromotionRepository _promotionRepository;
+
+    public PromotionService(IPromotionRepository promotionRepository)
+    {
+        _promotionRepository = promotionRepository;
+    }
+
+    public async Task<PromotionDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionRepository.GetByIdAsync(id, cancellationToken);
+        return promotion == null ? null : MapToDto(promotion);
+    }
+
+    public async Task<PromotionDto?> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionRepository.GetByCodeAsync(code, cancellationToken);
+        return promotion == null ? null : MapToDto(promotion);
+    }
+
+    public async Task<PromotionPagedResult> GetPagedAsync(
+        string? search,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var (items, totalCount) = await _promotionRepository.GetPagedAsync(search, isActive, page, pageSize, cancellationToken);
+        return new PromotionPagedResult
+        {
+            Items = items.Select(MapToDto),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<PromotionDto> CreateAsync(CreatePromotionRequest request, CancellationToken cancellationToken = default)
+    {
+        var existing = await _promotionRepository.GetByCodeAsync(request.PromotionCode, cancellationToken);
+        if (existing != null)
+        {
+            throw new InvalidOperationException($"Mã khuyến mãi '{request.PromotionCode}' đã tồn tại.");
+        }
+
+        var promotion = new Promotion
+        {
+            PromotionCode = request.PromotionCode.Trim().ToUpper(),
+            PromotionName = request.PromotionName,
+            Description = request.Description,
+            DiscountType = request.DiscountType,
+            DiscountValue = request.DiscountValue,
+            MinimumOrderAmount = request.MinimumOrderAmount,
+            MaximumDiscountAmount = request.MaximumDiscountAmount,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            IsActive = request.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _promotionRepository.AddAsync(promotion, cancellationToken);
+        await _promotionRepository.SaveChangesAsync(cancellationToken);
+
+        return MapToDto(promotion);
+    }
+
+    public async Task<PromotionDto> UpdateAsync(int id, UpdatePromotionRequest request, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionRepository.GetByIdAsync(id, cancellationToken);
+        if (promotion == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy khuyến mãi có ID = {id}");
+        }
+
+        promotion.PromotionName = request.PromotionName;
+        promotion.Description = request.Description;
+        promotion.DiscountType = request.DiscountType;
+        promotion.DiscountValue = request.DiscountValue;
+        promotion.MinimumOrderAmount = request.MinimumOrderAmount;
+        promotion.MaximumDiscountAmount = request.MaximumDiscountAmount;
+        promotion.StartDate = request.StartDate;
+        promotion.EndDate = request.EndDate;
+        promotion.IsActive = request.IsActive;
+        promotion.UpdatedAt = DateTime.UtcNow;
+
+        _promotionRepository.Update(promotion);
+        await _promotionRepository.SaveChangesAsync(cancellationToken);
+
+        return MapToDto(promotion);
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionRepository.GetByIdAsync(id, cancellationToken);
+        if (promotion == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy khuyến mãi có ID = {id}");
+        }
+
+        _promotionRepository.Delete(promotion);
+        await _promotionRepository.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<ApplyPromotionResponse> ApplyPromotionAsync(ApplyPromotionRequest request, CancellationToken cancellationToken = default)
+    {
+        var promotion = await _promotionRepository.GetByCodeAsync(request.PromotionCode, cancellationToken);
+        if (promotion == null || !promotion.IsActive)
+        {
+            return new ApplyPromotionResponse
+            {
+                IsSuccess = false,
+                Message = "Mã khuyến mãi không tồn tại hoặc đã hết hạn sử dụng.",
+                PromotionCode = request.PromotionCode,
+                DiscountAmount = 0,
+                FinalAmount = request.OrderTotalAmount
+            };
+        }
+
+        DateTime now = DateTime.UtcNow;
+        if (now < promotion.StartDate || now > promotion.EndDate)
+        {
+            return new ApplyPromotionResponse
+            {
+                IsSuccess = false,
+                Message = "Mã khuyến mãi chưa đến hạn hoặc đã quá hạn áp dụng.",
+                PromotionCode = promotion.PromotionCode,
+                DiscountAmount = 0,
+                FinalAmount = request.OrderTotalAmount
+            };
+        }
+
+        if (request.OrderTotalAmount < promotion.MinimumOrderAmount)
+        {
+            return new ApplyPromotionResponse
+            {
+                IsSuccess = false,
+                Message = $"Đơn hàng tối thiểu để áp dụng mã này là {promotion.MinimumOrderAmount:N0} VNĐ.",
+                PromotionCode = promotion.PromotionCode,
+                DiscountAmount = 0,
+                FinalAmount = request.OrderTotalAmount
+            };
+        }
+
+        decimal discountAmount = 0;
+        if (promotion.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+        {
+            discountAmount = request.OrderTotalAmount * (promotion.DiscountValue / 100m);
+            if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+            {
+                discountAmount = promotion.MaximumDiscountAmount.Value;
+            }
+        }
+        else
+        {
+            discountAmount = promotion.DiscountValue;
+        }
+
+        if (discountAmount > request.OrderTotalAmount)
+        {
+            discountAmount = request.OrderTotalAmount;
+        }
+
+        decimal finalAmount = request.OrderTotalAmount - discountAmount;
+
+        return new ApplyPromotionResponse
+        {
+            IsSuccess = true,
+            Message = "Áp dụng mã khuyến mãi thành công.",
+            PromotionCode = promotion.PromotionCode,
+            DiscountAmount = discountAmount,
+            FinalAmount = finalAmount
+        };
+    }
+
+    private static PromotionDto MapToDto(Promotion promotion)
+    {
+        return new PromotionDto
+        {
+            PromotionId = promotion.PromotionId,
+            PromotionCode = promotion.PromotionCode,
+            PromotionName = promotion.PromotionName,
+            Description = promotion.Description ?? string.Empty,
+            DiscountType = promotion.DiscountType,
+            DiscountValue = promotion.DiscountValue,
+            MinimumOrderAmount = promotion.MinimumOrderAmount,
+            MaximumDiscountAmount = promotion.MaximumDiscountAmount,
+            StartDate = promotion.StartDate,
+            EndDate = promotion.EndDate,
+            IsActive = promotion.IsActive,
+            CreatedAt = promotion.CreatedAt
+        };
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Infrastructure\Persistence\Configurations\OrderConfiguration.cs ====================
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SmartSupermarket.Backend.Domain.Entities;
+
+namespace SmartSupermarket.Backend.Infrastructure.Persistence.Configurations;
+
+public class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.ToTable("Orders");
+
+        builder.HasKey(o => o.OrderId);
+
+        builder.Property(o => o.TotalAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(o => o.DiscountAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(o => o.FinalAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(o => o.PaymentMethod)
+            .HasDefaultValue(Domain.Enums.PaymentMethod.Cash);
+
+        builder.HasMany(o => o.OrderDetails)
+            .WithOne()
+            .HasForeignKey(od => od.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
+{
+    public void Configure(EntityTypeBuilder<OrderDetail> builder)
+    {
+        builder.ToTable("OrderDetails");
+
+        builder.HasKey(od => od.OrderDetailId);
+
+        builder.Property(od => od.UnitPrice)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(od => od.SubTotal)
+            .HasColumnType("decimal(18,2)");
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend\Infrastructure\Persistence\Configurations\PromotionConfiguration.cs ====================
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SmartSupermarket.Backend.Domain.Entities;
+
+namespace SmartSupermarket.Backend.Infrastructure.Persistence.Configurations;
+
+public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
+{
+    public void Configure(EntityTypeBuilder<Promotion> builder)
+    {
+        builder.ToTable("Promotions");
+
+        builder.HasKey(p => p.PromotionId);
+
+        builder.Property(p => p.PromotionCode)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(p => p.PromotionName)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(p => p.DiscountValue)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(p => p.MinimumOrderAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(p => p.MaximumDiscountAmount)
+            .HasColumnType("decimal(18,2)");
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend.Tests\OrderServiceTests.cs ====================
+using Moq;
+using Microsoft.EntityFrameworkCore;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Orders.DTOs;
+using SmartSupermarket.Backend.Features.Orders.Repositories;
+using SmartSupermarket.Backend.Features.Orders.Services;
+using SmartSupermarket.Backend.Features.Inventory.Repositories;
+using SmartSupermarket.Backend.Features.Promotions.Repositories;
+using SmartSupermarket.Backend.Infrastructure.Persistence;
+using Xunit;
+
+namespace SmartSupermarket.Backend.Tests;
+
+public class OrderServiceTests
+{
+    private readonly Mock<IOrderRepository> _mockOrderRepo;
+    private readonly Mock<IInventoryRepository> _mockInventoryRepo;
+    private readonly Mock<IPromotionRepository> _mockPromotionRepo;
+    private readonly AppDbContext _dbContext;
+    private readonly OrderService _orderService;
+
+    public OrderServiceTests()
+    {
+        _mockOrderRepo = new Mock<IOrderRepository>();
+        _mockInventoryRepo = new Mock<IInventoryRepository>();
+        _mockPromotionRepo = new Mock<IPromotionRepository>();
+
+        // In-memory DbContext for Products/Users/Customers lookup
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: $"OrderTestDb_{Guid.NewGuid()}")
+            .Options;
+        _dbContext = new AppDbContext(options);
+
+        // Seed a product for tests
+        _dbContext.Products.Add(new Product
+        {
+            ProductId = 1,
+            ProductName = "Coca-Cola 330ml",
+            Barcode = "8934588012345",
+            Price = 15000m,
+            Unit = "lon",
+            CategoryId = 1,
+            Status = ProductStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        });
+        _dbContext.SaveChanges();
+
+        _orderService = new OrderService(
+            _mockOrderRepo.Object,
+            _mockInventoryRepo.Object,
+            _mockPromotionRepo.Object,
+            _dbContext
+        );
+    }
+
+    // =========================================================
+    // CreateOrderAsync — Happy Path
+    // =========================================================
+
+    [Fact]
+    public async Task CreateOrderAsync_WithValidItems_ShouldCreateOrderSuccessfully()
+    {
+        // Arrange
+        var inventory = new Domain.Entities.Inventory { InventoryId = 1, ProductId = 1, BranchId = 1, QuantityOnHand = 50 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(1, 1)).ReturnsAsync(inventory);
+        _mockInventoryRepo.Setup(r => r.UpsertAsync(It.IsAny<Domain.Entities.Inventory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.AddStockHistoryAsync(It.IsAny<StockHistory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>(), default)).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+        _mockPromotionRepo.Setup(r => r.GetByCodeAsync(It.IsAny<string>(), default)).ReturnsAsync((Promotion?)null);
+
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1,
+            BranchId = 1,
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest { ProductId = 1, Quantity = 2, UnitPrice = 15000m }
+            }
+        };
+
+        // Act
+        var result = await _orderService.CreateOrderAsync(request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(30000m, result.TotalAmount);        // 2 x 15.000
+        Assert.Equal(0m, result.DiscountAmount);
+        Assert.Equal(30000m, result.FinalAmount);
+        Assert.Equal(OrderStatus.Completed, result.Status);
+        _mockOrderRepo.Verify(r => r.AddAsync(It.IsAny<Order>(), default), Times.Once);
+        _mockInventoryRepo.Verify(r => r.UpsertAsync(It.IsAny<Domain.Entities.Inventory>()), Times.Once);
+        _mockInventoryRepo.Verify(r => r.AddStockHistoryAsync(It.IsAny<StockHistory>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithVoucherCode_ShouldApplyDiscountCorrectly()
+    {
+        // Arrange
+        var inventory = new Domain.Entities.Inventory { InventoryId = 1, ProductId = 1, BranchId = 1, QuantityOnHand = 50 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(1, 1)).ReturnsAsync(inventory);
+        _mockInventoryRepo.Setup(r => r.UpsertAsync(It.IsAny<Domain.Entities.Inventory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.AddStockHistoryAsync(It.IsAny<StockHistory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>(), default)).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+
+        var promotion = new Promotion
+        {
+            PromotionId = 1,
+            PromotionCode = "KATQ10",
+            DiscountType = "Percentage",
+            DiscountValue = 10m,
+            MinimumOrderAmount = 0m,
+            MaximumDiscountAmount = 100000m,
+            StartDate = DateTime.UtcNow.AddDays(-1),
+            EndDate = DateTime.UtcNow.AddDays(30),
+            IsActive = true
+        };
+        _mockPromotionRepo.Setup(r => r.GetByCodeAsync("KATQ10", default)).ReturnsAsync(promotion);
+
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1,
+            BranchId = 1,
+            PromotionCode = "KATQ10",
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest { ProductId = 1, Quantity = 20, UnitPrice = 15000m }
+            }
+        };
+
+        // Act
+        var result = await _orderService.CreateOrderAsync(request);
+
+        // Assert: total = 300.000, discount = 10% = 30.000, final = 270.000
+        Assert.Equal(300000m, result.TotalAmount);
+        Assert.Equal(30000m, result.DiscountAmount);
+        Assert.Equal(270000m, result.FinalAmount);
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithPercentageVoucher_ShouldCapAtMaximumDiscount()
+    {
+        // Arrange: cap max giảm = 5.000 dù 10% = 30.000
+        var inventory = new Domain.Entities.Inventory { InventoryId = 1, ProductId = 1, BranchId = 1, QuantityOnHand = 50 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(1, 1)).ReturnsAsync(inventory);
+        _mockInventoryRepo.Setup(r => r.UpsertAsync(It.IsAny<Domain.Entities.Inventory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.AddStockHistoryAsync(It.IsAny<StockHistory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>(), default)).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+
+        var promotion = new Promotion
+        {
+            PromotionId = 2,
+            PromotionCode = "CAPTEST",
+            DiscountType = "Percentage",
+            DiscountValue = 10m,
+            MinimumOrderAmount = 0m,
+            MaximumDiscountAmount = 5000m,  // cap nhỏ
+            StartDate = DateTime.UtcNow.AddDays(-1),
+            EndDate = DateTime.UtcNow.AddDays(30),
+            IsActive = true
+        };
+        _mockPromotionRepo.Setup(r => r.GetByCodeAsync("CAPTEST", default)).ReturnsAsync(promotion);
+
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1, BranchId = 1, PromotionCode = "CAPTEST",
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest { ProductId = 1, Quantity = 20, UnitPrice = 15000m }
+            }
+        };
+
+        // Act
+        var result = await _orderService.CreateOrderAsync(request);
+
+        // Assert: 10% của 300k = 30k, nhưng cap là 5k
+        Assert.Equal(5000m, result.DiscountAmount);
+        Assert.Equal(295000m, result.FinalAmount);
+    }
+
+    // =========================================================
+    // CreateOrderAsync — Validation errors
+    // =========================================================
+
+    [Fact]
+    public async Task CreateOrderAsync_WithEmptyItems_ShouldThrowArgumentException()
+    {
+        var request = new CreateOrderRequest { EmployeeId = 1, BranchId = 1, Items = new List<CreateOrderDetailRequest>() };
+        await Assert.ThrowsAsync<ArgumentException>(() => _orderService.CreateOrderAsync(request));
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithNullItems_ShouldThrowArgumentException()
+    {
+        var request = new CreateOrderRequest { EmployeeId = 1, BranchId = 1, Items = null! };
+        await Assert.ThrowsAsync<ArgumentException>(() => _orderService.CreateOrderAsync(request));
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithNonExistentProduct_ShouldThrowKeyNotFoundException()
+    {
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1, BranchId = 1,
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest { ProductId = 999, Quantity = 1, UnitPrice = 10000m }
+            }
+        };
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _orderService.CreateOrderAsync(request));
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithInsufficientStock_ShouldThrowInvalidOperationException()
+    {
+        // Arrange: tồn kho chỉ còn 1, đặt 5
+        var inventory = new Domain.Entities.Inventory { InventoryId = 1, ProductId = 1, BranchId = 1, QuantityOnHand = 1 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(1, 1)).ReturnsAsync(inventory);
+        _mockPromotionRepo.Setup(r => r.GetByCodeAsync(It.IsAny<string>(), default)).ReturnsAsync((Promotion?)null);
+
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1, BranchId = 1,
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest { ProductId = 1, Quantity = 5, UnitPrice = 15000m }
+            }
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _orderService.CreateOrderAsync(request));
+    }
+
+    [Fact]
+    public async Task CreateOrderAsync_ShouldDeductInventoryOnSuccess()
+    {
+        // Arrange
+        var inventory = new Domain.Entities.Inventory { InventoryId = 1, ProductId = 1, BranchId = 1, QuantityOnHand = 30 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(1, 1)).ReturnsAsync(inventory);
+        _mockInventoryRepo.Setup(r => r.UpsertAsync(It.IsAny<Domain.Entities.Inventory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.AddStockHistoryAsync(It.IsAny<StockHistory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.AddAsync(It.IsAny<Order>(), default)).Returns(Task.CompletedTask);
+        _mockOrderRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+        _mockPromotionRepo.Setup(r => r.GetByCodeAsync(It.IsAny<string>(), default)).ReturnsAsync((Promotion?)null);
+
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1, BranchId = 1,
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest { ProductId = 1, Quantity = 5, UnitPrice = 15000m }
+            }
+        };
+
+        // Act
+        await _orderService.CreateOrderAsync(request);
+
+        // Assert: tồn kho đã bị trừ 5
+        Assert.Equal(25, inventory.QuantityOnHand);
+        _mockInventoryRepo.Verify(r => r.AddStockHistoryAsync(
+            It.Is<StockHistory>(sh => sh.ChangeType == StockChangeType.Sale && sh.QuantityChange == -5)), Times.Once);
+    }
+
+    // =========================================================
+    // CancelOrderAsync
+    // =========================================================
+
+    [Fact]
+    public async Task CancelOrderAsync_WithValidOrder_ShouldReturnTrue()
+    {
+        var order = new Order { OrderId = 1, Status = OrderStatus.Completed };
+        _mockOrderRepo.Setup(r => r.GetByIdAsync(1, default)).ReturnsAsync(order);
+        _mockOrderRepo.Setup(r => r.Update(It.IsAny<Order>()));
+        _mockOrderRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+
+        var result = await _orderService.CancelOrderAsync(1);
+
+        Assert.True(result);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
+
+    [Fact]
+    public async Task CancelOrderAsync_WithNonExistentOrder_ShouldThrowKeyNotFoundException()
+    {
+        _mockOrderRepo.Setup(r => r.GetByIdAsync(999, default)).ReturnsAsync((Order?)null);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _orderService.CancelOrderAsync(999));
+    }
+
+    [Fact]
+    public async Task CancelOrderAsync_WithAlreadyCancelledOrder_ShouldThrowInvalidOperationException()
+    {
+        var order = new Order { OrderId = 1, Status = OrderStatus.Cancelled };
+        _mockOrderRepo.Setup(r => r.GetByIdAsync(1, default)).ReturnsAsync(order);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _orderService.CancelOrderAsync(1));
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Backend.Tests\PromotionServiceTests.cs ====================
+using Moq;
+using SmartSupermarket.Backend.Domain.Entities;
+using SmartSupermarket.Backend.Features.Promotions.DTOs;
+using SmartSupermarket.Backend.Features.Promotions.Repositories;
+using SmartSupermarket.Backend.Features.Promotions.Services;
+using Xunit;
+
+namespace SmartSupermarket.Backend.Tests;
+
+public class PromotionServiceTests
+{
+    private readonly Mock<IPromotionRepository> _mockRepo;
+    private readonly PromotionService _service;
+
+    public PromotionServiceTests()
+    {
+        _mockRepo = new Mock<IPromotionRepository>();
+        _service = new PromotionService(_mockRepo.Object);
+    }
+
+    // =========================================================
+    // ApplyPromotionAsync — Happy Paths
+    // =========================================================
+
+    [Fact]
+    public async Task ApplyPromotion_WithValidPercentageCode_ShouldApplyDiscount()
+    {
+        // Arrange: 10% giảm, tổng đơn 500.000, không có trần
+        var promotion = MakePromotion("KATQ10", "Percentage", 10m, 0m, null);
+        _mockRepo.Setup(r => r.GetByCodeAsync("KATQ10", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "KATQ10", OrderTotalAmount = 500000m };
+
+        // Act
+        var result = await _service.ApplyPromotionAsync(request);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(50000m, result.DiscountAmount);     // 10% x 500k
+        Assert.Equal(450000m, result.FinalAmount);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_WithPercentageAndMaxCap_ShouldCapDiscount()
+    {
+        // Arrange: 10% giảm, trần 20.000 — 10% của 500k = 50k, nhưng cap là 20k
+        var promotion = MakePromotion("CAPTEST", "Percentage", 10m, 0m, 20000m);
+        _mockRepo.Setup(r => r.GetByCodeAsync("CAPTEST", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "CAPTEST", OrderTotalAmount = 500000m };
+
+        // Act
+        var result = await _service.ApplyPromotionAsync(request);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(20000m, result.DiscountAmount);
+        Assert.Equal(480000m, result.FinalAmount);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_WithFixedAmountCode_ShouldApplyFixedDiscount()
+    {
+        // Arrange: giảm cố định 30.000
+        var promotion = MakePromotion("FREESHIP", "FixedAmount", 30000m, 0m, null);
+        _mockRepo.Setup(r => r.GetByCodeAsync("FREESHIP", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "FREESHIP", OrderTotalAmount = 600000m };
+
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(30000m, result.DiscountAmount);
+        Assert.Equal(570000m, result.FinalAmount);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_DiscountCannotExceedOrderTotal()
+    {
+        // Arrange: giảm cố định 200k, nhưng đơn hàng chỉ 100k → discount bị cap ở 100k
+        var promotion = MakePromotion("BIGCUT", "FixedAmount", 200000m, 0m, null);
+        _mockRepo.Setup(r => r.GetByCodeAsync("BIGCUT", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "BIGCUT", OrderTotalAmount = 100000m };
+
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(100000m, result.DiscountAmount); // capped at order total
+        Assert.Equal(0m, result.FinalAmount);
+    }
+
+    // =========================================================
+    // ApplyPromotionAsync — Failure cases
+    // =========================================================
+
+    [Fact]
+    public async Task ApplyPromotion_WithNonExistentCode_ShouldReturnFailure()
+    {
+        _mockRepo.Setup(r => r.GetByCodeAsync("NONEXIST", default)).ReturnsAsync((Promotion?)null);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "NONEXIST", OrderTotalAmount = 500000m };
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(0m, result.DiscountAmount);
+        Assert.Equal(500000m, result.FinalAmount);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_WithInactiveCode_ShouldReturnFailure()
+    {
+        var promotion = MakePromotion("INACTIVE", "Percentage", 10m, 0m, null, isActive: false);
+        _mockRepo.Setup(r => r.GetByCodeAsync("INACTIVE", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "INACTIVE", OrderTotalAmount = 500000m };
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_WithExpiredCode_ShouldReturnFailure()
+    {
+        var promotion = MakePromotion("EXPIRED", "Percentage", 10m, 0m, null,
+            startDate: DateTime.UtcNow.AddDays(-30), endDate: DateTime.UtcNow.AddDays(-1));
+        _mockRepo.Setup(r => r.GetByCodeAsync("EXPIRED", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "EXPIRED", OrderTotalAmount = 500000m };
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_WithFutureCode_ShouldReturnFailure()
+    {
+        var promotion = MakePromotion("FUTURE", "Percentage", 10m, 0m, null,
+            startDate: DateTime.UtcNow.AddDays(5), endDate: DateTime.UtcNow.AddDays(30));
+        _mockRepo.Setup(r => r.GetByCodeAsync("FUTURE", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "FUTURE", OrderTotalAmount = 500000m };
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task ApplyPromotion_WithOrderBelowMinimum_ShouldReturnFailure()
+    {
+        // Arrange: đơn tối thiểu 500k, nhưng chỉ đặt 200k
+        var promotion = MakePromotion("MINORDER", "Percentage", 10m, minimumOrder: 500000m, maxCap: null);
+        _mockRepo.Setup(r => r.GetByCodeAsync("MINORDER", default)).ReturnsAsync(promotion);
+
+        var request = new ApplyPromotionRequest { PromotionCode = "MINORDER", OrderTotalAmount = 200000m };
+        var result = await _service.ApplyPromotionAsync(request);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(0m, result.DiscountAmount);
+        Assert.Equal(200000m, result.FinalAmount);
+    }
+
+    // =========================================================
+    // CreateAsync / UpdateAsync / DeleteAsync
+    // =========================================================
+
+    [Fact]
+    public async Task CreateAsync_WithDuplicateCode_ShouldThrowInvalidOperationException()
+    {
+        var existing = MakePromotion("DUPCODE", "Percentage", 10m, 0m, null);
+        _mockRepo.Setup(r => r.GetByCodeAsync("DUPCODE", default)).ReturnsAsync(existing);
+
+        var request = new CreatePromotionRequest
+        {
+            PromotionCode = "DUPCODE", PromotionName = "Test",
+            DiscountType = "Percentage", DiscountValue = 10m,
+            StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(30), IsActive = true
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.CreateAsync(request));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithNonExistentId_ShouldThrowKeyNotFoundException()
+    {
+        _mockRepo.Setup(r => r.GetByIdAsync(999, default)).ReturnsAsync((Promotion?)null);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.DeleteAsync(999));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithNonExistentId_ShouldThrowKeyNotFoundException()
+    {
+        _mockRepo.Setup(r => r.GetByIdAsync(999, default)).ReturnsAsync((Promotion?)null);
+
+        var request = new UpdatePromotionRequest
+        {
+            PromotionName = "X", DiscountType = "Percentage", DiscountValue = 5m,
+            StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddDays(30), IsActive = true
+        };
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.UpdateAsync(999, request));
+    }
+
+    // =========================================================
+    // Helper factory
+    // =========================================================
+
+    private static Promotion MakePromotion(
+        string code, string discountType, decimal discountValue,
+        decimal minimumOrder, decimal? maxCap,
+        bool isActive = true,
+        DateTime? startDate = null,
+        DateTime? endDate = null)
+    {
+        return new Promotion
+        {
+            PromotionId = 1,
+            PromotionCode = code,
+            PromotionName = $"Test Promotion {code}",
+            DiscountType = discountType,
+            DiscountValue = discountValue,
+            MinimumOrderAmount = minimumOrder,
+            MaximumDiscountAmount = maxCap,
+            StartDate = startDate ?? DateTime.UtcNow.AddDays(-1),
+            EndDate = endDate ?? DateTime.UtcNow.AddDays(30),
+            IsActive = isActive,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Desktop\EmployeeMainForm.cs ====================
+using System;
+using System.Drawing;
+using System.Windows.Forms;
+using FontAwesome.Sharp;
+using Desktop.Views;
+
+namespace Desktop;
+
+public class EmployeeMainForm : Form
+{
+    private Panel pnlHeader = null!;
+    private Panel pnlSidebar = null!;
+    private Panel pnlContent = null!;
+    
+    private IconButton? _activeNavButton;
+    private WorkspaceView _workspaceView = new();
+    
+    public EmployeeMainForm()
+    {
+        InitializeComponent();
+        SelectNavButton((IconButton)pnlSidebar.Controls["btnNavWorkspace"], _workspaceView);
+    }
+
+    private void InitializeComponent()
+    {
+        this.Text = "KATQ Smart Retail Management System v2.4";
+        this.Size = new Size(1366, 768);
+        this.WindowState = FormWindowState.Maximized;
+        this.StartPosition = FormStartPosition.CenterScreen;
+        this.BackColor = Color.FromArgb(240, 244, 248);
+
+        // --- Header ---
+        pnlHeader = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 60,
+            BackColor = Color.White,
+            Padding = new Padding(15, 5, 15, 5)
+        };
+        pnlHeader.Paint += (s, e) => {
+            e.Graphics.DrawLine(new Pen(Color.FromArgb(220, 224, 228)), 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
+        };
+
+        var lblLogo = new Label
+        {
+            Text = "KATQ Desktop POS",
+            Font = new Font("Segoe UI", 14f, FontStyle.Bold),
+            ForeColor = Color.FromArgb(11, 37, 69),
+            AutoSize = true,
+            Location = new Point(20, 15)
+        };
+        pnlHeader.Controls.Add(lblLogo);
+
+        // Header menus
+        int menuX = 220;
+        string[] headerMenus = { "[Hệ Thống]", "[Bán Hàng POS]", "[Kho & HSD]", "[Quản Trị AI]", "[Báo Cáo]", "[Trợ Giúp]" };
+        foreach (var menu in headerMenus)
+        {
+            var lblMenu = new Label
+            {
+                Text = menu,
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.FromArgb(60, 70, 80),
+                AutoSize = true,
+                Location = new Point(menuX, 20),
+                Cursor = Cursors.Hand
+            };
+            pnlHeader.Controls.Add(lblMenu);
+            menuX += lblMenu.Width + 15;
+        }
+
+        // Header User Info
+        var lblUserInfo = new Label
+        {
+            Text = "Thu Thảo\nNV-8821 • Thu Ngân Trưởng",
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            ForeColor = Color.FromArgb(40, 50, 60),
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleRight,
+            Location = new Point(pnlHeader.Width - 250, 10),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
+        };
+        pnlHeader.Controls.Add(lblUserInfo);
+
+        // --- Sidebar ---
+        pnlSidebar = new Panel
+        {
+            Dock = DockStyle.Left,
+            Width = 240,
+            BackColor = Color.White, // In mockup it's light themed
+            Padding = new Padding(10)
+        };
+        pnlSidebar.Paint += (s, e) => {
+            e.Graphics.DrawLine(new Pen(Color.FromArgb(220, 224, 228)), pnlSidebar.Width - 1, 0, pnlSidebar.Width - 1, pnlSidebar.Height);
+        };
+
+        var lblNavTitle = new Label
+        {
+            Text = "C# DESKTOP NAVIGATOR   WinForms\nDanh sách Form nghiệp vụ",
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            ForeColor = Color.Gray,
+            AutoSize = true,
+            Location = new Point(10, 10)
+        };
+        pnlSidebar.Controls.Add(lblNavTitle);
+
+        int btnY = 60;
+        
+        pnlSidebar.Controls.Add(CreateNavButton("btnNavPos", "Thu Ngân & POS", "F2", IconChar.CashRegister, btnY += 45));
+        pnlSidebar.Controls.Add(CreateNavButton("btnNavInventory", "Kho & Cảnh Báo HSD", "F3", IconChar.Warehouse, btnY += 45));
+        pnlSidebar.Controls.Add(CreateNavButton("btnNavWorkspace", "Bàn Làm Việc NV", "F4", IconChar.UserTie, btnY += 45));
+        pnlSidebar.Controls.Add(CreateNavButton("btnNavDashboard", "Dashboard & AI", "F5", IconChar.ChartLine, btnY += 45));
+        pnlSidebar.Controls.Add(CreateNavButton("btnNavCopilot", "Trợ Lý AI Co-Pilot", "F6", IconChar.Robot, btnY += 45));
+
+        // --- Footer (Status bar) ---
+        var pnlFooter = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 30,
+            BackColor = Color.White
+        };
+        pnlFooter.Paint += (s, e) => {
+            e.Graphics.DrawLine(new Pen(Color.FromArgb(220, 224, 228)), 0, 0, pnlFooter.Width, 0);
+        };
+        var lblStatus = new Label { Text = "🟢 SQL SERVER: LocalDB / KATQ_DB | Ping: 2ms", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = Color.SeaGreen, AutoSize = true, Location = new Point(10, 7) };
+        pnlFooter.Controls.Add(lblStatus);
+
+        // --- Content Panel ---
+        pnlContent = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(240, 244, 248)
+        };
+
+        this.Controls.Add(pnlContent);
+        this.Controls.Add(pnlSidebar);
+        this.Controls.Add(pnlHeader);
+        this.Controls.Add(pnlFooter);
+    }
+
+    private IconButton CreateNavButton(string name, string text, string hotkey, IconChar icon, int yPos)
+    {
+        var btn = new IconButton
+        {
+            Name = name,
+            Text = "   " + text,
+            IconChar = icon,
+            IconSize = 20,
+            IconColor = Color.FromArgb(100, 110, 120),
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+            ForeColor = Color.FromArgb(80, 90, 100),
+            BackColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Size = new Size(220, 40),
+            Location = new Point(10, yPos),
+            Cursor = Cursors.Hand
+        };
+        btn.FlatAppearance.BorderSize = 0;
+        
+        // F2, F3 hotkey label simulator
+        var lblHotkey = new Label
+        {
+            Text = hotkey,
+            Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+            BackColor = Color.FromArgb(230, 235, 240),
+            ForeColor = Color.FromArgb(100, 110, 120),
+            AutoSize = true,
+            Location = new Point(185, 12)
+        };
+        btn.Controls.Add(lblHotkey);
+
+        btn.Click += (s, e) => {
+            if (name == "btnNavWorkspace") SelectNavButton(btn, _workspaceView);
+            else SelectNavButton(btn, new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(240, 244, 248) }); // Placeholder for others
+        };
+
+        return btn;
+    }
+
+    private void SelectNavButton(IconButton navBtn, Control view)
+    {
+        if (_activeNavButton != null)
+        {
+            _activeNavButton.BackColor = Color.White;
+            _activeNavButton.ForeColor = Color.FromArgb(80, 90, 100);
+            _activeNavButton.IconColor = Color.FromArgb(100, 110, 120);
+        }
+
+        _activeNavButton = navBtn;
+        _activeNavButton.BackColor = Color.FromArgb(230, 245, 255); // Light blue selection
+        _activeNavButton.ForeColor = Color.FromArgb(0, 120, 215);
+        _activeNavButton.IconColor = Color.FromArgb(0, 120, 215);
+
+        pnlContent.Controls.Clear();
+        view.Dock = DockStyle.Fill;
+        pnlContent.Controls.Add(view);
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Desktop\Views\OrdersView.cs ====================
+using System;
+using System.Drawing;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Desktop.Views;
+
+public class OrdersView : UserControl
+{
+    private DataGridView dgvOrders = null!;
+    private Button btnRefresh = null!;
+    private Button btnCancel = null!;
+    private Button btnViewDetail = null!;
+    private Label lblStatus = null!;
+    private readonly HttpClient _httpClient = new();
+    private readonly string _apiBaseUrl = "http://localhost:5137";
+
+    public OrdersView()
+    {
+        InitializeComponent();
+        _ = LoadOrdersAsync();
+    }
+
+    private void InitializeComponent()
+    {
+        this.Dock = DockStyle.Fill;
+        this.BackColor = ThemeManager.Background;
+        this.Padding = new Padding(20);
+
+        var pnlHeader = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 65,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(20, 15, 20, 15),
+            Margin = new Padding(0, 0, 0, 15)
+        };
+        ThemeManager.ApplyRoundedCardPanel(pnlHeader, 10);
+
+        var lblTitle = new Label
+        {
+            Text = "📦 QUẢN LÝ ĐƠN HÀNG & TIẾN TRÌNH (ORDERS & TIMELINE)",
+            Font = ThemeManager.HeaderFont,
+            ForeColor = ThemeManager.NavyBrand,
+            Location = new Point(20, 18),
+            AutoSize = true
+        };
+        pnlHeader.Controls.Add(lblTitle);
+
+        var pnlToolbar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 50,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(10, 8, 10, 8),
+        };
+        ThemeManager.ApplyCardPanel(pnlToolbar);
+
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(110, 32), Location = new Point(10, 8) };
+        ThemeManager.ApplySecondaryButton(btnRefresh);
+        btnRefresh.Click += async (s, e) => await LoadOrdersAsync();
+
+        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(135, 32), Location = new Point(130, 8) };
+        ThemeManager.ApplySecondaryButton(btnViewDetail);
+        btnViewDetail.Click += BtnViewDetail_Click;
+
+        btnCancel = new Button { Text = "❌ Hủy Đơn Hàng", Size = new Size(140, 32), Location = new Point(275, 8) };
+        ThemeManager.ApplySecondaryButton(btnCancel);
+        btnCancel.ForeColor = ThemeManager.Danger;
+        btnCancel.Click += async (s, e) => await CancelSelectedOrderAsync();
+
+        lblStatus = new Label
+        {
+            Text = "Sẵn sàng",
+            Font = ThemeManager.BodyFont,
+            ForeColor = ThemeManager.TextSecondary,
+            Location = new Point(430, 14),
+            AutoSize = true
+        };
+
+        pnlToolbar.Controls.Add(btnRefresh);
+        pnlToolbar.Controls.Add(btnViewDetail);
+        pnlToolbar.Controls.Add(btnCancel);
+        pnlToolbar.Controls.Add(lblStatus);
+
+        var pnlGrid = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(10)
+        };
+        ThemeManager.ApplyCardPanel(pnlGrid);
+
+        dgvOrders = new DataGridView();
+        ThemeManager.ApplyGridStyle(dgvOrders);
+        dgvOrders.Dock = DockStyle.Fill;
+
+        dgvOrders.Columns.Add("OrderId", "Mã Đơn");
+        dgvOrders.Columns.Add("Customer", "Khách Hàng");
+        dgvOrders.Columns.Add("Employee", "Thu Ngân / NV");
+        dgvOrders.Columns.Add("TotalAmount", "Tạm Tính");
+        dgvOrders.Columns.Add("DiscountAmount", "Giảm Giá");
+        dgvOrders.Columns.Add("FinalAmount", "Thành Tiền");
+        dgvOrders.Columns.Add("PaymentMethod", "Thanh Toán");
+        dgvOrders.Columns.Add("OrderDate", "Ngày Đặt");
+        dgvOrders.Columns.Add("Status", "Trạng Thái");
+        dgvOrders.Columns.Add("RawOrderId", "RawOrderId");
+        dgvOrders.Columns["RawOrderId"].Visible = false;
+
+        pnlGrid.Controls.Add(dgvOrders);
+
+        this.Controls.Add(pnlGrid);
+        this.Controls.Add(pnlToolbar);
+        this.Controls.Add(pnlHeader);
+    }
+
+    private async Task LoadOrdersAsync()
+    {
+        lblStatus.Text = "Đang tải...";
+        dgvOrders.Rows.Clear();
+
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/orders?page=1&pageSize=50");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("data", out var data))
+                {
+                    var itemsProp = data.TryGetProperty("items", out var items) ? items : data;
+                    if (itemsProp.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in itemsProp.EnumerateArray())
+                        {
+                            int id = item.GetProperty("orderId").GetInt32();
+                            string cust = item.TryGetProperty("customerName", out var c) && c.ValueKind != JsonValueKind.Null
+                                ? (c.GetString() ?? "Khách Lẻ") : "Khách Lẻ";
+                            string emp = item.TryGetProperty("employeeName", out var en) && en.ValueKind != JsonValueKind.Null
+                                ? (en.GetString() ?? "-") : "-";
+                            decimal total = item.GetProperty("totalAmount").GetDecimal();
+                            decimal discount = item.TryGetProperty("discountAmount", out var d2) ? d2.GetDecimal() : 0m;
+                            decimal final_ = item.GetProperty("finalAmount").GetDecimal();
+                            int payInt = item.TryGetProperty("paymentMethod", out var pm) ? pm.GetInt32() : 1;
+                            string payStr = payInt == 2 ? "📱 VietQR" : payInt == 3 ? "💳 Thẻ POS" : "💵 Tiền Mặt";
+                            string orderDate = item.TryGetProperty("orderDate", out var od)
+                                ? DateTime.Parse(od.GetString() ?? DateTime.UtcNow.ToString()).ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                : "-";
+                            int statusInt = item.TryGetProperty("status", out var st) ? st.GetInt32() : 1;
+                            string statusStr = statusInt == 2 ? "❌ Đã Hủy" : "✅ Hoàn Thành";
+
+                            dgvOrders.Rows.Add(
+                                $"ORD-{id:D5}", cust, emp,
+                                $"{total:N0} ₫", discount > 0 ? $"-{discount:N0} ₫" : "-",
+                                $"{final_:N0} ₫", payStr, orderDate, statusStr, id
+                            );
+                        }
+                        lblStatus.Text = $"Đã tải {dgvOrders.Rows.Count} đơn hàng.";
+                        return;
+                    }
+                }
+            }
+            lblStatus.Text = "Không có dữ liệu hoặc API offline.";
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = $"Lỗi kết nối: {ex.Message}";
+        }
+    }
+
+    private void BtnViewDetail_Click(object? sender, EventArgs e)
+    {
+        if (dgvOrders.CurrentRow == null) return;
+        var row = dgvOrders.CurrentRow;
+        string orderId = row.Cells["OrderId"].Value?.ToString() ?? "";
+        string customer = row.Cells["Customer"].Value?.ToString() ?? "";
+        string total = row.Cells["FinalAmount"].Value?.ToString() ?? "";
+        string payment = row.Cells["PaymentMethod"].Value?.ToString() ?? "";
+        string date = row.Cells["OrderDate"].Value?.ToString() ?? "";
+        string status = row.Cells["Status"].Value?.ToString() ?? "";
+
+        MessageBox.Show(
+            $"ℹ️ Chi tiết đơn hàng:\n\n" +
+            $"• Mã đơn: {orderId}\n" +
+            $"• Khách hàng: {customer}\n" +
+            $"• Tổng tiền thực thanh toán: {total}\n" +
+            $"• Hình thức TT: {payment}\n" +
+            $"• Ngày đặt: {date}\n" +
+            $"• Trạng thái: {status}",
+            "Chi tiết đơn hàng", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    private async Task CancelSelectedOrderAsync()
+    {
+        if (dgvOrders.CurrentRow == null) return;
+        var rawId = dgvOrders.CurrentRow.Cells["RawOrderId"].Value;
+        if (rawId == null) return;
+
+        int orderId = Convert.ToInt32(rawId);
+        string maDon = dgvOrders.CurrentRow.Cells["OrderId"].Value?.ToString() ?? $"ORD-{orderId:D5}";
+
+        var confirm = MessageBox.Show(
+            $"Bạn có chắc chắn muốn HỦY đơn hàng {maDon}?\nHành động này không thể hoàn tác.",
+            "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+        if (confirm != DialogResult.Yes) return;
+
+        try
+        {
+            lblStatus.Text = $"Đang hủy {maDon}...";
+            var response = await _httpClient.PostAsync(
+                $"{_apiBaseUrl}/api/v1/orders/{orderId}/cancel",
+                new StringContent("{}", Encoding.UTF8, "application/json"));
+
+            if (response.IsSuccessStatusCode)
+            {
+                MessageBox.Show($"✅ Đơn hàng {maDon} đã được hủy thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                await LoadOrdersAsync();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                MessageBox.Show($"Không thể hủy đơn hàng.\nChi tiết: {body}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblStatus.Text = "Hủy thất bại.";
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi kết nối: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            lblStatus.Text = "Lỗi kết nối.";
+        }
+    }
+}
+
+
+
+==================== FILE: C:\Users\Hoang Quan\OneDrive\Desktop\smart-supermarket\Desktop\Views\PromotionsView.cs ====================
+using System;
+using System.Drawing;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Desktop.Views;
+
+public class PromotionsView : UserControl
+{
+    private DataGridView dgvPromotions = null!;
+    private Button btnRefresh = null!;
+    private Button btnAdd = null!;
+    private Button btnDelete = null!;
+    private Label lblStatus = null!;
+    private readonly HttpClient _httpClient = new();
+    private readonly string _apiBaseUrl = "http://localhost:5137";
+
+    public PromotionsView()
+    {
+        InitializeComponent();
+        _ = LoadPromotionsAsync();
+    }
+
+    private void InitializeComponent()
+    {
+        this.Dock = DockStyle.Fill;
+        this.BackColor = ThemeManager.Background;
+        this.Padding = new Padding(20);
+
+        var pnlHeader = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 65,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(15),
+            Margin = new Padding(0, 0, 0, 15)
+        };
+        ThemeManager.ApplyCardPanel(pnlHeader);
+
+        var lblTitle = new Label
+        {
+            Text = "🎁 CHƯƠNG TRÌNH KHUYẾN MÃI & VOUCHER (PROMOTIONS)",
+            Font = ThemeManager.HeaderFont,
+            ForeColor = ThemeManager.PrimaryHover,
+            Location = new Point(15, 18),
+            AutoSize = true
+        };
+        pnlHeader.Controls.Add(lblTitle);
+
+        var pnlToolbar = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 50,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(10, 8, 10, 8)
+        };
+        ThemeManager.ApplyCardPanel(pnlToolbar);
+
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(110, 32), Location = new Point(10, 8) };
+        ThemeManager.ApplySecondaryButton(btnRefresh);
+        btnRefresh.Click += async (s, e) => await LoadPromotionsAsync();
+
+        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", Size = new Size(160, 32), Location = new Point(130, 8) };
+        ThemeManager.ApplyPrimaryButton(btnAdd);
+        btnAdd.Click += BtnAdd_Click;
+
+        btnDelete = new Button { Text = "🗑️ Xóa Mã", Size = new Size(110, 32), Location = new Point(300, 8) };
+        ThemeManager.ApplySecondaryButton(btnDelete);
+        btnDelete.ForeColor = ThemeManager.Danger;
+        btnDelete.Click += async (s, e) => await DeleteSelectedAsync();
+
+        lblStatus = new Label
+        {
+            Text = "Sẵn sàng",
+            Font = ThemeManager.BodyFont,
+            ForeColor = ThemeManager.TextSecondary,
+            Location = new Point(425, 14),
+            AutoSize = true
+        };
+
+        pnlToolbar.Controls.Add(btnRefresh);
+        pnlToolbar.Controls.Add(btnAdd);
+        pnlToolbar.Controls.Add(btnDelete);
+        pnlToolbar.Controls.Add(lblStatus);
+
+        var pnlGridContainer = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = ThemeManager.CardBg,
+            Padding = new Padding(10)
+        };
+        ThemeManager.ApplyCardPanel(pnlGridContainer);
+
+        dgvPromotions = new DataGridView();
+        ThemeManager.ApplyGridStyle(dgvPromotions);
+        dgvPromotions.Dock = DockStyle.Fill;
+
+        dgvPromotions.Columns.Add("Code", "Mã Voucher");
+        dgvPromotions.Columns.Add("Name", "Tên Chương Trình");
+        dgvPromotions.Columns.Add("DiscountType", "Loại Giảm");
+        dgvPromotions.Columns.Add("Discount", "Mức Giảm Giá");
+        dgvPromotions.Columns.Add("Condition", "Đơn Hàng Tối Thiểu");
+        dgvPromotions.Columns.Add("MaxDiscount", "Giảm Tối Đa");
+        dgvPromotions.Columns.Add("TimeRange", "Thời Gian Hiệu Lực");
+        dgvPromotions.Columns.Add("Status", "Trạng Thái");
+        dgvPromotions.Columns.Add("RawId", "RawId");
+        dgvPromotions.Columns["RawId"].Visible = false;
+
+        pnlGridContainer.Controls.Add(dgvPromotions);
+
+        this.Controls.Add(pnlGridContainer);
+        this.Controls.Add(pnlToolbar);
+        this.Controls.Add(pnlHeader);
+    }
+
+    private async Task LoadPromotionsAsync()
+    {
+        lblStatus.Text = "Đang tải...";
+        dgvPromotions.Rows.Clear();
+
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/promotions?page=1&pageSize=100");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("data", out var data))
+                {
+                    var itemsProp = data.TryGetProperty("items", out var items) ? items : data;
+                    if (itemsProp.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in itemsProp.EnumerateArray())
+                        {
+                            int id = item.GetProperty("promotionId").GetInt32();
+                            string code = item.GetProperty("promotionCode").GetString() ?? "";
+                            string name = item.GetProperty("promotionName").GetString() ?? "";
+                            string discType = item.TryGetProperty("discountType", out var dt) ? (dt.GetString() ?? "Percentage") : "Percentage";
+                            decimal discVal = item.GetProperty("discountValue").GetDecimal();
+                            string discStr = discType.Equals("Percentage", StringComparison.OrdinalIgnoreCase)
+                                ? $"{discVal:N0}%" : $"{discVal:N0} ₫";
+                            decimal minOrder = item.TryGetProperty("minimumOrderAmount", out var mo) ? mo.GetDecimal() : 0m;
+                            string maxStr = item.TryGetProperty("maximumDiscountAmount", out var mx) && mx.ValueKind != JsonValueKind.Null
+                                ? $"{mx.GetDecimal():N0} ₫" : "Không giới hạn";
+                            string discTypeLbl = discType.Equals("Percentage", StringComparison.OrdinalIgnoreCase)
+                                ? "📊 % Phần Trăm" : "💰 Cố Định";
+
+                            string startRaw = item.TryGetProperty("startDate", out var sd) ? sd.GetString() ?? "" : "";
+                            string endRaw = item.TryGetProperty("endDate", out var ed) ? ed.GetString() ?? "" : "";
+                            string timeRange = $"{ParseDateShort(startRaw)} → {ParseDateShort(endRaw)}";
+
+                            bool isActive = item.TryGetProperty("isActive", out var ia) && ia.GetBoolean();
+                            DateTime now = DateTime.UtcNow;
+                            DateTime endDate = string.IsNullOrEmpty(endRaw) ? DateTime.MinValue : DateTime.Parse(endRaw);
+                            string statusStr;
+                            if (!isActive) statusStr = "🔴 Đã Tắt";
+                            else if (endDate < now) statusStr = "⚪ Đã Hết Hạn";
+                            else if ((endDate - now).TotalDays <= 3) statusStr = "⏳ Sắp Hết Hạn";
+                            else statusStr = "🟢 Đang Diễn Ra";
+
+                            dgvPromotions.Rows.Add(
+                                code, name, discTypeLbl, discStr,
+                                $"{minOrder:N0} ₫", maxStr, timeRange, statusStr, id
+                            );
+                        }
+                        lblStatus.Text = $"Đã tải {dgvPromotions.Rows.Count} khuyến mãi.";
+                        return;
+                    }
+                }
+            }
+            lblStatus.Text = "Không có dữ liệu hoặc API offline.";
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = $"Lỗi: {ex.Message}";
+        }
+    }
+
+    private static string ParseDateShort(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "-";
+        if (DateTime.TryParse(raw, out var dt)) return dt.ToLocalTime().ToString("dd/MM/yyyy");
+        return raw;
+    }
+
+    private void BtnAdd_Click(object? sender, EventArgs e)
+    {
+        using var form = new AddPromotionForm(_apiBaseUrl, _httpClient);
+        if (form.ShowDialog(this) == DialogResult.OK)
+        {
+            _ = LoadPromotionsAsync();
+        }
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (dgvPromotions.CurrentRow == null) return;
+        var rawId = dgvPromotions.CurrentRow.Cells["RawId"].Value;
+        if (rawId == null) return;
+
+        int id = Convert.ToInt32(rawId);
+        string code = dgvPromotions.CurrentRow.Cells["Code"].Value?.ToString() ?? $"ID-{id}";
+
+        var confirm = MessageBox.Show(
+            $"Bạn có chắc muốn XÓA mã khuyến mãi '{code}'?\nHành động này không thể hoàn tác.",
+            "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+        if (confirm != DialogResult.Yes) return;
+
+        try
+        {
+            lblStatus.Text = $"Đang xóa {code}...";
+            var response = await _httpClient.DeleteAsync($"{_apiBaseUrl}/api/v1/promotions/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                MessageBox.Show($"✅ Đã xóa mã '{code}' thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                await LoadPromotionsAsync();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                MessageBox.Show($"Không thể xóa.\nChi tiết: {body}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                lblStatus.Text = "Xóa thất bại.";
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+}
+
+internal class AddPromotionForm : Form
+{
+    private readonly string _apiBaseUrl;
+    private readonly HttpClient _httpClient;
+
+    private TextBox txtCode = null!;
+    private TextBox txtName = null!;
+    private TextBox txtDesc = null!;
+    private ComboBox cboType = null!;
+    private NumericUpDown numValue = null!;
+    private NumericUpDown numMinOrder = null!;
+    private NumericUpDown numMaxDiscount = null!;
+    private DateTimePicker dtpStart = null!;
+    private DateTimePicker dtpEnd = null!;
+    private CheckBox chkActive = null!;
+    private Button btnSave = null!;
+    private Button btnCancel_ = null!;
+
+    public AddPromotionForm(string apiBaseUrl, HttpClient httpClient)
+    {
+        _apiBaseUrl = apiBaseUrl;
+        _httpClient = httpClient;
+        InitForm();
+    }
+
+    private void InitForm()
+    {
+        this.Text = "➕ Thêm Mã Khuyến Mãi";
+        this.Size = new Size(480, 530);
+        this.StartPosition = FormStartPosition.CenterParent;
+        this.BackColor = ThemeManager.Background;
+        this.FormBorderStyle = FormBorderStyle.FixedDialog;
+        this.MaximizeBox = false;
+
+        int y = 20;
+        int lw = 160, cw = 270, lx = 15, cx = 180;
+
+        Label Lbl(string text) => new Label { Text = text, Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextPrimary, Location = new Point(lx, y + 3), AutoSize = true };
+        void NextRow(int h = 40) { y += h; }
+
+        this.Controls.Add(Lbl("Mã Voucher:"));
+        txtCode = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
+        this.Controls.Add(txtCode); NextRow();
+
+        this.Controls.Add(Lbl("Tên chương trình:"));
+        txtName = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
+        this.Controls.Add(txtName); NextRow();
+
+        this.Controls.Add(Lbl("Mô tả:"));
+        txtDesc = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
+        this.Controls.Add(txtDesc); NextRow();
+
+        this.Controls.Add(Lbl("Loại giảm giá:"));
+        cboType = new ComboBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, DropDownStyle = ComboBoxStyle.DropDownList };
+        cboType.Items.AddRange(new object[] { "Percentage", "FixedAmount" });
+        cboType.SelectedIndex = 0;
+        this.Controls.Add(cboType); NextRow();
+
+        this.Controls.Add(Lbl("Giá trị giảm:"));
+        numValue = new NumericUpDown { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
+        this.Controls.Add(numValue); NextRow();
+
+        this.Controls.Add(Lbl("Đơn hàng tối thiểu:"));
+        numMinOrder = new NumericUpDown { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
+        this.Controls.Add(numMinOrder); NextRow();
+
+        this.Controls.Add(Lbl("Giảm tối đa (0=bỏ qua):"));
+        numMaxDiscount = new NumericUpDown { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
+        this.Controls.Add(numMaxDiscount); NextRow();
+
+        this.Controls.Add(Lbl("Ngày bắt đầu:"));
+        dtpStart = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today };
+        this.Controls.Add(dtpStart); NextRow();
+
+        this.Controls.Add(Lbl("Ngày kết thúc:"));
+        dtpEnd = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today.AddMonths(1) };
+        this.Controls.Add(dtpEnd); NextRow();
+
+        this.Controls.Add(Lbl("Kích hoạt:"));
+        chkActive = new CheckBox { Location = new Point(cx, y), Checked = true, Font = ThemeManager.BodyFont };
+        this.Controls.Add(chkActive); NextRow(35);
+
+        btnSave = new Button { Text = "💾 Lưu", Size = new Size(110, 36), Location = new Point(cx, y) };
+        ThemeManager.ApplyPrimaryButton(btnSave);
+        btnSave.Click += async (s, e) => await SaveAsync();
+        this.Controls.Add(btnSave);
+
+        btnCancel_ = new Button { Text = "Hủy", Size = new Size(80, 36), Location = new Point(cx + 120, y) };
+        ThemeManager.ApplySecondaryButton(btnCancel_);
+        btnCancel_.Click += (s, e) => { this.DialogResult = DialogResult.Cancel; this.Close(); };
+        this.Controls.Add(btnCancel_);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(txtCode.Text) || string.IsNullOrWhiteSpace(txtName.Text))
+        {
+            MessageBox.Show("Mã voucher và tên chương trình là bắt buộc.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var payload = new
+        {
+            promotionCode = txtCode.Text.Trim().ToUpper(),
+            promotionName = txtName.Text.Trim(),
+            description = txtDesc.Text.Trim(),
+            discountType = cboType.SelectedItem?.ToString() ?? "Percentage",
+            discountValue = numValue.Value,
+            minimumOrderAmount = numMinOrder.Value,
+            maximumDiscountAmount = numMaxDiscount.Value > 0 ? (decimal?)numMaxDiscount.Value : null,
+            startDate = dtpStart.Value.ToUniversalTime(),
+            endDate = dtpEnd.Value.ToUniversalTime(),
+            isActive = chkActive.Checked
+        };
+
+        try
+        {
+            btnSave.Enabled = false;
+            var json = JsonSerializer.Serialize(payload);
+            var response = await _httpClient.PostAsync(
+                $"{_apiBaseUrl}/api/v1/promotions",
+                new StringContent(json, Encoding.UTF8, "application/json"));
+
+            if (response.IsSuccessStatusCode)
+            {
+                MessageBox.Show($"✅ Đã tạo mã khuyến mãi '{txtCode.Text.ToUpper()}' thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                MessageBox.Show($"Lỗi: {body}", "Không thể lưu", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                btnSave.Enabled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi kết nối: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            btnSave.Enabled = true;
+        }
+    }
+}
+
+
+

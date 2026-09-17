@@ -16,8 +16,9 @@ public class OrderDto
     public int? VoucherId { get; set; }
     public decimal FinalAmount { get; set; }
     public OrderStatus Status { get; set; }
-    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
     public List<OrderDetailDto> OrderDetails { get; set; } = new();
+    public List<OrderPromotionDto> AppliedPromotions { get; set; } = new();
+    public List<PaymentDto> Payments { get; set; } = new();
 }
 
 public class OrderDetailDto
@@ -33,15 +34,36 @@ public class OrderDetailDto
     public decimal SubTotal { get; set; }
 }
 
+public class OrderPromotionDto
+{
+    public int OrderPromotionId { get; set; }
+    public int PromotionId { get; set; }
+    public decimal DiscountAmount { get; set; }
+}
+
+public class PaymentDto
+{
+    public int PaymentId { get; set; }
+    public PaymentMethod PaymentMethod { get; set; }
+    public decimal AmountPaid { get; set; }
+    public DateTime PaymentDate { get; set; }
+}
+
+public class CreatePaymentRequest
+{
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public decimal AmountPaid { get; set; }
+}
+
 public class CreateOrderRequest
 {
     public int EmployeeId { get; set; }
     public int? CustomerId { get; set; }
     public int BranchId { get; set; } = 1;
     public int? VoucherId { get; set; }
-    /// <summary>Mã khuyến mãi nhập từ thu ngân POS (nếu có)</summary>
     public string? PromotionCode { get; set; }
-    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public PaymentMethod? PaymentMethod { get; set; }
+    public List<CreatePaymentRequest> Payments { get; set; } = new();
     public List<CreateOrderDetailRequest> Items { get; set; } = new();
 }
 

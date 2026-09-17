@@ -27,6 +27,13 @@ public class AppDbContext : DbContext
     public DbSet<ImportReceipt> ImportReceipts => Set<ImportReceipt>();
     public DbSet<ImportDetail> ImportDetails => Set<ImportDetail>();
 
+    //Module 07_Order
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
+    public DbSet<OrderPromotion> OrderPromotions => Set<OrderPromotion>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+
     // Modules 13 & 14 (Employee, ERP Inventory, Import, System)
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Shift> Shifts => Set<Shift>();

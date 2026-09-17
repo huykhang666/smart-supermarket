@@ -14,22 +14,12 @@ public class Order
     public int? VoucherId { get; set; }
     public decimal FinalAmount { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Completed;
-    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
+    public User? Employee { get; set; }
+    public Customer? Customer { get; set; }
     public List<OrderDetail> OrderDetails { get; set; } = new();
-}
-
-public class OrderDetail
-{
-    public int OrderDetailId { get; set; }
-    public int OrderId { get; set; }
-    public int ProductId { get; set; }
-    public int Quantity { get; set; }
-    public decimal UnitPrice { get; set; }
-    public decimal SubTotal { get; set; }
-
-    // Navigation properties
-    public Order Order { get; set; } = null!;
-    public Product Product { get; set; } = null!;
+    public List<OrderPromotion> OrderPromotions { get; set; } = new();
+    public List<Payment> Payments { get; set; } = new();
 }

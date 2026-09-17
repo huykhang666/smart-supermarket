@@ -7,6 +7,7 @@ public interface IOrderRepository
 {
     Task<Order?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
+        int? branchId,
         int? employeeId,
         int? customerId,
         OrderStatus? status,

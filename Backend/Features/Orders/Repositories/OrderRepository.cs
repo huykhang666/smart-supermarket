@@ -18,10 +18,13 @@ public class OrderRepository : IOrderRepository
     {
         return await _dbContext.Orders
             .Include(o => o.OrderDetails)
+            .Include(o => o.OrderPromotions)
+            .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.OrderId == id, cancellationToken);
     }
 
     public async Task<(IEnumerable<Order> Items, int TotalCount)> GetPagedAsync(
+        int? branchId,
         int? employeeId,
         int? customerId,
         OrderStatus? status,
@@ -33,7 +36,14 @@ public class OrderRepository : IOrderRepository
     {
         var query = _dbContext.Orders
             .Include(o => o.OrderDetails)
+            .Include(o => o.OrderPromotions)
+            .Include(o => o.Payments)
             .AsQueryable();
+
+        if (branchId.HasValue)
+        {
+            query = query.Where(o => o.BranchId == branchId.Value);
+        }
 
         if (employeeId.HasValue)
         {
