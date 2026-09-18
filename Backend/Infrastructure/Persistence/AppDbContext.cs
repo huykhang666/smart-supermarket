@@ -14,10 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<ProductSupplier> ProductSuppliers => Set<ProductSupplier>();
-    public DbSet<Order> Orders => Set<Order>();
-    public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
-    public DbSet<Promotion> Promotions => Set<Promotion>();
-    
+
     // Module 05_Inventory
     public DbSet<Inventory> Inventories => Set<Inventory>();
     public DbSet<StockHistory> StockHistories => Set<StockHistory>();
@@ -27,7 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<ImportReceipt> ImportReceipts => Set<ImportReceipt>();
     public DbSet<ImportDetail> ImportDetails => Set<ImportDetail>();
 
-    //Module 07_Order
+    // Module 07_Order & 08_Promotion (Chỉ khai báo 1 lần duy nhất)
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<OrderPromotion> OrderPromotions => Set<OrderPromotion>();

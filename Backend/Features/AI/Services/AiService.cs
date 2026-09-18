@@ -73,6 +73,7 @@ public class AiService : IAiService
     public async Task<AiResponse> GenerateRevenueReportAsync(AiRevenueReportRequest request, CancellationToken cancellationToken = default)
     {
         var orders = await _dbContext.Orders
+            .Include(o => o.Payments)
             .Where(o => o.OrderDate >= request.StartDate && o.OrderDate <= request.EndDate
                         && o.Status == Domain.Enums.OrderStatus.Completed)
             .ToListAsync(cancellationToken);
@@ -81,9 +82,9 @@ public class AiService : IAiService
         decimal totalDiscount = orders.Sum(o => o.DiscountAmount);
         int orderCount = orders.Count;
 
-        var cashOrders = orders.Count(o => o.PaymentMethod == Domain.Enums.PaymentMethod.Cash);
-        var qrOrders = orders.Count(o => o.PaymentMethod == Domain.Enums.PaymentMethod.QRCode);
-        var cardOrders = orders.Count(o => o.PaymentMethod == Domain.Enums.PaymentMethod.CreditCard);
+        var cashOrders = orders.Count(o => o.Payments.Any(p => p.PaymentMethod == Domain.Enums.PaymentMethod.Cash));
+        var qrOrders = orders.Count(o => o.Payments.Any(p => p.PaymentMethod == Domain.Enums.PaymentMethod.QRCode));
+        var cardOrders = orders.Count(o => o.Payments.Any(p => p.PaymentMethod == Domain.Enums.PaymentMethod.CreditCard));
 
         var topProducts = await _dbContext.OrderDetails
             .Include(od => od.Order)

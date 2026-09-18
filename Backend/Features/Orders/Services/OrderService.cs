@@ -37,6 +37,7 @@ public class OrderService : IOrderService
     }
 
     public async Task<OrderPagedResult> GetPagedAsync(
+        int? branchId,
         int? employeeId,
         int? customerId,
         OrderStatus? status,
@@ -47,7 +48,7 @@ public class OrderService : IOrderService
         CancellationToken cancellationToken = default)
     {
         var (items, totalCount) = await _orderRepository.GetPagedAsync(
-            employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
+            branchId, employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
 
         var dtos = new List<OrderDto>();
         foreach (var order in items)
@@ -152,7 +153,31 @@ public class OrderService : IOrderService
             }
         }
 
-        decimal finalAmount = totalAmount - discountAmount;
+        decimal finalAmount = Math.Max(0, totalAmount - discountAmount);
+
+        // Chuẩn bị Payments
+        var payments = new List<Payment>();
+        if (request.Payments != null && request.Payments.Any())
+        {
+            foreach (var p in request.Payments)
+            {
+                payments.Add(new Payment
+                {
+                    PaymentMethod = p.PaymentMethod,
+                    AmountPaid = p.AmountPaid,
+                    PaymentDate = DateTime.UtcNow
+                });
+            }
+        }
+        else if (request.PaymentMethod.HasValue)
+        {
+            payments.Add(new Payment
+            {
+                PaymentMethod = request.PaymentMethod.Value,
+                AmountPaid = finalAmount,
+                PaymentDate = DateTime.UtcNow
+            });
+        }
 
         var order = new Order
         {
@@ -164,9 +189,9 @@ public class OrderService : IOrderService
             DiscountAmount = discountAmount,
             VoucherId = resolvedVoucherId,
             FinalAmount = finalAmount,
-            PaymentMethod = request.PaymentMethod,
             Status = OrderStatus.Completed,
-            OrderDetails = orderDetails
+            OrderDetails = orderDetails,
+            Payments = payments
         };
 
         await _orderRepository.AddAsync(order, cancellationToken);
@@ -258,6 +283,21 @@ public class OrderService : IOrderService
             };
         }).ToList();
 
+        var paymentDtos = order.Payments.Select(p => new PaymentDto
+        {
+            PaymentId = p.PaymentId,
+            PaymentMethod = p.PaymentMethod,
+            AmountPaid = p.AmountPaid,
+            PaymentDate = p.PaymentDate
+        }).ToList();
+
+        var promotionDtos = order.OrderPromotions.Select(op => new OrderPromotionDto
+        {
+            OrderPromotionId = op.OrderPromotionId,
+            PromotionId = op.PromotionId,
+            DiscountAmount = op.DiscountAmount
+        }).ToList();
+
         return new OrderDto
         {
             OrderId = order.OrderId,
@@ -271,9 +311,11 @@ public class OrderService : IOrderService
             DiscountAmount = order.DiscountAmount,
             VoucherId = order.VoucherId,
             FinalAmount = order.FinalAmount,
-            PaymentMethod = order.PaymentMethod,
             Status = order.Status,
-            OrderDetails = detailDtos
+            PaymentMethod = paymentDtos.FirstOrDefault()?.PaymentMethod ?? PaymentMethod.Cash,
+            OrderDetails = detailDtos,
+            Payments = paymentDtos,
+            AppliedPromotions = promotionDtos
         };
     }
 }

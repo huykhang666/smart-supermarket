@@ -19,6 +19,7 @@ public class OrderController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ApiResult<OrderPagedResult>>> GetPaged(
+        [FromQuery] int? branchId,
         [FromQuery] int? employeeId,
         [FromQuery] int? customerId,
         [FromQuery] OrderStatus? status,
@@ -28,7 +29,7 @@ public class OrderController : ControllerBase
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        var result = await _orderService.GetPagedAsync(employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
+        var result = await _orderService.GetPagedAsync(branchId, employeeId, customerId, status, startDate, endDate, page, pageSize, cancellationToken);
         return Ok(ApiResult<OrderPagedResult>.Success(result, "Lấy danh sách đơn hàng thành công"));
     }
 

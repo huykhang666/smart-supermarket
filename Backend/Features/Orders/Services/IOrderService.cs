@@ -7,6 +7,7 @@ public interface IOrderService
 {
     Task<OrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<OrderPagedResult> GetPagedAsync(
+        int? branchId,
         int? employeeId,
         int? customerId,
         OrderStatus? status,
