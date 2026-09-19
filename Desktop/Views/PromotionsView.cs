@@ -271,8 +271,8 @@ internal class AddPromotionForm : Form
 
         int y = 20;
         int lx = 20;
-        int cx = 225; // Dời sang phải để nhãn 'Giảm tối đa (0=bỏ qua):' không bị dính
-        int cw = 320; // Nới rộng kích thước ô nhập liệu
+        int cx = 225;
+        int cw = 320;
 
         Label Lbl(string text) => new Label
         {
@@ -285,22 +285,18 @@ internal class AddPromotionForm : Form
 
         void NextRow(int h = 44) { y += h; }
 
-        // 1. Mã Voucher
         this.Controls.Add(Lbl("Mã Voucher:"));
         txtCode = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, CharacterCasing = CharacterCasing.Upper };
         this.Controls.Add(txtCode); NextRow();
 
-        // 2. Tên chương trình
         this.Controls.Add(Lbl("Tên chương trình:"));
         txtName = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
         this.Controls.Add(txtName); NextRow();
 
-        // 3. Mô tả
         this.Controls.Add(Lbl("Mô tả:"));
         txtDesc = new TextBox { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont };
         this.Controls.Add(txtDesc); NextRow();
 
-        // 4. Loại giảm giá
         this.Controls.Add(Lbl("Loại giảm giá:"));
         cboType = new ComboBox
         {
@@ -330,7 +326,6 @@ internal class AddPromotionForm : Form
         };
         this.Controls.Add(cboType); NextRow();
 
-        // 5. Giá trị giảm kèm Label Đơn Vị
         this.Controls.Add(Lbl("Giá trị giảm:"));
         numValue = new NumericUpDown { Location = new Point(cx, y), Size = new Size(200, 28), Font = ThemeManager.BodyFont, Maximum = 100, DecimalPlaces = 0, ThousandsSeparator = true };
         lblUnitValue = new Label { Text = "%", Font = ThemeManager.BodyBold, ForeColor = ThemeManager.TextSecondary, Location = new Point(cx + 210, y + 4), AutoSize = true };
@@ -338,7 +333,6 @@ internal class AddPromotionForm : Form
         this.Controls.Add(lblUnitValue);
         NextRow();
 
-        // 6. Đơn hàng tối thiểu kèm VNĐ
         this.Controls.Add(Lbl("Đơn hàng tối thiểu:"));
         numMinOrder = new NumericUpDown { Location = new Point(cx, y), Size = new Size(200, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
         var lblUnitMin = new Label { Text = "VNĐ", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(cx + 210, y + 4), AutoSize = true };
@@ -346,7 +340,6 @@ internal class AddPromotionForm : Form
         this.Controls.Add(lblUnitMin);
         NextRow();
 
-        // 7. Giảm tối đa kèm VNĐ
         this.Controls.Add(Lbl("Giảm tối đa:"));
         numMaxDiscount = new NumericUpDown { Location = new Point(cx, y), Size = new Size(200, 28), Font = ThemeManager.BodyFont, Maximum = 100000000, DecimalPlaces = 0, ThousandsSeparator = true };
         var lblUnitMax = new Label { Text = "VNĐ", Font = ThemeManager.BodyFont, ForeColor = ThemeManager.TextSecondary, Location = new Point(cx + 210, y + 4), AutoSize = true };
@@ -354,22 +347,18 @@ internal class AddPromotionForm : Form
         this.Controls.Add(lblUnitMax);
         NextRow();
 
-        // 8. Ngày bắt đầu
         this.Controls.Add(Lbl("Ngày bắt đầu:"));
         dtpStart = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today };
         this.Controls.Add(dtpStart); NextRow();
 
-        // 9. Ngày kết thúc
         this.Controls.Add(Lbl("Ngày kết thúc:"));
         dtpEnd = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today.AddMonths(1) };
         this.Controls.Add(dtpEnd); NextRow();
 
-        // 10. Kích hoạt
         this.Controls.Add(Lbl("Kích hoạt:"));
         chkActive = new CheckBox { Location = new Point(cx, y + 2), Checked = true, Font = ThemeManager.BodyFont };
         this.Controls.Add(chkActive); NextRow(40);
 
-        // Nút Lưu & Hủy
         btnSave = new Button { Text = "💾 Lưu", Size = new Size(110, 36), Location = new Point(cx, y) };
         ThemeManager.ApplyPrimaryButton(btnSave);
         btnSave.Click += async (s, e) => await SaveAsync();

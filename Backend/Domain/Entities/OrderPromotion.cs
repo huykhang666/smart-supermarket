@@ -7,7 +7,6 @@ public class OrderPromotion
     public int PromotionId { get; set; }
     public decimal DiscountAmount { get; set; }
 
-    // Navigation properties
     public Order Order { get; set; } = null!;
     public Promotion Promotion { get; set; } = null!;
 }

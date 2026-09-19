@@ -58,27 +58,22 @@ public class OrdersView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlToolbar);
 
-        // Nút Mở POS Bán Hàng
         btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(150, 32), Location = new Point(12, 10) };
         AppTheme.ApplyPrimaryButton(btnPos);
         btnPos.Click += BtnPos_Click;
 
-        // Nút Tải Lại
         btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(95, 32), Location = new Point(170, 10) };
         AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += BtnRefresh_Click;
 
-        // Nút Xem Chi Tiết
         btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Location = new Point(275, 10) };
         AppTheme.ApplySecondaryButton(btnViewDetail);
         btnViewDetail.Click += BtnViewDetail_Click;
 
-        // Nút Hủy Đơn Hàng
         btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Location = new Point(415, 10) };
         AppTheme.ApplyDangerButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
 
-        // Nhãn Trạng Thái
         lblStatus = new Label
         {
             Text = "Sẵn sàng",

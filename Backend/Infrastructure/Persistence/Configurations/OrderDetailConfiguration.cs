@@ -23,7 +23,6 @@ public class OrderDetailConfiguration : IEntityTypeConfiguration<OrderDetail>
             .HasColumnType("decimal(18,2)")
             .IsRequired();
 
-        // Khóa ngoại tới Product
         builder.HasOne(od => od.Product)
             .WithMany()
             .HasForeignKey(od => od.ProductId)

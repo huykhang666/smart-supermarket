@@ -10,6 +10,5 @@ public class Payment
     public decimal AmountPaid { get; set; }
     public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
 
-    // Navigation property
     public Order Order { get; set; } = null!;
 }
