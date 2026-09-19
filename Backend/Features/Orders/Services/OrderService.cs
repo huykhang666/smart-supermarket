@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using SmartSupermarket.Backend.Domain.Entities;
 using SmartSupermarket.Backend.Domain.Enums;
+using SmartSupermarket.Backend.Features.Customers.Repositories;
+using SmartSupermarket.Backend.Features.Inventory.Repositories;
 using SmartSupermarket.Backend.Features.Orders.DTOs;
 using SmartSupermarket.Backend.Features.Orders.Repositories;
-using SmartSupermarket.Backend.Features.Inventory.Repositories;
 using SmartSupermarket.Backend.Features.Promotions.Repositories;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 
@@ -14,17 +15,20 @@ public class OrderService : IOrderService
     private readonly IOrderRepository _orderRepository;
     private readonly IInventoryRepository _inventoryRepository;
     private readonly IPromotionRepository _promotionRepository;
+    private readonly ICustomerRepository _customerRepository;
     private readonly AppDbContext _dbContext;
 
     public OrderService(
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
         IPromotionRepository promotionRepository,
+        ICustomerRepository customerRepository,
         AppDbContext dbContext)
     {
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
         _promotionRepository = promotionRepository;
+        _customerRepository = customerRepository;
         _dbContext = dbContext;
     }
 
@@ -120,6 +124,7 @@ public class OrderService : IOrderService
 
         decimal discountAmount = 0;
         int? resolvedVoucherId = request.VoucherId;
+        var orderPromotions = new List<OrderPromotion>();
 
         if (!string.IsNullOrWhiteSpace(request.PromotionCode))
         {
@@ -149,13 +154,18 @@ public class OrderService : IOrderService
                     }
 
                     resolvedVoucherId ??= promotion.PromotionId;
+
+                    orderPromotions.Add(new OrderPromotion
+                    {
+                        PromotionId = promotion.PromotionId,
+                        DiscountAmount = discountAmount
+                    });
                 }
             }
         }
 
         decimal finalAmount = Math.Max(0, totalAmount - discountAmount);
 
-        // Chuẩn bị Payments
         var payments = new List<Payment>();
         if (request.Payments != null && request.Payments.Any())
         {
@@ -179,6 +189,14 @@ public class OrderService : IOrderService
             });
         }
 
+        if (payments.Any())
+        {
+            decimal totalPaid = payments.Sum(p => p.AmountPaid);
+            if (totalPaid < finalAmount)
+                throw new InvalidOperationException(
+                    $"Tổng tiền thanh toán ({totalPaid:N0}đ) nhỏ hơn số tiền cần trả ({finalAmount:N0}đ).");
+        }
+
         var order = new Order
         {
             EmployeeId = request.EmployeeId,
@@ -191,6 +209,7 @@ public class OrderService : IOrderService
             FinalAmount = finalAmount,
             Status = OrderStatus.Completed,
             OrderDetails = orderDetails,
+            OrderPromotions = orderPromotions,
             Payments = payments
         };
 
@@ -215,6 +234,24 @@ public class OrderService : IOrderService
                 CreatedByUserId = request.EmployeeId,
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        if (request.CustomerId.HasValue && finalAmount > 0)
+        {
+            var customer = await _customerRepository.GetByIdAsync(request.CustomerId.Value, cancellationToken);
+            if (customer != null)
+            {
+                int pointsEarned = (int)(finalAmount / 10000m);
+                if (pointsEarned > 0)
+                {
+                    customer.LoyaltyPoints += pointsEarned;
+                    customer.MembershipTier = customer.LoyaltyPoints >= 5000 ? 3
+                        : customer.LoyaltyPoints >= 2000 ? 2
+                        : customer.LoyaltyPoints >= 500 ? 1
+                        : 0;
+                    _customerRepository.Update(customer);
+                }
+            }
         }
 
         await _inventoryRepository.SaveChangesAsync();

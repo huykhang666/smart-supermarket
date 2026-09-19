@@ -16,7 +16,6 @@ public class Order
     public OrderStatus Status { get; set; } = OrderStatus.Completed;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties
     public User? Employee { get; set; }
     public Customer? Customer { get; set; }
     public List<OrderDetail> OrderDetails { get; set; } = new();
