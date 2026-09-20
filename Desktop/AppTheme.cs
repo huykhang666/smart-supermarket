@@ -306,5 +306,55 @@ public static class AppTheme
         path.CloseFigure();
         return path;
     }
+
+    public static void EnableResponsiveKpiGrid(TableLayoutPanel tlp, IList<Control> cards, Control parentView, int singleRowMinTotalWidth = 850, int twoRowMinTotalWidth = 440, int baseCardHeight = 110)
+    {
+        int lastCols = -1;
+        void Relayout()
+        {
+            if (tlp == null || cards == null || cards.Count == 0 || parentView.IsDisposed) return;
+            int availableWidth = parentView.ClientSize.Width - parentView.Padding.Horizontal;
+            int targetCols;
+            if (availableWidth >= singleRowMinTotalWidth)
+                targetCols = Math.Min(cards.Count, cards.Count <= 5 ? cards.Count : 4);
+            else if (availableWidth >= twoRowMinTotalWidth)
+                targetCols = cards.Count == 5 && availableWidth >= 600 ? 3 : 2;
+            else
+                targetCols = 1;
+
+            if (targetCols == lastCols) return;
+            lastCols = targetCols;
+
+            tlp.SuspendLayout();
+            tlp.Controls.Clear();
+            tlp.ColumnStyles.Clear();
+            tlp.RowStyles.Clear();
+
+            int targetRows = (cards.Count + targetCols - 1) / targetCols;
+            tlp.ColumnCount = targetCols;
+            tlp.RowCount = targetRows;
+
+            float colPct = 100f / targetCols;
+            for (int c = 0; c < targetCols; c++)
+                tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, colPct));
+
+            float rowPct = 100f / targetRows;
+            for (int r = 0; r < targetRows; r++)
+                tlp.RowStyles.Add(new RowStyle(SizeType.Percent, rowPct));
+
+            tlp.Height = targetRows * baseCardHeight;
+
+            for (int i = 0; i < cards.Count; i++)
+            {
+                int col = i % targetCols;
+                int row = i / targetCols;
+                tlp.Controls.Add(cards[i], col, row);
+            }
+            tlp.ResumeLayout(true);
+        }
+
+        parentView.Resize += (s, e) => Relayout();
+        Relayout();
+    }
 }
 

@@ -67,12 +67,20 @@ public class SuppliersView : UserControl
             Location = new Point(16, 16)
         };
 
+        var pnlActionsRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 2, 0, 0)
+        };
+
         btnAddSupplier = new Button
         {
             Text = "➕ Thêm Nhà Cung Cấp",
             Size = new Size(180, 32),
-            Location = new Point(pnlTop.Width - 365, 14),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Margin = new Padding(0, 0, 8, 0)
         };
         AppTheme.ApplyPrimaryButton(btnAddSupplier);
         btnAddSupplier.Click += (s, e) =>
@@ -93,15 +101,16 @@ public class SuppliersView : UserControl
         {
             Text = "📥 Import CSV/JSON",
             Size = new Size(160, 32),
-            Location = new Point(pnlTop.Width - 175, 14),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Margin = new Padding(0)
         };
         AppTheme.ApplySecondaryButton(btnImportSupplier);
         btnImportSupplier.Click += (s, e) => AntdUI.Message.success(this.FindForm() ?? new Form(), "Chọn file CSV để import nhà cung cấp...");
 
+        pnlActionsRight.Controls.Add(btnAddSupplier);
+        pnlActionsRight.Controls.Add(btnImportSupplier);
+
         pnlTop.Controls.Add(lblHeader);
-        pnlTop.Controls.Add(btnAddSupplier);
-        pnlTop.Controls.Add(btnImportSupplier);
+        pnlTop.Controls.Add(pnlActionsRight);
 
         dgvSuppliers = new DataGridView();
         AppTheme.ApplyGridStyle(dgvSuppliers);

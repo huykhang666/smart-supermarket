@@ -48,29 +48,32 @@ public class OrdersView : UserControl
         };
         pnlHeader.Controls.Add(lblTitle);
 
-        var pnlToolbar = new Panel
+        var pnlToolbar = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 52,
+            AutoSize = true,
+            MinimumSize = new Size(0, 52),
             BackColor = AppTheme.SurfaceWhite,
             Padding = new Padding(12, 10, 12, 10),
-            Margin = new Padding(0, 0, 0, 8)
+            Margin = new Padding(0, 0, 0, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
         };
         AppTheme.ApplyCardPanel(pnlToolbar);
 
-        btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(150, 32), Location = new Point(12, 10) };
+        btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(150, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyPrimaryButton(btnPos);
         btnPos.Click += BtnPos_Click;
 
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(95, 32), Location = new Point(170, 10) };
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(95, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += BtnRefresh_Click;
 
-        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Location = new Point(275, 10) };
+        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnViewDetail);
         btnViewDetail.Click += BtnViewDetail_Click;
 
-        btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Location = new Point(415, 10) };
+        btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyDangerButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
 
@@ -79,7 +82,7 @@ public class OrdersView : UserControl
             Text = "Sẵn sàng",
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.TextSecondary,
-            Location = new Point(540, 16),
+            Margin = new Padding(8, 6, 0, 4),
             AutoSize = true
         };
 
@@ -112,6 +115,16 @@ public class OrdersView : UserControl
         dgvOrders.Columns.Add("Status", "Trạng Thái");
         dgvOrders.Columns.Add("RawOrderId", "RawOrderId");
         dgvOrders.Columns["RawOrderId"].Visible = false;
+
+        dgvOrders.Columns["OrderId"].FillWeight = 11;
+        dgvOrders.Columns["Customer"].FillWeight = 14;
+        dgvOrders.Columns["Employee"].FillWeight = 12;
+        dgvOrders.Columns["TotalAmount"].FillWeight = 11;
+        dgvOrders.Columns["DiscountAmount"].FillWeight = 10;
+        dgvOrders.Columns["FinalAmount"].FillWeight = 12;
+        dgvOrders.Columns["PaymentMethod"].FillWeight = 12;
+        dgvOrders.Columns["OrderDate"].FillWeight = 14;
+        dgvOrders.Columns["Status"].FillWeight = 10;
 
         pnlGrid.Controls.Add(dgvOrders);
 

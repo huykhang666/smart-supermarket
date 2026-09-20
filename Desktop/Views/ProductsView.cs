@@ -115,19 +115,20 @@ public class ProductsView : UserControl
         // Left Filters Group (FlowLayoutPanel for clean 32px height vertical alignment)
         var pnlFiltersLeft = new FlowLayoutPanel
         {
-            Location = new Point(15, 14),
-            Size = new Size(590, 36),
+            Dock = DockStyle.Left,
+            AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            BackColor = Color.Transparent
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 2, 0, 0)
         };
 
         txtSearch = new TextBox
         {
             PlaceholderText = "🔍 Tìm Tên / Barcode...",
             Font = AppTheme.FontBody,
-            Size = new Size(210, 32),
-            Margin = new Padding(0, 0, 8, 0),
+            Size = new Size(180, 32),
+            Margin = new Padding(0, 0, 6, 0),
             BorderStyle = BorderStyle.FixedSingle
         };
         txtSearch.KeyDown += (s, e) =>
@@ -141,8 +142,8 @@ public class ProductsView : UserControl
 
         cbCategory = new ComboBox
         {
-            Size = new Size(150, 32),
-            Margin = new Padding(0, 0, 8, 0)
+            Size = new Size(140, 32),
+            Margin = new Padding(0, 0, 6, 0)
         };
         AppTheme.ApplyComboBoxStyle(cbCategory, 32);
         cbCategory.Items.AddRange(new object[] { "Tất cả Danh mục", "Nước giải khát", "Sữa & Chế phẩm", "Rau củ quả tươi", "Bánh kẹo & Snack" });
@@ -151,8 +152,8 @@ public class ProductsView : UserControl
 
         cbStatus = new ComboBox
         {
-            Size = new Size(140, 32),
-            Margin = new Padding(0, 0, 8, 0)
+            Size = new Size(130, 32),
+            Margin = new Padding(0, 0, 6, 0)
         };
         AppTheme.ApplyComboBoxStyle(cbStatus, 32);
         cbStatus.Items.AddRange(new object[] { "Tất cả Trạng thái", "Đang bán (Active)", "Ngừng bán (Inactive)" });
@@ -162,7 +163,7 @@ public class ProductsView : UserControl
         btnSearch = new Button
         {
             Text = "Tìm kiếm",
-            Size = new Size(80, 32),
+            Size = new Size(75, 32),
             Margin = new Padding(0)
         };
         AppTheme.ApplySecondaryButton(btnSearch);
@@ -173,19 +174,15 @@ public class ProductsView : UserControl
         pnlFiltersLeft.Controls.Add(cbStatus);
         pnlFiltersLeft.Controls.Add(btnSearch);
 
-        // Right Actions Group (Anchored to Right Edge for Perfect Balance)
+        // Right Actions Group (Docked to Right Edge for Perfect Alignment)
         var pnlActionsRight = new FlowLayoutPanel
         {
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            Location = new Point(pnlTopBar.Width - 485, 14),
-            Size = new Size(470, 36),
+            Dock = DockStyle.Right,
+            AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            BackColor = Color.Transparent
-        };
-        pnlTopBar.SizeChanged += (s, e) =>
-        {
-            pnlActionsRight.Location = new Point(pnlTopBar.Width - 485, 14);
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 2, 0, 0)
         };
 
         // Mode Switch Buttons
@@ -233,8 +230,8 @@ public class ProductsView : UserControl
         pnlActionsRight.Controls.Add(btnAddProduct);
         pnlActionsRight.Controls.Add(btnScanBarcode);
 
-        pnlTopBar.Controls.Add(pnlFiltersLeft);
         pnlTopBar.Controls.Add(pnlActionsRight);
+        pnlTopBar.Controls.Add(pnlFiltersLeft);
 
         // --- 3. Content Container (Table or Card Grid) ---
         pnlContentContainer = new Panel

@@ -92,12 +92,19 @@ public class ImportGoodsView : UserControl
             AutoSize = true
         };
 
+        var pnlOrderRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 14, 0, 0)
+        };
+
         btnConfirmStockIn = new Button
         {
             Text = "✅ Xác Nhận Nhập Kho",
-            Size = new Size(200, 36),
-            Location = new Point(pnlOrderInfo.Width - 220, 30),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Size = new Size(200, 36)
         };
         AppTheme.ApplyPrimaryButton(btnConfirmStockIn);
         btnConfirmStockIn.Click += (s, e) =>
@@ -114,19 +121,23 @@ public class ImportGoodsView : UserControl
                 "• Tồn kho hệ thống đã được cập nhật tăng theo số lượng thực nhận.",
                 "Tăng tồn kho thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
+        pnlOrderRight.Controls.Add(btnConfirmStockIn);
 
         pnlOrderInfo.Controls.Add(lblOrderTag);
         pnlOrderInfo.Controls.Add(lblProgressStatus);
-        pnlOrderInfo.Controls.Add(btnConfirmStockIn);
+        pnlOrderInfo.Controls.Add(pnlOrderRight);
 
         // --- 3. Barcode Scanner Toolbar Card ---
-        var pnlScanCard = new Panel
+        var pnlScanCard = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 65,
+            AutoSize = true,
+            MinimumSize = new Size(0, 65),
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(16, 12, 16, 12),
-            Margin = new Padding(0, 8, 0, 8)
+            Padding = new Padding(16, 14, 16, 12),
+            Margin = new Padding(0, 8, 0, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
         };
         AppTheme.ApplyCardPanel(pnlScanCard);
 
@@ -135,16 +146,16 @@ public class ImportGoodsView : UserControl
             Text = "📷 Scan Barcode Kiện Hàng:",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(16, 18),
-            AutoSize = true
+            AutoSize = true,
+            Margin = new Padding(0, 6, 12, 0)
         };
 
         txtScanBarcode = new TextBox
         {
-            Location = new Point(230, 14),
-            Size = new Size(320, 32),
+            Size = new Size(300, 32),
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            PlaceholderText = "Quét máy bắn mã vạch (Enter)..."
+            PlaceholderText = "Quét máy bắn mã vạch (Enter)...",
+            Margin = new Padding(0, 2, 12, 4)
         };
         txtScanBarcode.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) ProcessScanItem(); };
 
@@ -152,7 +163,7 @@ public class ImportGoodsView : UserControl
         {
             Text = "🔍 Quét Nhận",
             Size = new Size(130, 32),
-            Location = new Point(565, 14)
+            Margin = new Padding(0, 2, 0, 4)
         };
         AppTheme.ApplyPrimaryButton(btnScan);
         btnScan.Click += (s, e) => ProcessScanItem();

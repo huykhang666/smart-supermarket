@@ -49,25 +49,28 @@ public class PromotionsView : UserControl
         };
         pnlHeader.Controls.Add(lblTitle);
 
-        var pnlToolbar = new Panel
+        var pnlToolbar = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 52,
+            AutoSize = true,
+            MinimumSize = new Size(0, 52),
             BackColor = AppTheme.SurfaceWhite,
             Padding = new Padding(12, 10, 12, 10),
-            Margin = new Padding(0, 0, 0, 8)
+            Margin = new Padding(0, 0, 0, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
         };
         AppTheme.ApplyCardPanel(pnlToolbar);
 
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(100, 32), Location = new Point(12, 10) };
+        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(100, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += async (s, e) => await LoadPromotionsAsync();
 
-        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", Size = new Size(170, 32), Location = new Point(120, 10) };
+        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", Size = new Size(170, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyPrimaryButton(btnAdd);
         btnAdd.Click += BtnAdd_Click;
 
-        btnDelete = new Button { Text = "🗑️ Xóa Mã", Size = new Size(110, 32), Location = new Point(300, 10) };
+        btnDelete = new Button { Text = "🗑️ Xóa Mã", Size = new Size(110, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyDangerButton(btnDelete);
         btnDelete.Click += async (s, e) => await DeleteSelectedAsync();
 
@@ -76,7 +79,7 @@ public class PromotionsView : UserControl
             Text = "Sẵn sàng",
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.TextSecondary,
-            Location = new Point(425, 16),
+            Margin = new Padding(8, 6, 0, 4),
             AutoSize = true
         };
 

@@ -243,27 +243,30 @@ public class PosScanView : UserControl
         AppTheme.ApplyCardPanel(pnlCartContainer);
 
         // Toolbar above Grid (+ / - / Delete / Clear)
-        var pnlCartToolbar = new Panel
+        var pnlCartToolbar = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 42,
+            AutoSize = true,
+            MinimumSize = new Size(0, 42),
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(8, 6, 8, 6)
+            Padding = new Padding(8, 6, 8, 4),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
         };
 
-        btnQtyPlus = new Button { Text = "➕ Tăng (+1)", Size = new Size(100, 30), Location = new Point(8, 6) };
+        btnQtyPlus = new Button { Text = "➕ Tăng (+1)", Size = new Size(95, 30), Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnQtyPlus);
         btnQtyPlus.Click += (s, e) => ChangeSelectedQty(1);
 
-        btnQtyMinus = new Button { Text = "➖ Giảm (-1)", Size = new Size(100, 30), Location = new Point(116, 6) };
+        btnQtyMinus = new Button { Text = "➖ Giảm (-1)", Size = new Size(95, 30), Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnQtyMinus);
         btnQtyMinus.Click += (s, e) => ChangeSelectedQty(-1);
 
-        btnRemoveItem = new Button { Text = "🗑️ Xóa dòng", Size = new Size(105, 30), Location = new Point(224, 6) };
+        btnRemoveItem = new Button { Text = "🗑️ Xóa dòng", Size = new Size(100, 30), Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnRemoveItem);
         btnRemoveItem.Click += (s, e) => RemoveSelectedItem();
 
-        btnClearCart = new Button { Text = "🔄 Hủy giỏ", Size = new Size(100, 30), Location = new Point(337, 6) };
+        btnClearCart = new Button { Text = "🔄 Hủy giỏ", Size = new Size(95, 30), Margin = new Padding(0, 0, 0, 4) };
         AppTheme.ApplySecondaryButton(btnClearCart);
         btnClearCart.Click += (s, e) => { _cart.Clear(); RefreshCartGrid(); };
 

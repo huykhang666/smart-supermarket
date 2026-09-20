@@ -66,42 +66,19 @@ public class StockAuditView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlToolbar);
 
-        var lblZone = new Label { Text = "Khu vực kệ:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 20), AutoSize = true };
-        cboZone = new ComboBox
+        var pnlActionsRight = new FlowLayoutPanel
         {
-            Location = new Point(100, 16),
-            Size = new Size(180, 32),
-            Font = AppTheme.FontBody,
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 4, 0, 0)
         };
-        cboZone.Items.AddRange(new[] { "Kệ A1 - Nước giải khát", "Kệ B2 - Bánh kẹo ăn vặt", "Kệ C1 - Sữa & Bơ", "Kệ D3 - Gia vị đồ khô" });
-        cboZone.SelectedIndex = 0;
-
-        var lblScan = new Label { Text = "Quét Barcode:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(300, 20), AutoSize = true };
-        txtBarcodeScan = new TextBox
-        {
-            Location = new Point(410, 16),
-            Size = new Size(240, 32),
-            Font = new Font("Segoe UI", 11f, FontStyle.Bold),
-            PlaceholderText = "Quét mã vạch (Enter)..."
-        };
-        txtBarcodeScan.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) ProcessScan(); };
-
-        var btnScanAdd = new Button
-        {
-            Text = "➕ Đếm +1",
-            Size = new Size(100, 32),
-            Location = new Point(660, 16)
-        };
-        AppTheme.ApplyPrimaryButton(btnScanAdd);
-        btnScanAdd.Click += (s, e) => ProcessScan();
 
         var btnCompleteAudit = new Button
         {
             Text = "✅ Hoàn Tất Kiểm Kê",
-            Size = new Size(180, 32),
-            Location = new Point(pnlToolbar.Width - 200, 16),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Size = new Size(180, 32)
         };
         AppTheme.ApplyPrimaryButton(btnCompleteAudit);
         btnCompleteAudit.Click += async (s, e) =>
@@ -119,13 +96,55 @@ public class StockAuditView : UserControl
             }
             catch { }
         };
+        pnlActionsRight.Controls.Add(btnCompleteAudit);
 
-        pnlToolbar.Controls.Add(lblZone);
-        pnlToolbar.Controls.Add(cboZone);
-        pnlToolbar.Controls.Add(lblScan);
-        pnlToolbar.Controls.Add(txtBarcodeScan);
-        pnlToolbar.Controls.Add(btnScanAdd);
-        pnlToolbar.Controls.Add(btnCompleteAudit);
+        var pnlInputsLeft = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 4, 0, 0)
+        };
+
+        var lblZone = new Label { Text = "Khu vực kệ:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+        cboZone = new ComboBox
+        {
+            Size = new Size(170, 32),
+            Font = AppTheme.FontBody,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Margin = new Padding(0, 2, 12, 0)
+        };
+        cboZone.Items.AddRange(new[] { "Kệ A1 - Nước giải khát", "Kệ B2 - Bánh kẹo ăn vặt", "Kệ C1 - Sữa & Bơ", "Kệ D3 - Gia vị đồ khô" });
+        cboZone.SelectedIndex = 0;
+
+        var lblScan = new Label { Text = "Quét Barcode:", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+        txtBarcodeScan = new TextBox
+        {
+            Size = new Size(220, 32),
+            Font = new Font("Segoe UI", 11f, FontStyle.Bold),
+            PlaceholderText = "Quét mã vạch (Enter)...",
+            Margin = new Padding(0, 2, 8, 0)
+        };
+        txtBarcodeScan.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) ProcessScan(); };
+
+        var btnScanAdd = new Button
+        {
+            Text = "➕ Đếm +1",
+            Size = new Size(95, 32),
+            Margin = new Padding(0, 2, 0, 0)
+        };
+        AppTheme.ApplyPrimaryButton(btnScanAdd);
+        btnScanAdd.Click += (s, e) => ProcessScan();
+
+        pnlInputsLeft.Controls.Add(lblZone);
+        pnlInputsLeft.Controls.Add(cboZone);
+        pnlInputsLeft.Controls.Add(lblScan);
+        pnlInputsLeft.Controls.Add(txtBarcodeScan);
+        pnlInputsLeft.Controls.Add(btnScanAdd);
+
+        pnlToolbar.Controls.Add(pnlInputsLeft);
+        pnlToolbar.Controls.Add(pnlActionsRight);
 
         // --- 3. Stat Row (Đã kiểm, Khớp, Chênh lệch) ---
         var pnlStats = new FlowLayoutPanel

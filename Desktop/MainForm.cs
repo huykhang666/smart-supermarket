@@ -16,6 +16,13 @@ public class MainForm : Form
     private Label lblAdminProfile = null!;
     private IconButton btnNotification = null!;
     private Button btnLogout = null!;
+    private Panel pnlStatusBadge = null!;
+    private IconButton btnToggleSidebar = null!;
+    private IconButton btnSidebarLogout = null!;
+    private readonly ToolTip _toolTip = new() { InitialDelay = 200, ReshowDelay = 100 };
+    private bool _isSidebarCollapsed = false;
+    private bool _userManuallyToggled = false;
+    private readonly Dictionary<IconButton, string> _navTitles = new();
 
     // Nav Buttons
     private IconButton btnNavDashboard = null!;
@@ -61,6 +68,7 @@ public class MainForm : Form
     {
         this.Text = "Smart SuperMarket - ENTERPRISE ERP & POS CONTROL CENTER";
         this.Size = new Size(1440, 900);
+        this.MinimumSize = new Size(820, 540);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.BackColor = AppTheme.BackgroundGray;
         this.Font = AppTheme.FontBody;
@@ -71,7 +79,7 @@ public class MainForm : Form
             Dock = DockStyle.Top,
             Height = 60,
             BackColor = Color.White,
-            Padding = new Padding(15, 10, 20, 10)
+            Padding = new Padding(10, 10, 20, 10)
         };
         pnlHeader.Paint += (s, e) =>
         {
@@ -79,11 +87,33 @@ public class MainForm : Form
             e.Graphics.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
         };
 
+        // Sidebar Toggle Hamburger Button
+        btnToggleSidebar = new IconButton
+        {
+            IconChar = IconChar.Bars,
+            IconColor = AppTheme.TextPrimary,
+            IconSize = 20,
+            Size = new Size(38, 38),
+            Location = new Point(10, 11),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.Transparent,
+            Cursor = Cursors.Hand
+        };
+        btnToggleSidebar.FlatAppearance.BorderSize = 0;
+        btnToggleSidebar.MouseEnter += (s, e) => btnToggleSidebar.BackColor = AppTheme.PrimarySubtle;
+        btnToggleSidebar.MouseLeave += (s, e) => btnToggleSidebar.BackColor = Color.Transparent;
+        btnToggleSidebar.Click += (s, e) =>
+        {
+            _userManuallyToggled = true;
+            SetSidebarCollapsed(!_isSidebarCollapsed);
+        };
+        _toolTip.SetToolTip(btnToggleSidebar, "Thu gọn / Mở rộng menu (☰)");
+
         // KATQ Smart Logo (Top-Left Corner)
         var picLogo = new PictureBox
         {
-            Size = new Size(150, 42),
-            Location = new Point(15, 9),
+            Size = new Size(130, 42),
+            Location = new Point(54, 9),
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent
         };
@@ -110,7 +140,8 @@ public class MainForm : Form
             Font = AppTheme.FontH2,
             ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
-            Location = new Point(175, 18)
+            AutoEllipsis = true,
+            Location = new Point(190, 18)
         };
 
         // Right Controls Flow (Notification, Profile Chip, Logout)
@@ -124,8 +155,13 @@ public class MainForm : Form
             Padding = new Padding(0, 5, 10, 5)
         };
 
+        pnlHeader.Resize += (s, e) =>
+        {
+            lblAppTitle.MaximumSize = new Size(Math.Max(50, pnlHeader.Width - pnlHeaderRight.Width - 210), 30);
+        };
+
         // Server Ready Pill Badge
-        var pnlStatusBadge = new Panel
+        pnlStatusBadge = new Panel
         {
             Size = new Size(180, 32),
             Margin = new Padding(0, 0, 10, 0),
@@ -200,9 +236,10 @@ public class MainForm : Form
         pnlHeaderRight.Controls.Add(lblAdminProfile);
         pnlHeaderRight.Controls.Add(btnLogout);
 
-        pnlHeader.Controls.Add(pnlHeaderRight);
+        pnlHeader.Controls.Add(btnToggleSidebar);
         pnlHeader.Controls.Add(picLogo);
         pnlHeader.Controls.Add(lblAppTitle);
+        pnlHeader.Controls.Add(pnlHeaderRight);
 
         // --- 2. Left Sidebar Panel (Width 240px, Dark Navy #0B2545 Theme) ---
         pnlSidebar = new Panel
@@ -259,7 +296,7 @@ public class MainForm : Form
         pnlSidebar.Controls.Add(btnNavDashboard);
 
         // Sidebar Bottom Logout Button
-        var btnSidebarLogout = new IconButton
+        btnSidebarLogout = new IconButton
         {
             Dock = DockStyle.Bottom,
             Height = 44,
@@ -293,6 +330,96 @@ public class MainForm : Form
         this.Controls.Add(pnlContent);
         this.Controls.Add(pnlSidebar);
         this.Controls.Add(pnlHeader);
+
+        this.Resize += (s, e) => OnMainFormResize();
+    }
+
+    private void SetSidebarCollapsed(bool collapsed)
+    {
+        _isSidebarCollapsed = collapsed;
+        pnlSidebar.SuspendLayout();
+        if (_isSidebarCollapsed)
+        {
+            pnlSidebar.Width = 68;
+            foreach (var kvp in _navTitles)
+            {
+                var btn = kvp.Key;
+                btn.Text = "";
+                btn.ImageAlign = ContentAlignment.MiddleCenter;
+                btn.TextAlign = ContentAlignment.MiddleCenter;
+                btn.Padding = new Padding(0);
+                _toolTip.SetToolTip(btn, kvp.Value);
+            }
+            if (btnSidebarLogout != null)
+            {
+                btnSidebarLogout.Text = "";
+                btnSidebarLogout.ImageAlign = ContentAlignment.MiddleCenter;
+                btnSidebarLogout.TextAlign = ContentAlignment.MiddleCenter;
+                btnSidebarLogout.Padding = new Padding(0);
+                _toolTip.SetToolTip(btnSidebarLogout, "Đăng Xuất");
+            }
+        }
+        else
+        {
+            pnlSidebar.Width = 240;
+            foreach (var kvp in _navTitles)
+            {
+                var btn = kvp.Key;
+                btn.Text = "  " + kvp.Value;
+                btn.ImageAlign = ContentAlignment.MiddleLeft;
+                btn.TextAlign = ContentAlignment.MiddleLeft;
+                btn.Padding = new Padding(16, 0, 0, 0);
+                _toolTip.SetToolTip(btn, null);
+            }
+            if (btnSidebarLogout != null)
+            {
+                btnSidebarLogout.Text = "  Đăng Xuất";
+                btnSidebarLogout.ImageAlign = ContentAlignment.MiddleLeft;
+                btnSidebarLogout.TextAlign = ContentAlignment.MiddleLeft;
+                btnSidebarLogout.Padding = new Padding(16, 0, 0, 0);
+                _toolTip.SetToolTip(btnSidebarLogout, null);
+            }
+        }
+        pnlSidebar.ResumeLayout(true);
+    }
+
+    private void OnMainFormResize()
+    {
+        if (this.WindowState == FormWindowState.Minimized) return;
+
+        int w = this.ClientSize.Width;
+
+        // Auto collapse sidebar if narrow (<1050), auto expand if >=1050 unless user toggled
+        if (!_userManuallyToggled)
+        {
+            if (w < 1050 && !_isSidebarCollapsed)
+                SetSidebarCollapsed(true);
+            else if (w >= 1050 && _isSidebarCollapsed)
+                SetSidebarCollapsed(false);
+        }
+
+        // Header responsiveness
+        if (pnlStatusBadge != null)
+            pnlStatusBadge.Visible = (w >= 1050);
+
+        if (lblAdminProfile != null)
+        {
+            if (w < 820)
+                lblAdminProfile.Visible = false;
+            else
+            {
+                lblAdminProfile.Visible = true;
+                lblAdminProfile.Text = w < 960 ? "👤 Admin" : "👤 Quản trị viên (Admin)";
+            }
+        }
+
+        if (lblAppTitle != null)
+        {
+            if (w < 780)
+                lblAppTitle.Text = "Smart SuperMarket";
+            else
+                lblAppTitle.Text = "Smart SuperMarket  |  ENTERPRISE ERP POS CONTROL CENTER";
+        }
     }
 
     private IconButton CreateNavButton(string text, IconChar icon)
@@ -316,6 +443,7 @@ public class MainForm : Form
             Cursor = Cursors.Hand
         };
         btn.FlatAppearance.BorderSize = 0;
+        _navTitles[btn] = text;
 
         btn.Paint += (s, e) =>
         {

@@ -86,19 +86,53 @@ public class CategoriesView : UserControl
         };
 
         var lblName = new Label { Text = "Tên danh mục:", Font = AppTheme.FontBodyBold, Location = new Point(24, 65), AutoSize = true, ForeColor = AppTheme.TextPrimary };
-        txtCategoryName = new TextBox { Font = AppTheme.FontBody, Location = new Point(24, 90), Size = new Size(460, 32), BorderStyle = BorderStyle.FixedSingle };
+        txtCategoryName = new TextBox
+        {
+            Font = AppTheme.FontBody,
+            Location = new Point(24, 90),
+            Size = new Size(Math.Max(300, pnlRightDetail.Width - 48), 32),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            BorderStyle = BorderStyle.FixedSingle
+        };
 
         var lblSlug = new Label { Text = "Slug (SEO):", Font = AppTheme.FontBodyBold, Location = new Point(24, 135), AutoSize = true, ForeColor = AppTheme.TextPrimary };
-        txtSlug = new TextBox { Font = AppTheme.FontBody, Location = new Point(24, 160), Size = new Size(460, 32), BorderStyle = BorderStyle.FixedSingle, ReadOnly = true, BackColor = AppTheme.BackgroundGray };
+        txtSlug = new TextBox
+        {
+            Font = AppTheme.FontBody,
+            Location = new Point(24, 160),
+            Size = new Size(Math.Max(300, pnlRightDetail.Width - 48), 32),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            BorderStyle = BorderStyle.FixedSingle,
+            ReadOnly = true,
+            BackColor = AppTheme.BackgroundGray
+        };
 
         var lblDesc = new Label { Text = "Mô tả chi tiết:", Font = AppTheme.FontBodyBold, Location = new Point(24, 205), AutoSize = true, ForeColor = AppTheme.TextPrimary };
-        txtDescription = new TextBox { Font = AppTheme.FontBody, Location = new Point(24, 230), Size = new Size(460, 75), Multiline = true, BorderStyle = BorderStyle.FixedSingle };
+        txtDescription = new TextBox
+        {
+            Font = AppTheme.FontBody,
+            Location = new Point(24, 230),
+            Size = new Size(Math.Max(300, pnlRightDetail.Width - 48), 75),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Multiline = true,
+            BorderStyle = BorderStyle.FixedSingle
+        };
+
+        var pnlButtonRow = new FlowLayoutPanel
+        {
+            Location = new Point(24, 320),
+            Size = new Size(Math.Max(300, pnlRightDetail.Width - 48), 45),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            BackColor = Color.Transparent
+        };
 
         btnSave = new Button
         {
             Text = "💾 Lưu Thay Đổi",
             Size = new Size(130, 32),
-            Location = new Point(24, 325)
+            Margin = new Padding(0, 0, 8, 0)
         };
         AppTheme.ApplyPrimaryButton(btnSave);
         btnSave.Click += (s, e) => AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã cập nhật danh mục thành công!");
@@ -107,7 +141,7 @@ public class CategoriesView : UserControl
         {
             Text = "➕ Thêm Danh Mục Con",
             Size = new Size(170, 32),
-            Location = new Point(165, 325)
+            Margin = new Padding(0, 0, 8, 0)
         };
         AppTheme.ApplySecondaryButton(btnAddChild);
         btnAddChild.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Vui lòng nhập thông tin danh mục con mới.");
@@ -116,10 +150,14 @@ public class CategoriesView : UserControl
         {
             Text = "🗑️ Xóa Danh Mục",
             Size = new Size(130, 32),
-            Location = new Point(345, 325)
+            Margin = new Padding(0)
         };
         AppTheme.ApplyDangerButton(btnDelete);
         btnDelete.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Chức năng xóa yêu cầu xác nhận Admin.");
+
+        pnlButtonRow.Controls.Add(btnSave);
+        pnlButtonRow.Controls.Add(btnAddChild);
+        pnlButtonRow.Controls.Add(btnDelete);
 
         pnlRightDetail.Controls.Add(lblDetailHeader);
         pnlRightDetail.Controls.Add(lblName);
@@ -128,9 +166,7 @@ public class CategoriesView : UserControl
         pnlRightDetail.Controls.Add(txtSlug);
         pnlRightDetail.Controls.Add(lblDesc);
         pnlRightDetail.Controls.Add(txtDescription);
-        pnlRightDetail.Controls.Add(btnSave);
-        pnlRightDetail.Controls.Add(btnAddChild);
-        pnlRightDetail.Controls.Add(btnDelete);
+        pnlRightDetail.Controls.Add(pnlButtonRow);
 
         this.Controls.Add(pnlRightDetail);
         this.Controls.Add(pnlLeftTree);

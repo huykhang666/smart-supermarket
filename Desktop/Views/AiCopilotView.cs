@@ -98,17 +98,26 @@ public class AiCopilotView : UserControl
         tabForecast.BackColor = AppTheme.SurfaceWhite;
         tabForecast.Padding = new Padding(12, 8, 12, 8);
 
-        var pnlOptions = new Panel { Dock = DockStyle.Top, Height = 52, BackColor = Color.Transparent, Padding = new Padding(4, 8, 4, 8) };
+        var pnlOptions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            MinimumSize = new Size(0, 52),
+            BackColor = Color.Transparent,
+            Padding = new Padding(4, 10, 4, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
+        };
 
-        var lblDays = new Label { Text = "Phân tích dữ liệu bán hàng trong:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, Location = new Point(4, 16), AutoSize = true };
-        numForecastDays = new NumericUpDown { Location = new Point(220, 12), Size = new Size(70, 28), Minimum = 7, Maximum = 90, Value = 30, Font = AppTheme.FontBody };
-        var lblDaysUnit = new Label { Text = "ngày gần nhất", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(296, 16), AutoSize = true };
+        var lblDays = new Label { Text = "Phân tích dữ liệu bán hàng trong:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+        numForecastDays = new NumericUpDown { Size = new Size(70, 28), Minimum = 7, Maximum = 90, Value = 30, Font = AppTheme.FontBody, Margin = new Padding(0, 2, 6, 4) };
+        var lblDaysUnit = new Label { Text = "ngày gần nhất", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, AutoSize = true, Margin = new Padding(0, 6, 12, 0) };
 
-        btnForecast = new Button { Text = "🤖 Chạy AI Dự Báo Nhập Hàng", Size = new Size(220, 32), Location = new Point(450, 10) };
+        btnForecast = new Button { Text = "🤖 Chạy AI Dự Báo Nhập Hàng", Size = new Size(220, 32), Margin = new Padding(0, 0, 12, 4) };
         AppTheme.ApplyPrimaryButton(btnForecast);
         btnForecast.Click += async (s, e) => await RunForecastAsync();
 
-        lblStatusForecast = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(680, 16), AutoSize = true };
+        lblStatusForecast = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
 
         pnlOptions.Controls.Add(lblDays);
         pnlOptions.Controls.Add(numForecastDays);
@@ -137,19 +146,28 @@ public class AiCopilotView : UserControl
         tabRevenue.BackColor = AppTheme.SurfaceWhite;
         tabRevenue.Padding = new Padding(12, 8, 12, 8);
 
-        var pnlOptions = new Panel { Dock = DockStyle.Top, Height = 52, BackColor = Color.Transparent, Padding = new Padding(4, 8, 4, 8) };
+        var pnlOptions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            MinimumSize = new Size(0, 52),
+            BackColor = Color.Transparent,
+            Padding = new Padding(4, 10, 4, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
+        };
 
-        var lblFrom = new Label { Text = "Từ ngày:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, Location = new Point(4, 16), AutoSize = true };
-        dtpRevenueStart = new DateTimePicker { Location = new Point(70, 11), Size = new Size(130, 28), Font = AppTheme.FontBody, Value = DateTime.Today.AddDays(-30) };
+        var lblFrom = new Label { Text = "Từ ngày:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+        dtpRevenueStart = new DateTimePicker { Size = new Size(130, 28), Font = AppTheme.FontBody, Value = DateTime.Today.AddDays(-30), Margin = new Padding(0, 2, 8, 4) };
 
-        var lblTo = new Label { Text = "đến:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, Location = new Point(208, 16), AutoSize = true };
-        dtpRevenueEnd = new DateTimePicker { Location = new Point(240, 11), Size = new Size(130, 28), Font = AppTheme.FontBody, Value = DateTime.Today };
+        var lblTo = new Label { Text = "đến:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+        dtpRevenueEnd = new DateTimePicker { Size = new Size(130, 28), Font = AppTheme.FontBody, Value = DateTime.Today, Margin = new Padding(0, 2, 12, 4) };
 
-        btnRevenue = new Button { Text = "🤖 Tạo Báo Cáo AI", Size = new Size(180, 32), Location = new Point(390, 10) };
+        btnRevenue = new Button { Text = "🤖 Tạo Báo Cáo AI", Size = new Size(180, 32), Margin = new Padding(0, 0, 12, 4) };
         AppTheme.ApplyPrimaryButton(btnRevenue);
         btnRevenue.Click += async (s, e) => await RunRevenueReportAsync();
 
-        lblStatusRevenue = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(580, 16), AutoSize = true };
+        lblStatusRevenue = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
 
         pnlOptions.Controls.Add(lblFrom);
         pnlOptions.Controls.Add(dtpRevenueStart);
@@ -179,19 +197,28 @@ public class AiCopilotView : UserControl
         tabProducts.BackColor = AppTheme.SurfaceWhite;
         tabProducts.Padding = new Padding(12, 8, 12, 8);
 
-        var pnlOptions = new Panel { Dock = DockStyle.Top, Height = 52, BackColor = Color.Transparent, Padding = new Padding(4, 8, 4, 8) };
+        var pnlOptions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            MinimumSize = new Size(0, 52),
+            BackColor = Color.Transparent,
+            Padding = new Padding(4, 10, 4, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
+        };
 
-        var lblTop = new Label { Text = "Top", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, Location = new Point(4, 16), AutoSize = true };
-        numProductTopN = new NumericUpDown { Location = new Point(38, 12), Size = new Size(60, 28), Minimum = 5, Maximum = 50, Value = 10, Font = AppTheme.FontBody };
-        var lblSP = new Label { Text = "sản phẩm trong", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, Location = new Point(104, 16), AutoSize = true };
-        numProductDays = new NumericUpDown { Location = new Point(202, 12), Size = new Size(60, 28), Minimum = 7, Maximum = 90, Value = 30, Font = AppTheme.FontBody };
-        var lblDU = new Label { Text = "ngày gần nhất", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(268, 16), AutoSize = true };
+        var lblTop = new Label { Text = "Top", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 4, 0) };
+        numProductTopN = new NumericUpDown { Size = new Size(60, 28), Minimum = 5, Maximum = 50, Value = 10, Font = AppTheme.FontBody, Margin = new Padding(0, 2, 6, 4) };
+        var lblSP = new Label { Text = "sản phẩm trong", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(0, 6, 6, 0) };
+        numProductDays = new NumericUpDown { Size = new Size(60, 28), Minimum = 7, Maximum = 90, Value = 30, Font = AppTheme.FontBody, Margin = new Padding(0, 2, 6, 4) };
+        var lblDU = new Label { Text = "ngày gần nhất", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, AutoSize = true, Margin = new Padding(0, 6, 12, 0) };
 
-        btnProducts = new Button { Text = "🤖 Phân Tích AI", Size = new Size(165, 32), Location = new Point(390, 10) };
+        btnProducts = new Button { Text = "🤖 Phân Tích AI", Size = new Size(165, 32), Margin = new Padding(0, 0, 12, 4) };
         AppTheme.ApplyPrimaryButton(btnProducts);
         btnProducts.Click += async (s, e) => await RunProductAnalysisAsync();
 
-        lblStatusProducts = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(565, 16), AutoSize = true };
+        lblStatusProducts = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
 
         pnlOptions.Controls.Add(lblTop);
         pnlOptions.Controls.Add(numProductTopN);

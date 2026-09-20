@@ -44,12 +44,19 @@ public class EmployeesView : UserControl
             AutoSize = true
         };
 
+        var pnlHeaderRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 4, 0, 0)
+        };
+
         var btnAddEmployee = new Button
         {
             Text = "➕ Tạo Tài Khoản Nhân Viên",
-            Size = new Size(210, 32),
-            Location = new Point(pnlHeader.Width - 210, 8),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Size = new Size(220, 32)
         };
         AppTheme.ApplyPrimaryButton(btnAddEmployee);
         btnAddEmployee.Click += (s, e) => {
@@ -59,9 +66,10 @@ public class EmployeesView : UserControl
                 LoadSampleData(); // Reload grid
             }
         };
+        pnlHeaderRight.Controls.Add(btnAddEmployee);
 
         pnlHeader.Controls.Add(lblTitle);
-        pnlHeader.Controls.Add(btnAddEmployee);
+        pnlHeader.Controls.Add(pnlHeaderRight);
 
         // TabControl
         tabControl = new TabControl

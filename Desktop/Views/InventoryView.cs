@@ -59,20 +59,17 @@ public class InventoryView : UserControl
         {
             Dock = DockStyle.Top,
             Height = 105,
-            ColumnCount = 4,
-            RowCount = 1,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 8, 0, 8)
         };
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("TỔNG SẢN PHẨM KHO", "0", "📦 Toàn bộ SKU đang lưu", AppTheme.Primary), 0, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("HẾT HÀNG TỒN QUẦY", "0", "🔴 Cần châm hàng ngay", AppTheme.Danger), 1, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("SẮP HẾT HÀNG", "0", "⚠️ Dưới mức tồn an toàn", AppTheme.Warning), 2, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("CẬN HSD (≤ 5 NGÀY)", "0", "⏳ Cần xả hàng / dán tem", AppTheme.Warning), 3, 0);
+        var c1 = AppTheme.CreateKpiCard("TỔNG SẢN PHẨM KHO", "0", "📦 Toàn bộ SKU đang lưu", AppTheme.Primary);
+        var c2 = AppTheme.CreateKpiCard("HẾT HÀNG TỒN QUẦY", "0", "🔴 Cần châm hàng ngay", AppTheme.Danger);
+        var c3 = AppTheme.CreateKpiCard("SẮP HẾT HÀNG", "0", "⚠️ Dưới mức tồn an toàn", AppTheme.Warning);
+        var c4 = AppTheme.CreateKpiCard("CẬN HSD (≤ 5 NGÀY)", "0", "⏳ Cần xả hàng / dán tem", AppTheme.Warning);
+        var kpiCards = new List<Control> { c1, c2, c3, c4 };
+
+        AppTheme.EnableResponsiveKpiGrid(pnlKpis, kpiCards, this, 850, 440, 105);
 
         // --- 3. TabControl Kho (Danh sách tồn, Kiểm kê, HSD, Chuyển kho) ---
         tabInventory = new TabControl

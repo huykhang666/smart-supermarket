@@ -66,13 +66,38 @@ public class DashboardView : UserControl
         };
         ThemeManager.ApplyCardPanel(pnlHeaderBanner);
 
+        var pnlBannerRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 6, 0, 0)
+        };
+
+        var btnRefreshRealtime = new Button
+        {
+            Text = "🔄 Làm Mới Tức Thì",
+            Size = new Size(150, 36)
+        };
+        ThemeManager.ApplyPrimaryButton(btnRefreshRealtime);
+        btnRefreshRealtime.Click += (s, e) => LoadRealtimeDataAsync();
+        pnlBannerRight.Controls.Add(btnRefreshRealtime);
+
+        var pnlBannerLeft = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.Transparent
+        };
+
         var lblBannerTitle = new Label
         {
             Text = "TRUNG TÂM ĐIỀU HÀNH ERP & AI INSIGHTS  •  REALTIME DỮ LIỆU THỰC",
             Font = ThemeManager.HeaderFont,
             ForeColor = ThemeManager.Primary,
             AutoSize = true,
-            Location = new Point(20, 12)
+            AutoEllipsis = true,
+            Location = new Point(4, 2)
         };
 
         var lblBannerSub = new Label
@@ -81,41 +106,38 @@ public class DashboardView : UserControl
             Font = ThemeManager.SmallFont,
             ForeColor = ThemeManager.TextSecondary,
             AutoSize = true,
-            Location = new Point(20, 42)
+            AutoEllipsis = true,
+            Location = new Point(4, 30)
         };
 
-        var btnRefreshRealtime = new Button
+        pnlBannerLeft.Resize += (s, e) =>
         {
-            Text = "🔄 Làm Mới Tức Thì",
-            Size = new Size(150, 36),
-            Location = new Point(pnlHeaderBanner.Width - 170, 18),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            lblBannerTitle.MaximumSize = new Size(Math.Max(50, pnlBannerLeft.Width - 10), 26);
+            lblBannerSub.MaximumSize = new Size(Math.Max(50, pnlBannerLeft.Width - 10), 24);
         };
-        ThemeManager.ApplyPrimaryButton(btnRefreshRealtime);
-        btnRefreshRealtime.Click += (s, e) => LoadRealtimeDataAsync();
 
-        pnlHeaderBanner.Controls.Add(lblBannerTitle);
-        pnlHeaderBanner.Controls.Add(lblBannerSub);
-        pnlHeaderBanner.Controls.Add(btnRefreshRealtime);
+        pnlBannerLeft.Controls.Add(lblBannerTitle);
+        pnlBannerLeft.Controls.Add(lblBannerSub);
 
-        // --- 2. 4 Metric KPI Cards ---
+        pnlHeaderBanner.Controls.Add(pnlBannerLeft);
+        pnlHeaderBanner.Controls.Add(pnlBannerRight);
+
+        // --- 2. 4 Metric KPI Cards (Responsive Wrapping) ---
         tlpKpis = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             Height = 110,
-            ColumnCount = 4,
-            RowCount = 1,
+            BackColor = Color.Transparent,
             Margin = new Padding(0, 6, 0, 6)
         };
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        tlpKpis.Controls.Add(CreateDynamicKpiCard("DOANH THU HÔM NAY 💵", "0 đ", "▲ Cập nhật từ DB", ThemeManager.Primary, out lblRevenueValue), 0, 0);
-        tlpKpis.Controls.Add(CreateDynamicKpiCard("TỔNG ĐƠN HÀNG POS 🛒", "0 đơn", "Đơn hàng bán lẻ hôm nay", ThemeManager.Success, out lblOrdersValue), 1, 0);
-        tlpKpis.Controls.Add(CreateDynamicKpiCard("KHÁCH HÀNG LOYALTY 👥", "0 thành viên", "Tổng tài khoản KH", ThemeManager.Warning, out lblCustomersValue), 2, 0);
-        tlpKpis.Controls.Add(CreateDynamicKpiCard("CẢNH BÁO KHO & HSD ⚠️", "0 mặt hàng", "Cận kho & sắp hết hạn", ThemeManager.Danger, out lblWarningValue), 3, 0);
+        var card1 = CreateDynamicKpiCard("DOANH THU HÔM NAY 💵", "0 đ", "▲ Cập nhật từ DB", ThemeManager.Primary, out lblRevenueValue);
+        var card2 = CreateDynamicKpiCard("TỔNG ĐƠN HÀNG POS 🛒", "0 đơn", "Đơn hàng bán lẻ hôm nay", ThemeManager.Success, out lblOrdersValue);
+        var card3 = CreateDynamicKpiCard("KHÁCH HÀNG LOYALTY 👥", "0 thành viên", "Tổng tài khoản KH", ThemeManager.Warning, out lblCustomersValue);
+        var card4 = CreateDynamicKpiCard("CẢNH BÁO KHO & HSD ⚠️", "0 mặt hàng", "Cận kho & sắp hết hạn", ThemeManager.Danger, out lblWarningValue);
+        var kpiCards = new List<Control> { card1, card2, card3, card4 };
+
+        AppTheme.EnableResponsiveKpiGrid(tlpKpis, kpiCards, this, 850, 440, 110);
 
         // --- 3. LiveChart Revenue Panel ---
         pnlChartContainer = new Panel
@@ -170,8 +192,9 @@ public class DashboardView : UserControl
             Text = "Đang tải phân tích dữ liệu thực từ Server Backend...",
             Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
             ForeColor = ThemeManager.TextSecondary,
-            Size = new Size(1100, 50),
-            Location = new Point(20, 45)
+            Location = new Point(20, 45),
+            Size = new Size(pnlAiInsightsContainer.Width - 40, 55),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
         pnlAiInsightsContainer.Controls.Add(lblAiAnalysisHeader);

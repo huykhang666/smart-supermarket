@@ -52,70 +52,78 @@ public class CustomersView : UserControl
             AutoSize = true
         };
 
+        var pnlHeaderRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 6, 0, 0)
+        };
+
         var btnAddCustomer = new Button
         {
             Text = "➕ Thêm Khách Hàng",
-            Size = new Size(180, 32),
-            Location = new Point(pnlHeader.Width - 180, 8),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Size = new Size(180, 32)
         };
         AppTheme.ApplyPrimaryButton(btnAddCustomer);
         btnAddCustomer.Click += (s, e) => {
             var form = this.FindForm();
             if (form != null) AntdUI.Message.info(form, "Chức năng thêm hồ sơ Khách hàng mới.");
         };
+        pnlHeaderRight.Controls.Add(btnAddCustomer);
 
         pnlHeader.Controls.Add(lblTitle);
-        pnlHeader.Controls.Add(btnAddCustomer);
+        pnlHeader.Controls.Add(pnlHeaderRight);
 
         // --- 2. KPI Stat Cards (4 Cards) ---
         pnlKpiContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             Height = 105,
-            ColumnCount = 4,
-            RowCount = 1,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 0, 0, 6)
         };
-        pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        pnlKpiContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("TỔNG KHÁCH HÀNG", "0", "Hệ thống Loyalty", AppTheme.Primary, out lblKpiTotalCustomers, out lblNoteTotalCustomers), 0, 0);
-        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("THÀNH VIÊN VIP/GOLD", "0", "0% tổng số", AppTheme.Warning, out lblKpiTotalVip, out lblNoteTotalVip), 1, 0);
-        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("ĐIỂM TÍCH LŨY DƯ", "0", "Điểm đang lưu hành", AppTheme.Success, out lblKpiPoints, out lblNotePoints), 2, 0);
-        pnlKpiContainer.Controls.Add(AppTheme.CreateKpiCard("VOUCHER ĐÃ PHÁT", "0 mã", "Ví khách hàng", AppTheme.Primary, out lblKpiVouchers, out lblNoteVouchers), 3, 0);
+        var c1 = AppTheme.CreateKpiCard("TỔNG KHÁCH HÀNG", "0", "Hệ thống Loyalty", AppTheme.Primary, out lblKpiTotalCustomers, out lblNoteTotalCustomers);
+        var c2 = AppTheme.CreateKpiCard("THÀNH VIÊN VIP/GOLD", "0", "0% tổng số", AppTheme.Warning, out lblKpiTotalVip, out lblNoteTotalVip);
+        var c3 = AppTheme.CreateKpiCard("ĐIỂM TÍCH LŨY DƯ", "0", "Điểm đang lưu hành", AppTheme.Success, out lblKpiPoints, out lblNotePoints);
+        var c4 = AppTheme.CreateKpiCard("VOUCHER ĐÃ PHÁT", "0 mã", "Ví khách hàng", AppTheme.Primary, out lblKpiVouchers, out lblNoteVouchers);
+        var kpiCards = new List<Control> { c1, c2, c3, c4 };
+
+        AppTheme.EnableResponsiveKpiGrid(pnlKpiContainer, kpiCards, this, 850, 440, 105);
 
         // --- 3. Filter & Search Card ---
-        pnlFilter = new Panel
+        pnlFilter = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 58,
+            AutoSize = true,
+            MinimumSize = new Size(0, 58),
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(15, 10, 15, 10),
-            Margin = new Padding(0, 6, 0, 6)
+            Padding = new Padding(15, 12, 15, 10),
+            Margin = new Padding(0, 6, 0, 6),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
         };
         AppTheme.ApplyCardPanel(pnlFilter);
 
-        var lblSearch = new Label { Text = "Tìm kiếm:", Location = new Point(15, 16), AutoSize = true, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary };
+        var lblSearch = new Label { Text = "Tìm kiếm:", AutoSize = true, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 6, 8, 0) };
         txtSearch = new TextBox
         {
             PlaceholderText = "Nhập Họ tên, Số điện thoại hoặc Mã KH...",
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.TextPrimary,
-            Size = new Size(320, 32),
-            Location = new Point(90, 13),
+            Size = new Size(280, 32),
+            Margin = new Padding(0, 0, 16, 4),
             BorderStyle = BorderStyle.FixedSingle
         };
 
-        var lblTier = new Label { Text = "Hạng thẻ:", Location = new Point(430, 16), AutoSize = true, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary };
+        var lblTier = new Label { Text = "Hạng thẻ:", AutoSize = true, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Margin = new Padding(0, 6, 8, 0) };
         cboTierFilter = new ComboBox
         {
             Font = AppTheme.FontBody,
             Size = new Size(180, 32),
-            Location = new Point(505, 13),
+            Margin = new Padding(0, 0, 16, 4),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         cboTierFilter.Items.AddRange(new[] { "-- Tất cả hạng thẻ --", "👑 Platinum VIP", "🥇 VIP Gold", "🥈 Silver", "🥉 Bronze" });
@@ -125,7 +133,7 @@ public class CustomersView : UserControl
         {
             Text = "Tìm Kiếm",
             Size = new Size(100, 32),
-            Location = new Point(700, 12)
+            Margin = new Padding(0, 0, 0, 4)
         };
         AppTheme.ApplySecondaryButton(btnSearch);
 

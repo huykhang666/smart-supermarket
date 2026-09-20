@@ -7,6 +7,7 @@ using SmartSupermarket.Backend.Features.Orders.Repositories;
 using SmartSupermarket.Backend.Features.Orders.Services;
 using SmartSupermarket.Backend.Features.Inventory.Repositories;
 using SmartSupermarket.Backend.Features.Promotions.Repositories;
+using SmartSupermarket.Backend.Features.Customers.Repositories;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 using Xunit;
 
@@ -17,6 +18,7 @@ public class OrderServiceTests
     private readonly Mock<IOrderRepository> _mockOrderRepo;
     private readonly Mock<IInventoryRepository> _mockInventoryRepo;
     private readonly Mock<IPromotionRepository> _mockPromotionRepo;
+    private readonly Mock<ICustomerRepository> _mockCustomerRepo;
     private readonly AppDbContext _dbContext;
     private readonly OrderService _orderService;
 
@@ -25,6 +27,7 @@ public class OrderServiceTests
         _mockOrderRepo = new Mock<IOrderRepository>();
         _mockInventoryRepo = new Mock<IInventoryRepository>();
         _mockPromotionRepo = new Mock<IPromotionRepository>();
+        _mockCustomerRepo = new Mock<ICustomerRepository>();
 
         // In-memory DbContext for Products/Users/Customers lookup
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -50,6 +53,7 @@ public class OrderServiceTests
             _mockOrderRepo.Object,
             _mockInventoryRepo.Object,
             _mockPromotionRepo.Object,
+            _mockCustomerRepo.Object,
             _dbContext
         );
     }

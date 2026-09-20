@@ -29,21 +29,24 @@ public class ImportReceiptsView : UserControl
         this.Padding = new Padding(24);
 
         // --- Top Bar ---
-        pnlTopBar = new Panel
+        var pnlTopBarFlow = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 62,
+            AutoSize = true,
+            MinimumSize = new Size(0, 62),
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(15, 12, 15, 12),
-            Margin = new Padding(0, 0, 0, 8)
+            Padding = new Padding(15, 14, 15, 10),
+            Margin = new Padding(0, 0, 0, 8),
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
         };
-        AppTheme.ApplyCardPanel(pnlTopBar);
+        AppTheme.ApplyCardPanel(pnlTopBarFlow);
 
         cbStatus = new ComboBox
         {
             Font = AppTheme.FontBody,
-            Size = new Size(180, 32),
-            Location = new Point(15, 15),
+            Size = new Size(190, 32),
+            Margin = new Padding(0, 0, 10, 4),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
         cbStatus.Items.AddRange(new object[] { "Tất cả Trạng thái", "Nháp (Draft)", "Đã Xác Nhận (Confirmed)", "Đã Hủy (Cancelled)" });
@@ -53,7 +56,7 @@ public class ImportReceiptsView : UserControl
         {
             Text = "Lọc",
             Size = new Size(90, 32),
-            Location = new Point(210, 15)
+            Margin = new Padding(0, 0, 10, 4)
         };
         AppTheme.ApplySecondaryButton(btnSearch);
         btnSearch.Click += (s, e) => LoadDataAsync();
@@ -61,17 +64,25 @@ public class ImportReceiptsView : UserControl
         btnCreateReceipt = new Button
         {
             Text = "➕ Tạo Phiếu Nhập",
-            Size = new Size(170, 32),
-            Location = new Point(315, 15)
+            Size = new Size(180, 32),
+            Margin = new Padding(0, 0, 0, 4)
         };
         AppTheme.ApplyPrimaryButton(btnCreateReceipt);
         btnCreateReceipt.Click += BtnCreateReceipt_Click;
 
-        pnlTopBar.Controls.Add(cbStatus);
-        pnlTopBar.Controls.Add(btnSearch);
-        pnlTopBar.Controls.Add(btnCreateReceipt);
+        pnlTopBarFlow.Controls.Add(cbStatus);
+        pnlTopBarFlow.Controls.Add(btnSearch);
+        pnlTopBarFlow.Controls.Add(btnCreateReceipt);
 
-        // --- DataGrid ---
+        // --- DataGrid Container ---
+        var pnlGridContainer = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(1)
+        };
+        AppTheme.ApplyCardPanel(pnlGridContainer);
+
         dgvReceipts = new DataGridView();
         AppTheme.ApplyGridStyle(dgvReceipts);
 
@@ -91,8 +102,17 @@ public class ImportReceiptsView : UserControl
         dgvReceipts.Columns.Add(colAction);
         dgvReceipts.CellClick += DgvReceipts_CellClick;
 
-        this.Controls.Add(dgvReceipts);
-        this.Controls.Add(pnlTopBar);
+        dgvReceipts.Columns["ReceiptId"].FillWeight = 8;
+        dgvReceipts.Columns["ReceiptCode"].FillWeight = 18;
+        dgvReceipts.Columns["ImportDate"].FillWeight = 18;
+        dgvReceipts.Columns["TotalAmount"].FillWeight = 20;
+        dgvReceipts.Columns["Status"].FillWeight = 16;
+        dgvReceipts.Columns["Action"].FillWeight = 20;
+
+        pnlGridContainer.Controls.Add(dgvReceipts);
+
+        this.Controls.Add(pnlGridContainer);
+        this.Controls.Add(pnlTopBarFlow);
     }
 
     private async void LoadDataAsync()

@@ -47,20 +47,17 @@ public class ReportsView : UserControl
         {
             Dock = DockStyle.Top,
             Height = 105,
-            ColumnCount = 4,
-            RowCount = 1,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 0, 0, 8)
         };
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        tlpKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
 
-        tlpKpis.Controls.Add(AppTheme.CreateKpiCard("DOANH THU TUẦN", "0 đ", "Chưa có phát sinh", AppTheme.Primary), 0, 0);
-        tlpKpis.Controls.Add(AppTheme.CreateKpiCard("LỢI NHUẬN GỘP", "0 đ", "Biên lãi gộp: 0%", AppTheme.Success), 1, 0);
-        tlpKpis.Controls.Add(AppTheme.CreateKpiCard("TỔNG ĐƠN HÀNG", "0 đơn", "0 đơn hoàn tất", AppTheme.Primary), 2, 0);
-        tlpKpis.Controls.Add(AppTheme.CreateKpiCard("GIÁ TRỊ TB / ĐƠN", "0 đ", "0 đ / đơn", AppTheme.Warning), 3, 0);
+        var c1 = AppTheme.CreateKpiCard("DOANH THU TUẦN", "0 đ", "Chưa có phát sinh", AppTheme.Primary);
+        var c2 = AppTheme.CreateKpiCard("LỢI NHUẬN GỘP", "0 đ", "Biên lãi gộp: 0%", AppTheme.Success);
+        var c3 = AppTheme.CreateKpiCard("TỔNG ĐƠN HÀNG", "0 đơn", "0 đơn hoàn tất", AppTheme.Primary);
+        var c4 = AppTheme.CreateKpiCard("GIÁ TRỊ TB / ĐƠN", "0 đ", "0 đ / đơn", AppTheme.Warning);
+        var kpiCards = new List<Control> { c1, c2, c3, c4 };
+
+        AppTheme.EnableResponsiveKpiGrid(tlpKpis, kpiCards, this, 850, 440, 105);
 
         // --- 3. Chart Container Card ---
         var pnlChartContainer = new Panel

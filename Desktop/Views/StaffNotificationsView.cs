@@ -47,12 +47,19 @@ public class StaffNotificationsView : UserControl
             AutoSize = true
         };
 
+        var pnlHeaderRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 4, 0, 0)
+        };
+
         var btnClear = new Button
         {
             Text = "✓ Đã Đọc Tất Cả",
-            Size = new Size(160, 32),
-            Location = new Point(pnlHeader.Width - 165, 8),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Size = new Size(160, 32)
         };
         AppTheme.ApplyPrimaryButton(btnClear);
         btnClear.Click += (s, e) =>
@@ -69,10 +76,11 @@ public class StaffNotificationsView : UserControl
             pnlNotificationList.Controls.Add(lblEmpty);
             AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã đánh dấu đã đọc tất cả thông báo.");
         };
+        pnlHeaderRight.Controls.Add(btnClear);
 
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSub);
-        pnlHeader.Controls.Add(btnClear);
+        pnlHeader.Controls.Add(pnlHeaderRight);
 
         // --- 2. Notification List Container ---
         var pnlContainer = new Panel
@@ -91,6 +99,14 @@ public class StaffNotificationsView : UserControl
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             BackColor = Color.Transparent
+        };
+        pnlNotificationList.Resize += (s, e) =>
+        {
+            int targetWidth = Math.Max(300, pnlNotificationList.ClientSize.Width - 25);
+            foreach (Control c in pnlNotificationList.Controls)
+            {
+                if (c is Panel p) p.Width = targetWidth;
+            }
         };
 
         pnlContainer.Controls.Add(pnlNotificationList);
@@ -115,9 +131,10 @@ public class StaffNotificationsView : UserControl
 
     private Panel CreateNotificationItem(string title, string content, string time, Color accent, IconChar icon)
     {
+        int cardWidth = Math.Max(300, pnlNotificationList.ClientSize.Width - 25);
         var card = new Panel
         {
-            Size = new Size(1000, 80),
+            Size = new Size(cardWidth, 80),
             BackColor = AppTheme.BackgroundGray,
             Margin = new Padding(0, 0, 0, 10),
             Padding = new Padding(12)

@@ -24,11 +24,22 @@ public class EmployeeMainForm : Form
     private readonly StaffDashboardView _staffDashboardView = new();
     private readonly AiCopilotView _aiCopilotView = new();
 
-    // Top Header Status Badges
+    // Top Header Status Badges & Controls
     private Control _badgeNotify = null!;
+    private Control _badgeShift = null!;
+    private Control _badgeImport = null!;
+    private Control _badgeStock = null!;
+    private Label _lblUser = null!;
+    private Label _lblSystemTitle = null!;
     private Form? _notificationPopup;
     private Label lblClock = null!;
     private System.Windows.Forms.Timer _clockTimer = null!;
+    private IconButton btnToggleSidebar = null!;
+    private IconButton btnBottomLogout = null!;
+    private readonly ToolTip _toolTip = new() { InitialDelay = 200, ReshowDelay = 100 };
+    private bool _isSidebarCollapsed = false;
+    private bool _userManuallyToggled = false;
+    private readonly Dictionary<IconButton, string> _navTitles = new();
 
     public EmployeeMainForm()
     {
@@ -44,6 +55,7 @@ public class EmployeeMainForm : Form
     {
         this.Text = "Smart SuperMarket  |  STAFF ENTERPRISE POS & WORKSTATION";
         this.Size = new Size(1440, 900);
+        this.MinimumSize = new Size(820, 540);
         this.WindowState = FormWindowState.Maximized;
         this.StartPosition = FormStartPosition.CenterScreen;
         this.BackColor = AppTheme.BackgroundGray;
@@ -56,7 +68,7 @@ public class EmployeeMainForm : Form
             Dock = DockStyle.Top,
             Height = 62,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(15, 0, 15, 0)
+            Padding = new Padding(10, 0, 15, 0)
         };
         pnlHeader.Paint += (s, e) =>
         {
@@ -64,11 +76,33 @@ public class EmployeeMainForm : Form
             e.Graphics.DrawLine(p, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
         };
 
+        // Sidebar Toggle Hamburger Button
+        btnToggleSidebar = new IconButton
+        {
+            IconChar = IconChar.Bars,
+            IconColor = AppTheme.TextPrimary,
+            IconSize = 20,
+            Size = new Size(38, 38),
+            Location = new Point(10, 12),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.Transparent,
+            Cursor = Cursors.Hand
+        };
+        btnToggleSidebar.FlatAppearance.BorderSize = 0;
+        btnToggleSidebar.MouseEnter += (s, e) => btnToggleSidebar.BackColor = AppTheme.PrimarySubtle;
+        btnToggleSidebar.MouseLeave += (s, e) => btnToggleSidebar.BackColor = Color.Transparent;
+        btnToggleSidebar.Click += (s, e) =>
+        {
+            _userManuallyToggled = true;
+            SetSidebarCollapsed(!_isSidebarCollapsed);
+        };
+        _toolTip.SetToolTip(btnToggleSidebar, "Thu gọn / Mở rộng menu (☰)");
+
         // Logo
         var picLogo = new PictureBox
         {
             Size = new Size(130, 42),
-            Location = new Point(12, 10),
+            Location = new Point(54, 10),
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent
         };
@@ -86,13 +120,14 @@ public class EmployeeMainForm : Form
             catch { }
         }
 
-        var lblSystemTitle = new Label
+        _lblSystemTitle = new Label
         {
             Text = "Smart SuperMarket  |  STAFF WORKSTATION",
             Font = AppTheme.FontH2,
             ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
-            Location = new Point(150, 18)
+            AutoEllipsis = true,
+            Location = new Point(190, 18)
         };
 
         // Right side Status Badges container
@@ -106,10 +141,15 @@ public class EmployeeMainForm : Form
             Padding = new Padding(0, 12, 0, 8)
         };
 
+        pnlHeader.Resize += (s, e) =>
+        {
+            _lblSystemTitle.MaximumSize = new Size(Math.Max(50, pnlHeader.Width - pnlHeaderRight.Width - 210), 30);
+        };
+
         // Badge 1: Ca làm
-        var badgeShift = CreateTopStatusBadge("🟢 Ca làm: Đang mở", AppTheme.SuccessSubtle, AppTheme.Success);
+        _badgeShift = CreateTopStatusBadge("🟢 Ca làm: Đang mở", AppTheme.SuccessSubtle, AppTheme.Success);
         // Badge 2: Đơn nhập hôm nay
-        var badgeImport = CreateTopStatusBadge("📦 Đơn nhập: 0", AppTheme.PrimarySubtle, AppTheme.Primary);
+        _badgeImport = CreateTopStatusBadge("📦 Đơn nhập: 0", AppTheme.PrimarySubtle, AppTheme.Primary);
         // Badge 3: Thông báo (Clickable Popup)
         _badgeNotify = CreateTopStatusBadge("🔔 Thông báo: 0", AppTheme.PrimarySubtle, AppTheme.Primary);
         _badgeNotify.Cursor = Cursors.Hand;
@@ -121,9 +161,9 @@ public class EmployeeMainForm : Form
         }
 
         // Badge 4: Tồn kho thấp
-        var badgeStock = CreateTopStatusBadge("📊 Tồn thấp: 0", AppTheme.SuccessSubtle, AppTheme.Success);
+        _badgeStock = CreateTopStatusBadge("📊 Tồn thấp: 0", AppTheme.SuccessSubtle, AppTheme.Success);
         // Badge 5: User
-        var lblUser = new Label
+        _lblUser = new Label
         {
             Text = "👤 Thu Ngân (Staff)",
             Font = AppTheme.FontBodyBold,
@@ -165,16 +205,17 @@ public class EmployeeMainForm : Form
             }
         };
 
-        pnlHeaderRight.Controls.Add(badgeShift);
-        pnlHeaderRight.Controls.Add(badgeImport);
+        pnlHeaderRight.Controls.Add(_badgeShift);
+        pnlHeaderRight.Controls.Add(_badgeImport);
         pnlHeaderRight.Controls.Add(_badgeNotify);
-        pnlHeaderRight.Controls.Add(badgeStock);
-        pnlHeaderRight.Controls.Add(lblUser);
+        pnlHeaderRight.Controls.Add(_badgeStock);
+        pnlHeaderRight.Controls.Add(_lblUser);
         pnlHeaderRight.Controls.Add(lblClock);
         pnlHeaderRight.Controls.Add(btnLogout);
 
+        pnlHeader.Controls.Add(btnToggleSidebar);
         pnlHeader.Controls.Add(picLogo);
-        pnlHeader.Controls.Add(lblSystemTitle);
+        pnlHeader.Controls.Add(_lblSystemTitle);
         pnlHeader.Controls.Add(pnlHeaderRight);
 
         // ==============================================================
@@ -215,7 +256,7 @@ public class EmployeeMainForm : Form
         pnlSidebar.Controls.Add(btnPos);
 
         // Bottom Logout on Sidebar
-        var btnBottomLogout = new IconButton
+        btnBottomLogout = new IconButton
         {
             Dock = DockStyle.Bottom,
             Height = 44,
@@ -249,6 +290,98 @@ public class EmployeeMainForm : Form
         this.Controls.Add(pnlContent);
         this.Controls.Add(pnlSidebar);
         this.Controls.Add(pnlHeader);
+
+        this.Resize += (s, e) => OnEmployeeFormResize();
+    }
+
+    private void SetSidebarCollapsed(bool collapsed)
+    {
+        _isSidebarCollapsed = collapsed;
+        pnlSidebar.SuspendLayout();
+        if (_isSidebarCollapsed)
+        {
+            pnlSidebar.Width = 68;
+            foreach (var kvp in _navTitles)
+            {
+                var btn = kvp.Key;
+                btn.Text = "";
+                btn.ImageAlign = ContentAlignment.MiddleCenter;
+                btn.TextAlign = ContentAlignment.MiddleCenter;
+                btn.Padding = new Padding(0);
+                _toolTip.SetToolTip(btn, kvp.Value);
+            }
+            if (btnBottomLogout != null)
+            {
+                btnBottomLogout.Text = "";
+                btnBottomLogout.ImageAlign = ContentAlignment.MiddleCenter;
+                btnBottomLogout.TextAlign = ContentAlignment.MiddleCenter;
+                btnBottomLogout.Padding = new Padding(0);
+                _toolTip.SetToolTip(btnBottomLogout, "Đăng Xuất");
+            }
+        }
+        else
+        {
+            pnlSidebar.Width = 230;
+            foreach (var kvp in _navTitles)
+            {
+                var btn = kvp.Key;
+                btn.Text = "  " + kvp.Value;
+                btn.ImageAlign = ContentAlignment.MiddleLeft;
+                btn.TextAlign = ContentAlignment.MiddleLeft;
+                btn.Padding = new Padding(16, 0, 0, 0);
+                _toolTip.SetToolTip(btn, null);
+            }
+            if (btnBottomLogout != null)
+            {
+                btnBottomLogout.Text = "  Đăng Xuất";
+                btnBottomLogout.ImageAlign = ContentAlignment.MiddleLeft;
+                btnBottomLogout.TextAlign = ContentAlignment.MiddleLeft;
+                btnBottomLogout.Padding = new Padding(16, 0, 0, 0);
+                _toolTip.SetToolTip(btnBottomLogout, null);
+            }
+        }
+        pnlSidebar.ResumeLayout(true);
+    }
+
+    private void OnEmployeeFormResize()
+    {
+        if (this.WindowState == FormWindowState.Minimized) return;
+
+        int w = this.ClientSize.Width;
+
+        // Auto collapse sidebar if narrow (<1050), auto expand if >=1050 unless user toggled
+        if (!_userManuallyToggled)
+        {
+            if (w < 1050 && !_isSidebarCollapsed)
+                SetSidebarCollapsed(true);
+            else if (w >= 1050 && _isSidebarCollapsed)
+                SetSidebarCollapsed(false);
+        }
+
+        // Header badges responsiveness
+        bool showExtraBadges = (w >= 1150);
+        if (_badgeShift != null) _badgeShift.Visible = showExtraBadges;
+        if (_badgeImport != null) _badgeImport.Visible = showExtraBadges;
+        if (_badgeStock != null) _badgeStock.Visible = showExtraBadges;
+
+        if (_lblUser != null)
+        {
+            if (w < 820)
+                _lblUser.Visible = false;
+            else
+            {
+                _lblUser.Visible = true;
+                _lblUser.Text = w < 960 ? "👤 Staff" : "👤 Thu Ngân (Staff)";
+            }
+        }
+
+        if (_lblSystemTitle != null)
+        {
+            if (w < 780)
+                _lblSystemTitle.Text = "Smart SuperMarket";
+            else
+                _lblSystemTitle.Text = "Smart SuperMarket  |  STAFF WORKSTATION";
+        }
     }
 
     private Control CreateTopStatusBadge(string text, Color bg, Color fg)
@@ -296,6 +429,7 @@ public class EmployeeMainForm : Form
             Cursor = Cursors.Hand
         };
         btn.FlatAppearance.BorderSize = 0;
+        _navTitles[btn] = text;
 
         btn.Paint += (s, e) =>
         {

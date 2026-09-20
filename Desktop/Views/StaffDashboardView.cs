@@ -100,22 +100,18 @@ public class StaffDashboardView : UserControl
         {
             Dock = DockStyle.Top,
             Height = 105,
-            ColumnCount = 5,
-            RowCount = 1,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 8, 0, 8)
         };
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
-        pnlKpis.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
 
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("ĐÃ BÁN HÔM NAY", "0", "🧾 Đơn hàng POS", AppTheme.Primary, out lblOrdersVal, out _), 0, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("DOANH THU CA", "0 đ", "💵 Tiền về hệ thống", AppTheme.Success, out lblRevenueVal, out _), 1, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("KHÁCH PHỤC VỤ", "0", "👥 Khách lẻ & Loyalty", AppTheme.Primary, out lblCustomersVal, out _), 2, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("SẢN PHẨM ĐÃ QUÉT", "0", "📦 Mặt hàng xuất kho", AppTheme.Warning, out lblItemsVal, out _), 3, 0);
-        pnlKpis.Controls.Add(AppTheme.CreateKpiCard("LỖI QUÉT BARCODE", "0", "⚠️ Cần kiểm tra tem", AppTheme.Danger), 4, 0);
+        var c1 = AppTheme.CreateKpiCard("ĐÃ BÁN HÔM NAY", "0", "🧾 Đơn hàng POS", AppTheme.Primary, out lblOrdersVal, out _);
+        var c2 = AppTheme.CreateKpiCard("DOANH THU CA", "0 đ", "💵 Tiền về hệ thống", AppTheme.Success, out lblRevenueVal, out _);
+        var c3 = AppTheme.CreateKpiCard("KHÁCH PHỤC VỤ", "0", "👥 Khách lẻ & Loyalty", AppTheme.Primary, out lblCustomersVal, out _);
+        var c4 = AppTheme.CreateKpiCard("SẢN PHẨM ĐÃ QUÉT", "0", "📦 Mặt hàng xuất kho", AppTheme.Warning, out lblItemsVal, out _);
+        var c5 = AppTheme.CreateKpiCard("LỖI QUÉT BARCODE", "0", "⚠️ Cần kiểm tra tem", AppTheme.Danger);
+        var kpiCards = new List<Control> { c1, c2, c3, c4, c5 };
+
+        AppTheme.EnableResponsiveKpiGrid(pnlKpis, kpiCards, this, 980, 480, 105);
 
         // --- 3. Content Split (Left: Top Sản Phẩm Bán Chạy, Right: Tác Vụ & Lỗi Thao Tác) ---
         var pnlSplit = new TableLayoutPanel
@@ -174,6 +170,12 @@ public class StaffDashboardView : UserControl
         dgvTop.Columns.Add("Qty", "Đã Bán");
         dgvTop.Columns.Add("Revenue", "Doanh Thu");
         dgvTop.Columns.Add("Stock", "Còn Lại");
+
+        dgvTop.Columns["Rank"].FillWeight = 12;
+        dgvTop.Columns["Name"].FillWeight = 38;
+        dgvTop.Columns["Qty"].FillWeight = 16;
+        dgvTop.Columns["Revenue"].FillWeight = 20;
+        dgvTop.Columns["Stock"].FillWeight = 14;
 
         pnlGridWrapper.Controls.Add(dgvTop);
 

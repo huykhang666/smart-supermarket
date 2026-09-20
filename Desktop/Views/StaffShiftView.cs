@@ -184,11 +184,21 @@ public class StaffShiftView : UserControl
             AutoSize = true
         };
 
+        var pnlShiftButtons = new FlowLayoutPanel
+        {
+            Location = new Point(16, 360),
+            Size = new Size(Math.Max(300, pnlLeftCard.Width - 32), 95),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            BackColor = Color.Transparent
+        };
+
         btnOpenShift = new Button
         {
             Text = "🔓 Mở Ca Trực Mới",
-            Size = new Size(180, 36),
-            Location = new Point(16, 365)
+            Size = new Size(170, 36),
+            Margin = new Padding(0, 0, 8, 8)
         };
         AppTheme.ApplySecondaryButton(btnOpenShift);
         btnOpenShift.Click += (s, e) =>
@@ -203,8 +213,8 @@ public class StaffShiftView : UserControl
         btnCloseShift = new Button
         {
             Text = "🔒 Chốt & Đóng Ca Trực",
-            Size = new Size(190, 36),
-            Location = new Point(205, 365)
+            Size = new Size(180, 36),
+            Margin = new Padding(0, 0, 8, 8)
         };
         AppTheme.ApplyDangerButton(btnCloseShift);
         btnCloseShift.Click += (s, e) =>
@@ -226,8 +236,8 @@ public class StaffShiftView : UserControl
         btnPrintReport = new Button
         {
             Text = "🖨️ In Báo Cáo Bàn Giao Ca (F10)",
-            Size = new Size(380, 36),
-            Location = new Point(16, 412)
+            Size = new Size(358, 36),
+            Margin = new Padding(0)
         };
         AppTheme.ApplyPrimaryButton(btnPrintReport);
         btnPrintReport.Click += (s, e) =>
@@ -252,6 +262,10 @@ public class StaffShiftView : UserControl
                 "In báo cáo bàn giao", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
 
+        pnlShiftButtons.Controls.Add(btnOpenShift);
+        pnlShiftButtons.Controls.Add(btnCloseShift);
+        pnlShiftButtons.Controls.Add(btnPrintReport);
+
         pnlLeftCard.Controls.Add(lblLeftCardTitle);
         pnlLeftCard.Controls.Add(pnlShiftBadge);
         pnlLeftCard.Controls.Add(lblShiftTime);
@@ -262,9 +276,7 @@ public class StaffShiftView : UserControl
         pnlLeftCard.Controls.Add(numActualCash);
         pnlLeftCard.Controls.Add(lblDiffTitle);
         pnlLeftCard.Controls.Add(lblCashDifference);
-        pnlLeftCard.Controls.Add(btnOpenShift);
-        pnlLeftCard.Controls.Add(btnCloseShift);
-        pnlLeftCard.Controls.Add(btnPrintReport);
+        pnlLeftCard.Controls.Add(pnlShiftButtons);
 
         // RIGHT CARD: Báo cáo tài chính ca
         var pnlRightCard = new Panel
@@ -325,6 +337,7 @@ public class StaffShiftView : UserControl
         {
             Location = new Point(16, y),
             Size = new Size(420, 58),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             BackColor = AppTheme.BackgroundGray
         };
         p.Paint += (s, e) =>

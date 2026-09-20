@@ -45,18 +45,26 @@ public class AdminUsersView : UserControl
             Location = new Point(16, 16)
         };
 
+        var pnlActionsRight = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            AutoSize = true,
+            FlowDirection = FlowDirection.RightToLeft,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0, 2, 0, 0)
+        };
+
         btnAddUser = new Button
         {
             Text = "➕ Tạo Nhân Viên Mới",
-            Size = new Size(180, 32),
-            Location = new Point(pnlTop.Width - 195, 14),
-            Anchor = AnchorStyles.Top | AnchorStyles.Right
+            Size = new Size(180, 32)
         };
         AppTheme.ApplyPrimaryButton(btnAddUser);
         btnAddUser.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Mở form tạo tài khoản nhân viên mới...");
+        pnlActionsRight.Controls.Add(btnAddUser);
 
         pnlTop.Controls.Add(lblHeader);
-        pnlTop.Controls.Add(btnAddUser);
+        pnlTop.Controls.Add(pnlActionsRight);
 
         dgvUsers = new DataGridView();
         AppTheme.ApplyGridStyle(dgvUsers);
