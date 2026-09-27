@@ -250,7 +250,28 @@ public class OrderService : IOrderService
                         : customer.LoyaltyPoints >= 500 ? 1
                         : 0;
                     _customerRepository.Update(customer);
+
+                    await _customerRepository.AddPointHistoryAsync(new PointHistory
+                    {
+                        CustomerId = customer.CustomerId,
+                        OrderId = order.OrderId,
+                        PointChange = pointsEarned,
+                        Type = 1,
+                        CreatedAt = DateTime.UtcNow
+                    }, cancellationToken);
                 }
+            }
+        }
+
+        if (order.VoucherId.HasValue)
+        {
+            var voucher = await _dbContext.Vouchers
+                .FirstOrDefaultAsync(v => v.VoucherId == order.VoucherId.Value, cancellationToken);
+            if (voucher != null)
+            {
+                voucher.IsUsed = true;
+                voucher.UsedAt = DateTime.UtcNow;
+                voucher.OrderId = order.OrderId;
             }
         }
 
@@ -275,6 +296,81 @@ public class OrderService : IOrderService
 
         order.Status = OrderStatus.Cancelled;
         _orderRepository.Update(order);
+
+        // 1. Hoàn trả tồn kho (Restock inventory) & ghi nhận StockHistory
+        if (order.OrderDetails != null && order.OrderDetails.Any())
+        {
+            foreach (var detail in order.OrderDetails)
+            {
+                var inv = await _inventoryRepository.GetByProductAndBranchAsync(detail.ProductId, order.BranchId);
+                if (inv != null)
+                {
+                    int qtyBefore = inv.QuantityOnHand;
+                    inv.QuantityOnHand += detail.Quantity;
+                    inv.LastUpdated = DateTime.UtcNow;
+                    await _inventoryRepository.UpsertAsync(inv);
+
+                    await _inventoryRepository.AddStockHistoryAsync(new StockHistory
+                    {
+                        ProductId = inv.ProductId,
+                        BranchId = inv.BranchId,
+                        ChangeType = StockChangeType.Adjustment,
+                        QuantityChange = detail.Quantity,
+                        QuantityBefore = qtyBefore,
+                        QuantityAfter = inv.QuantityOnHand,
+                        Note = $"Hủy đơn hàng #{order.OrderId} - Hoàn kho",
+                        CreatedByUserId = order.EmployeeId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+            await _inventoryRepository.SaveChangesAsync();
+        }
+
+        // 2. Thu hồi điểm thưởng Loyalty (Rule 6 in BusinessRules.md)
+        if (order.CustomerId.HasValue)
+        {
+            var customer = await _customerRepository.GetByIdAsync(order.CustomerId.Value, cancellationToken);
+            if (customer != null)
+            {
+                var pointHistory = await _dbContext.PointHistories
+                    .FirstOrDefaultAsync(p => p.OrderId == order.OrderId && p.Type == 1, cancellationToken);
+
+                int pointsToRevoke = pointHistory?.PointChange ?? (int)(order.FinalAmount / 10000m);
+                if (pointsToRevoke > 0)
+                {
+                    customer.LoyaltyPoints = Math.Max(0, customer.LoyaltyPoints - pointsToRevoke);
+                    customer.MembershipTier = customer.LoyaltyPoints >= 5000 ? 3
+                        : customer.LoyaltyPoints >= 2000 ? 2
+                        : customer.LoyaltyPoints >= 500 ? 1
+                        : 0;
+                    _customerRepository.Update(customer);
+
+                    await _customerRepository.AddPointHistoryAsync(new PointHistory
+                    {
+                        CustomerId = customer.CustomerId,
+                        OrderId = order.OrderId,
+                        PointChange = -pointsToRevoke,
+                        Type = 3,
+                        CreatedAt = DateTime.UtcNow
+                    }, cancellationToken);
+                }
+            }
+        }
+
+        // 3. Khôi phục voucher đã sử dụng (Rule 7 in BusinessRules.md)
+        if (order.VoucherId.HasValue)
+        {
+            var voucher = await _dbContext.Vouchers
+                .FirstOrDefaultAsync(v => v.VoucherId == order.VoucherId.Value || v.OrderId == order.OrderId, cancellationToken);
+            if (voucher != null)
+            {
+                voucher.IsUsed = false;
+                voucher.UsedAt = null;
+                voucher.OrderId = null;
+            }
+        }
+
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
         return true;

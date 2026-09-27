@@ -68,8 +68,11 @@ public class CustomersView : UserControl
         };
         AppTheme.ApplyPrimaryButton(btnAddCustomer);
         btnAddCustomer.Click += (s, e) => {
-            var form = this.FindForm();
-            if (form != null) AntdUI.Message.info(form, "Chức năng thêm hồ sơ Khách hàng mới.");
+            using var addForm = new AddCustomerForm();
+            if (addForm.ShowDialog(this.FindForm()) == DialogResult.OK)
+            {
+                LoadSampleData();
+            }
         };
         pnlHeaderRight.Controls.Add(btnAddCustomer);
 
@@ -183,14 +186,26 @@ public class CustomersView : UserControl
                 var content = await response.Content.ReadAsStringAsync();
                 using var doc = System.Text.Json.JsonDocument.Parse(content);
                 var root = doc.RootElement;
-                if (root.TryGetProperty("data", out var data) && data.ValueKind == System.Text.Json.JsonValueKind.Array)
+                if (root.TryGetProperty("data", out var data))
                 {
-                    int totalCust = 0;
-                    int totalVip = 0;
-                    long totalPoints = 0;
-                    int totalVouchers = 0;
+                    System.Text.Json.JsonElement itemsArray = default;
+                    if (data.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        itemsArray = data;
+                    }
+                    else if (data.ValueKind == System.Text.Json.JsonValueKind.Object && data.TryGetProperty("items", out var itm) && itm.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        itemsArray = itm;
+                    }
 
-                    foreach (var item in data.EnumerateArray())
+                    if (itemsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        int totalCust = 0;
+                        int totalVip = 0;
+                        long totalPoints = 0;
+                        int totalVouchers = 0;
+
+                        foreach (var item in itemsArray.EnumerateArray())
                     {
                         totalCust++;
                         string code = item.GetProperty("customerCode").GetString() ?? "";
@@ -224,6 +239,7 @@ public class CustomersView : UserControl
                 }
             }
         }
+    }
         catch
         {
             // API Offline Fallback - keep real 0 values without fake mock data
