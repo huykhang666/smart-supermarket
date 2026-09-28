@@ -324,3 +324,38 @@ Complete Order
 ```
 
 Cách này giúp hệ thống xử lý được trường hợp khách hàng mất kết nối hoặc callback đến sau.
+
+---
+
+# 16. Fallback Polling & Active Query Flow
+
+Mô tả luồng phòng thủ khi Callback từ ZaloPay bị trễ hoặc thất bại do lỗi mạng:
+
+```text
+┌─────────┐                ┌──────────────────┐               ┌──────────────┐
+│   POS   │                │ Payment Service  │               │   ZaloPay    │
+└────┬────┘                └────────┬─────────┘               └──────┬───────┘
+     │                              │                                │
+     │ GET /transactions/{id}/status│                                │
+     ├─────────────────────────────►│                                │
+     │ (Polling mỗi 3s)             │ Check Status                   │
+     │                              │ Status == PROCESSING           │
+     │                              │                                │
+     │                              │ Active Query Gateway           │
+     │                              ├───────────────────────────────►│
+     │                              │ POST /v2/query                 │
+     │                              │ (app_trans_id)                 │
+     │                              │                                │
+     │                              │ Gateway Response               │
+     │                              │ return_code == 1 (SUCCESS)     │
+     │                              │◄───────────────────────────────┤
+     │                              │                                │
+     │                              │ Update Transaction = SUCCESS   │
+     │                              │ Create Payment                 │
+     │                              │ Update Order Status            │
+     │                              │                                │
+     │ Status = SUCCESS             │                                │
+     │◄─────────────────────────────┤                                │
+     │                              │                                │
+```
+

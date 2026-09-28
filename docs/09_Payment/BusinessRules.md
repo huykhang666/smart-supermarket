@@ -183,6 +183,23 @@ Không được ghi nhận Payment.
 
 ---
 
+## BR-13: Đối soát chủ động & Truy vấn trạng thái (Active Query Status)
+
+Khi giao dịch ở trạng thái `PROCESSING` hoặc `PENDING` quá thời gian dự kiến (hoặc khi POS Polling mà chưa có Callback):
+
+1. Backend được phép gọi API Query của Gateway để kiểm tra kết quả trực tiếp.
+2. Nếu Gateway phản hồi thanh toán đã thành công (`SUCCESS`), Backend tự động kích hoạt tiến trình ghi nhận `Payment` và cập nhật `Order` giống như khi nhận Callback chuẩn.
+
+---
+
+## BR-14: Phân tách môi trường Sandbox và Production
+
+1. Mọi khóa bảo mật (`AppId`, `Key1`, `Key2`) môi trường Sandbox tuyệt đối không dùng chung với Production.
+2. Dữ liệu thử nghiệm từ Sandbox không được phép ghi nhận vào báo cáo doanh thu chính thức của siêu thị.
+
+
+---
+
 # 3. Luồng xử lý thành công
 
 ```text

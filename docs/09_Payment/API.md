@@ -315,7 +315,44 @@ GET /api/v1/payments/transactions?status=SUCCESS&page=1&pageSize=20
 
 ---
 
-# 7. Error Response
+# 7. Sync Gateway Transaction Status
+
+## Endpoint
+
+```http
+POST /api/v1/payments/transactions/{id}/sync-gateway
+```
+
+## Authorization
+
+```text
+Staff
+Admin
+```
+
+## Mô tả
+
+Phương thức cho phép POS hoặc Admin chủ động kích hoạt yêu cầu Backend phát lệnh hỏi trạng thái trực tiếp sang ZaloPay API (`/v2/query`), phòng trường hợp bị rớt Callback.
+
+## Response
+
+```json
+{
+  "isSuccess": true,
+  "message": "Gateway status synchronized successfully",
+  "data": {
+    "paymentTransactionId": 15,
+    "status": "SUCCESS",
+    "gatewayResponseCode": 1
+  },
+  "errors": null
+}
+```
+
+---
+
+# 8. Error Response
+
 
 ```json
 {

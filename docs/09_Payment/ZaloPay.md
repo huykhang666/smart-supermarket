@@ -214,3 +214,26 @@ Production
 ```
 
 Không commit secret lên GitHub.
+
+---
+
+## 9. Polling & Active Query (Chủ động truy vấn trạng thái)
+
+Trong trường hợp Callback từ ZaloPay bị thất bại do gián đoạn mạng hoặc rớt gói tin:
+
+1. **POS Polling**: POS client chủ động gọi API `GET /api/v1/payments/transactions/{id}/status` mỗi 3-5 giây để cập nhật giao dịch.
+2. **Backend Query Status**: Khi POS hỏi trạng thái hoặc thông qua một Background Worker (CronJob), Backend chủ động phát request sang ZaloPay API (`/v2/query`) với `app_trans_id` để kiểm tra kết quả thực tế.
+3. Nếu ZaloPay báo kết quả `return_code = 1` (Thành công) mà giao dịch nội bộ vẫn ở trạng thái `PROCESSING`, Backend tự động hoàn tất cập nhật trạng thái `SUCCESS` và khởi tạo `Payment`.
+
+---
+
+## 10. Môi trường Sandbox (Testing)
+
+Dành cho môi trường phát triển (Development / Staging):
+
+* **ZaloPay Sandbox Endpoint**: `https://sb-openapi.zalopay.vn/v2/create`
+* **Query Status Endpoint**: `https://sb-openapi.zalopay.vn/v2/query`
+* **App ID Test**: `2553` (hoặc thông tin Sandbox đăng ký trên Portal ZaloPay Developer)
+* **Key1 / Key2 Test**: Cấu hình trong file `appsettings.Development.json` hoặc `.env.local`
+* **ZaloPay SB App**: Sử dụng ứng dụng ZaloPay Sandbox hoặc tài khoản ZaloPay Test để quét QR và mô phỏng giao dịch thành công/thất bại mà không mất tiền thật.
+

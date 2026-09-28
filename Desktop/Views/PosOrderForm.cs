@@ -437,16 +437,78 @@ public class PosOrderForm : Form
             btnCheckout.Text = "Đang tạo đơn...";
 
             var res = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/orders", content);
-            if (res.IsSuccessStatusCode)
-            {
-                MessageBox.Show("✅ Thanh toán đơn hàng thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                this.DialogResult = DialogResult.OK;
-                this.Close();
-            }
-            else
+            if (!res.IsSuccessStatusCode)
             {
                 var body = await res.Content.ReadAsStringAsync();
                 MessageBox.Show($"Không thể tạo đơn hàng.\nChi tiết: {body}", "Lỗi Backend", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var responseBody = await res.Content.ReadAsStringAsync();
+            using var orderDoc = JsonDocument.Parse(responseBody);
+            var orderRoot = orderDoc.RootElement;
+            var orderData = orderRoot.TryGetProperty("data", out var od) ? od : orderRoot;
+
+            int orderId = orderData.GetProperty("orderId").GetInt32();
+            decimal finalAmount = orderData.GetProperty("finalAmount").GetDecimal();
+
+            // Nếu chọn phương thức thanh toán là QR Code (Key == 2)
+            if (selectedPay.Key == 2)
+            {
+                btnCheckout.Text = "Đang khởi tạo QR...";
+
+                // Gọi API tạo transaction thanh toán QR
+                var paymentReqObj = new
+                {
+                    orderId = orderId,
+                    paymentMethod = 2,
+                    amount = finalAmount
+                };
+
+                var payContent = new StringContent(JsonSerializer.Serialize(paymentReqObj), Encoding.UTF8, "application/json");
+                var payRes = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/payments", payContent);
+
+                if (payRes.IsSuccessStatusCode)
+                {
+                    var payBody = await payRes.Content.ReadAsStringAsync();
+                    using var payDoc = JsonDocument.Parse(payBody);
+                    var payRoot = payDoc.RootElement;
+                    var payData = payRoot.GetProperty("data");
+
+                    int transId = payData.GetProperty("paymentTransactionId").GetInt32();
+                    string transCode = payData.GetProperty("transactionCode").GetString() ?? "";
+                    string qrCode = payData.TryGetProperty("qrCode", out var qr) ? (qr.GetString() ?? "") : "";
+                    string paymentUrl = payData.TryGetProperty("paymentUrl", out var url) ? (url.GetString() ?? "") : "";
+
+                    string qrDataToDisplay = !string.IsNullOrEmpty(qrCode) ? qrCode : paymentUrl;
+
+                    // Mở Form Thanh toán QR chuyên nghiệp kiểu Bách Hóa Xanh
+                    using var qrForm = new QrPaymentForm(_httpClient, _apiBaseUrl, transId, orderId, finalAmount, qrDataToDisplay, transCode);
+                    var qrResult = qrForm.ShowDialog(this);
+
+                    if (qrResult == DialogResult.OK)
+                    {
+                        MessageBox.Show("✅ THANH TOÁN CHUYỂN KHOẢN QR THÀNH CÔNG!\nĐã cập nhật đơn hàng & in hóa đơn.", "Bách Hóa Xanh POS", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        this.DialogResult = DialogResult.OK;
+                        this.Close();
+                    }
+                    else
+                    {
+                        MessageBox.Show("⚠️ Khách hàng đã hủy hoặc chưa hoàn tất thanh toán QR.", "Thông báo POS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                else
+                {
+                    var errBody = await payRes.Content.ReadAsStringAsync();
+                    MessageBox.Show($"Không thể tạo giao dịch QR.\nChi tiết: {errBody}", "Lỗi Thanh Toán QR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            else
+            {
+                // Thanh toán Tiền mặt hoặc Thẻ
+                MessageBox.Show("✅ Thanh toán đơn hàng thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
         }
         catch (Exception ex)

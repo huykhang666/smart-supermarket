@@ -71,6 +71,11 @@ public static class DependencyInjection
         services.AddScoped<SmartSupermarket.Backend.Features.Import.Repositories.IImportDetailRepository, SmartSupermarket.Backend.Features.Import.Repositories.ImportDetailRepository>();
         services.AddScoped<SmartSupermarket.Backend.Features.Import.Services.IImportReceiptService, SmartSupermarket.Backend.Features.Import.Services.ImportReceiptService>();
 
+        // Module 09_Payment
+        services.Configure<SmartSupermarket.Backend.Infrastructure.Payments.ZaloPayOptions>(configuration.GetSection(SmartSupermarket.Backend.Infrastructure.Payments.ZaloPayOptions.SectionName));
+        services.AddHttpClient<SmartSupermarket.Backend.Features.Payments.Services.IZaloPayService, SmartSupermarket.Backend.Features.Payments.Services.ZaloPayService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Payments.Services.IPaymentService, SmartSupermarket.Backend.Features.Payments.Services.PaymentService>();
+
         return services;
     }
 }

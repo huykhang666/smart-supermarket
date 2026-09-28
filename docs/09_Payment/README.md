@@ -134,8 +134,9 @@ CANCELLED
 ## 7. Tài liệu
 
 * `Payment.md`: Thiết kế Payment.
-* `ZaloPay.md`: Thiết kế tích hợp ZaloPay.
+* `ZaloPay.md`: Thiết kế tích hợp ZaloPay (hỗ trợ ZaloPay Sandbox & Polling/Query).
 * `PaymentTransaction.md`: Thiết kế giao dịch thanh toán.
-* `BusinessRules.md`: Quy tắc nghiệp vụ.
-* `PaymentFlow.md`: Luồng xử lý thanh toán.
-* `API.md`: API của Payment Module.
+* `BusinessRules.md`: Quy tắc nghiệp vụ (BR-01 đến BR-14).
+* `PaymentFlow.md`: Luồng xử lý thanh toán (bao gồm Callback & Active Query Fallback Flow).
+* `API.md`: API của Payment Module (kèm Endpoint đồng bộ trạng thái Gateway).
+

@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<OrderPromotion> OrderPromotions => Set<OrderPromotion>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
 
     // Modules 13 & 14 (Employee, ERP Inventory, Import, System)

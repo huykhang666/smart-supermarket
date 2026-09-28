@@ -21,4 +21,5 @@ public class Order
     public List<OrderDetail> OrderDetails { get; set; } = new();
     public List<OrderPromotion> OrderPromotions { get; set; } = new();
     public List<Payment> Payments { get; set; } = new();
+    public List<PaymentTransaction> PaymentTransactions { get; set; } = new();
 }
