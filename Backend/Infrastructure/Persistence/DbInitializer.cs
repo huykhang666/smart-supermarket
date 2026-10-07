@@ -481,7 +481,40 @@ public static class DbInitializer
                     ""CustomerId"" SERIAL PRIMARY KEY,
                     ""UserId"" INT NOT NULL,
                     ""LoyaltyPoints"" INT NOT NULL DEFAULT 0,
-                    ""MembershipTier"" INT NOT NULL DEFAULT 1
+                    ""MembershipTier"" INT NOT NULL DEFAULT 1,
+                    ""Gender"" SMALLINT NULL,
+                    ""Address"" VARCHAR(255) NULL,
+                    ""Status"" SMALLINT NOT NULL DEFAULT 1,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
+                );
+
+                ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""Gender"" SMALLINT NULL;
+                ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""Address"" VARCHAR(255) NULL;
+                ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""Status"" SMALLINT NOT NULL DEFAULT 1;
+                ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+                ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" TIMESTAMPTZ NULL;
+
+                CREATE TABLE IF NOT EXISTS ""PointHistories"" (
+                    ""PointHistoryId"" SERIAL PRIMARY KEY,
+                    ""CustomerId"" INT NOT NULL,
+                    ""OrderId"" INT NULL,
+                    ""PointChange"" INT NOT NULL,
+                    ""Type"" SMALLINT NOT NULL DEFAULT 1,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS ""Vouchers"" (
+                    ""VoucherId"" SERIAL PRIMARY KEY,
+                    ""CustomerId"" INT NULL,
+                    ""Code"" VARCHAR(50) NOT NULL,
+                    ""DiscountAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""MinimumOrderAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""ExpiryDate"" TIMESTAMPTZ NOT NULL,
+                    ""IsUsed"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ""UsedAt"" TIMESTAMPTZ NULL,
+                    ""OrderId"" INT NULL,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
 
                 CREATE TABLE IF NOT EXISTS ""Products"" (

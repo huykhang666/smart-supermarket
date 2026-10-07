@@ -303,4 +303,48 @@ public class OrderServiceTests
         _mockOrderRepo.Setup(r => r.GetByIdAsync(1, default)).ReturnsAsync(order);
         await Assert.ThrowsAsync<InvalidOperationException>(() => _orderService.CancelOrderAsync(1));
     }
+
+    [Fact]
+    public async Task CancelOrderAsync_WithCustomerAndLoyaltyPoints_ShouldRevokePointsAndRecordHistory()
+    {
+        var customer = new Customer
+        {
+            CustomerId = 10,
+            LoyaltyPoints = 30,
+            MembershipTier = 1
+        };
+        _mockCustomerRepo.Setup(r => r.GetByIdAsync(10, default)).ReturnsAsync(customer);
+
+        var order = new Order
+        {
+            OrderId = 1,
+            CustomerId = 10,
+            BranchId = 1,
+            FinalAmount = 250000m,
+            Status = OrderStatus.Completed,
+            OrderDetails = new List<OrderDetail>
+            {
+                new OrderDetail { ProductId = 1, Quantity = 2 }
+            }
+        };
+        _mockOrderRepo.Setup(r => r.GetByIdAsync(1, default)).ReturnsAsync(order);
+        _mockOrderRepo.Setup(r => r.Update(It.IsAny<Order>()));
+        _mockOrderRepo.Setup(r => r.SaveChangesAsync(default)).Returns(Task.CompletedTask);
+
+        var inventory = new Domain.Entities.Inventory { InventoryId = 1, ProductId = 1, BranchId = 1, QuantityOnHand = 10 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(1, 1)).ReturnsAsync(inventory);
+        _mockInventoryRepo.Setup(r => r.UpsertAsync(It.IsAny<Domain.Entities.Inventory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.AddStockHistoryAsync(It.IsAny<StockHistory>())).Returns(Task.CompletedTask);
+        _mockInventoryRepo.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+        var result = await _orderService.CancelOrderAsync(1);
+
+        Assert.True(result);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        Assert.Equal(5, customer.LoyaltyPoints); // 30 - 25 = 5
+        _mockCustomerRepo.Verify(r => r.Update(customer), Times.Once);
+        _mockCustomerRepo.Verify(r => r.AddPointHistoryAsync(
+            It.Is<PointHistory>(p => p.CustomerId == 10 && p.OrderId == 1 && p.PointChange == -25 && p.Type == 3),
+            default), Times.Once);
+    }
 }

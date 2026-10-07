@@ -26,5 +26,33 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.Property(c => c.MembershipTier)
             .HasDefaultValue(1);
+
+        builder.Property(c => c.Gender);
+
+        builder.Property(c => c.Address)
+            .HasMaxLength(255);
+
+        builder.Property(c => c.Status)
+            .HasDefaultValue((byte)1);
+
+        builder.Property(c => c.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.Property(c => c.UpdatedAt);
+
+        builder.HasMany(c => c.PointHistories)
+            .WithOne(p => p.Customer)
+            .HasForeignKey(p => p.CustomerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(c => c.Vouchers)
+            .WithOne(v => v.Customer)
+            .HasForeignKey(v => v.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasMany(c => c.Orders)
+            .WithOne(o => o.Customer)
+            .HasForeignKey(o => o.CustomerId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
