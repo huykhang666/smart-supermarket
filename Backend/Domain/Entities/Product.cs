@@ -14,6 +14,8 @@ public class Product
     public string? ImageUrl { get; set; }
     public string Unit { get; set; } = string.Empty;
     public ProductStatus Status { get; set; } = ProductStatus.Active;
+    public DateTime? ManufacturingDate { get; set; }
+    public DateTime? ExpiryDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

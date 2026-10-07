@@ -17,6 +17,15 @@ public class ProductDto
     public string Unit { get; set; } = string.Empty;
     public ProductStatus Status { get; set; }
     public string StatusName => Status == ProductStatus.Active ? "Đang bán" : "Ngừng kinh doanh";
+    public decimal? DiscountPrice { get; set; }
+    public decimal? DiscountPercent { get; set; }
+    public int? Stock { get; set; }
+    public string? StorageLocation { get; set; }
+    public string? Description { get; set; }
+    public DateTime? ManufacturingDate { get; set; }
+    public DateTime? ExpiryDate { get; set; }
+    public bool IsNearExpiry => ExpiryDate.HasValue && (ExpiryDate.Value - DateTime.UtcNow).TotalDays <= 30;
+    public bool IsExpired => ExpiryDate.HasValue && ExpiryDate.Value < DateTime.UtcNow;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
@@ -37,6 +46,8 @@ public class ProductBarcodeDto
     public string Unit { get; set; } = string.Empty;
     public ProductStatus Status { get; set; }
     public string CategoryName { get; set; } = string.Empty;
+    public DateTime? ManufacturingDate { get; set; }
+    public DateTime? ExpiryDate { get; set; }
 }
 
 public class CreateProductRequest
@@ -49,6 +60,8 @@ public class CreateProductRequest
     public decimal? CostPrice { get; set; }
     public string? ImageUrl { get; set; }
     public string Unit { get; set; } = string.Empty;
+    public DateTime? ManufacturingDate { get; set; }
+    public DateTime? ExpiryDate { get; set; }
 }
 
 public class UpdateProductRequest
@@ -61,6 +74,8 @@ public class UpdateProductRequest
     public decimal? CostPrice { get; set; }
     public string? ImageUrl { get; set; }
     public string Unit { get; set; } = string.Empty;
+    public DateTime? ManufacturingDate { get; set; }
+    public DateTime? ExpiryDate { get; set; }
 }
 
 public class UpdatePriceRequest

@@ -252,6 +252,8 @@ public class ProductsView : UserControl
         dgvProducts.Columns.Add("CostPrice", "Giá Vốn (VNĐ)");
         dgvProducts.Columns.Add("Margin", "Biên Lợi Nhuận");
         dgvProducts.Columns.Add("Unit", "Đơn Vị");
+        dgvProducts.Columns.Add("MfgDate", "Ngày SX");
+        dgvProducts.Columns.Add("ExpDate", "Hạn Sử Dụng");
         dgvProducts.Columns.Add("Status", "Trạng Thái");
 
         // FlowLayoutPanel Card Grid View
@@ -372,10 +374,30 @@ public class ProductsView : UserControl
                                 statusText = "🔴 Ngừng bán";
                         }
 
+                        DateTime? mfgDate = null;
+                        if (item.TryGetProperty("manufacturingDate", out var pMfg) && pMfg.ValueKind == JsonValueKind.String && DateTime.TryParse(pMfg.GetString(), out var parsedMfg))
+                        {
+                            mfgDate = parsedMfg;
+                        }
+
+                        DateTime? expDate = null;
+                        if (item.TryGetProperty("expiryDate", out var pExp) && pExp.ValueKind == JsonValueKind.String && DateTime.TryParse(pExp.GetString(), out var parsedExp))
+                        {
+                            expDate = parsedExp;
+                        }
+
+                        string mfgText = mfgDate.HasValue ? mfgDate.Value.ToString("dd/MM/yyyy") : "-";
+                        string expText = expDate.HasValue ? expDate.Value.ToString("dd/MM/yyyy") : "-";
+                        if (expDate.HasValue)
+                        {
+                            if (expDate.Value < DateTime.UtcNow) expText += " ❌ Hết hạn";
+                            else if ((expDate.Value - DateTime.UtcNow).TotalDays <= 30) expText += " ⚠️ Cận date";
+                        }
+
                         decimal marginPercent = price > 0 ? Math.Round(((price - cost) / price) * 100, 1) : 0;
                         string marginText = $"{marginPercent}% {(marginPercent < 0 ? "⚠️ Bán Lỗ" : "")}";
 
-                        dgvProducts.Rows.Add(id, barcode, name, category, $"{price:N0} đ", $"{cost:N0} đ", marginText, unit, statusText);
+                        dgvProducts.Rows.Add(id, barcode, name, category, $"{price:N0} đ", $"{cost:N0} đ", marginText, unit, mfgText, expText, statusText);
 
                         // Save to DataStore
                         DataStore.AddProduct(new ProductDto
@@ -386,7 +408,9 @@ public class ProductsView : UserControl
                             CategoryName = category,
                             Price = price,
                             CostPrice = cost,
-                            Unit = unit
+                            Unit = unit,
+                            ManufacturingDate = mfgDate,
+                            ExpiryDate = expDate
                         });
                     }
                     if (_currentViewMode == ViewMode.Card) RenderCardView();
@@ -407,7 +431,9 @@ public class ProductsView : UserControl
                 decimal cost = p.CostPrice ?? 0m;
                 decimal marginPercent = p.Price > 0 ? Math.Round(((p.Price - cost) / p.Price) * 100, 1) : 0;
                 string marginText = $"{marginPercent}% {(marginPercent < 0 ? "⚠️ Bán Lỗ" : "")}";
-                dgvProducts.Rows.Add(p.ProductId, p.Barcode, p.ProductName, p.CategoryName ?? "Chưa phân loại", $"{p.Price:N0} đ", $"{cost:N0} đ", marginText, p.Unit, "🟢 Đang bán");
+                string mfg = p.ManufacturingDate.HasValue ? p.ManufacturingDate.Value.ToString("dd/MM/yyyy") : "-";
+                string exp = p.ExpiryDate.HasValue ? p.ExpiryDate.Value.ToString("dd/MM/yyyy") : "-";
+                dgvProducts.Rows.Add(p.ProductId, p.Barcode, p.ProductName, p.CategoryName ?? "Chưa phân loại", $"{p.Price:N0} đ", $"{cost:N0} đ", marginText, p.Unit, mfg, exp, "🟢 Đang bán");
             }
         }
 

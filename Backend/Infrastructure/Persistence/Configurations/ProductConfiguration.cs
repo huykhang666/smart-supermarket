@@ -47,6 +47,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasSentinel((ProductStatus)0)
             .IsRequired();
 
+        builder.Property(p => p.ManufacturingDate);
+
+        builder.Property(p => p.ExpiryDate);
+
         builder.Property(p => p.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
 

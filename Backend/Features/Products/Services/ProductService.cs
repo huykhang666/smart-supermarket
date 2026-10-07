@@ -81,6 +81,8 @@ public class ProductService : IProductService
             ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? "/images/products/no-image.png" : request.ImageUrl.Trim(),
             Unit = request.Unit.Trim().ToLower(),
             Status = ProductStatus.Active,
+            ManufacturingDate = request.ManufacturingDate,
+            ExpiryDate = request.ExpiryDate,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -136,6 +138,8 @@ public class ProductService : IProductService
             product.ImageUrl = request.ImageUrl.Trim();
         }
         product.Unit = request.Unit.Trim().ToLower();
+        product.ManufacturingDate = request.ManufacturingDate;
+        product.ExpiryDate = request.ExpiryDate;
         product.UpdatedAt = DateTime.UtcNow;
 
         _productRepository.Update(product);
@@ -227,7 +231,9 @@ public class ProductService : IProductService
             Price = product.Price,
             Unit = product.Unit,
             Status = product.Status,
-            CategoryName = product.Category?.CategoryName ?? string.Empty
+            CategoryName = product.Category?.CategoryName ?? string.Empty,
+            ManufacturingDate = product.ManufacturingDate,
+            ExpiryDate = product.ExpiryDate
         };
     }
 
@@ -430,6 +436,8 @@ public class ProductService : IProductService
             ImageUrl = string.IsNullOrWhiteSpace(product.ImageUrl) ? "/images/products/no-image.png" : product.ImageUrl,
             Unit = product.Unit,
             Status = product.Status,
+            ManufacturingDate = product.ManufacturingDate,
+            ExpiryDate = product.ExpiryDate,
             CreatedAt = product.CreatedAt,
             UpdatedAt = product.UpdatedAt
         };

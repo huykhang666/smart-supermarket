@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SmartSupermarket.Backend.Common.Results;
 using SmartSupermarket.Backend.Features.Products.DTOs;
 using SmartSupermarket.Backend.Features.Products.Services;
+using SmartSupermarket.Backend.Infrastructure.Persistence;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace SmartSupermarket.Backend.Features.Products.Controllers;
@@ -20,6 +21,27 @@ public class ProductsController : ControllerBase
     {
         _productService = productService;
         _barcodeService = barcodeService;
+    }
+
+    /// <summary>
+    /// Lấy danh sách 100+ sản phẩm siêu thị mẫu chi tiết (Tên, mã vạch, danh mục, giá gốc, giá bán, giá ưu đãi, tồn kho, vị trí kệ)
+    /// </summary>
+    [HttpGet("sample")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResult<List<ProductSeedItem>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSampleCatalog(CancellationToken cancellationToken = default)
+    {
+        var seedPath = DbInitializer.ResolveSeedFilePath();
+        if (System.IO.File.Exists(seedPath))
+        {
+            var json = await System.IO.File.ReadAllTextAsync(seedPath, cancellationToken);
+            var items = System.Text.Json.JsonSerializer.Deserialize<List<ProductSeedItem>>(
+                json, 
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
+            return Ok(ApiResult<List<ProductSeedItem>>.Success(items ?? new List<ProductSeedItem>(), "Lấy dữ liệu 100 sản phẩm mẫu thành công."));
+        }
+        return NotFound(ApiResult<string>.Failure("Không tìm thấy tệp products_seed.json."));
     }
 
     /// <summary>
