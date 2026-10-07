@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Media;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -679,8 +680,7 @@ public class AddProductForm : Form
 
         try
         {
-            var content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync($"{_apiBaseUrl}/api/products", content);
+            var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/api/products", request);
 
             if (response.IsSuccessStatusCode)
             {

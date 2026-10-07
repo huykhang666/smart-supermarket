@@ -1,8 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Backend\SmartSupermarket.Backend.csproj" />
-  </ItemGroup>
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
