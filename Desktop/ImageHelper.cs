@@ -13,12 +13,29 @@ namespace Desktop;
 
 public static class ImageHelper
 {
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(8) };
+    private static readonly HttpClient _httpClient;
     private static readonly ConcurrentDictionary<string, Image> _memoryCache = new();
     private static readonly string CacheDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ImageCache");
 
     static ImageHelper()
     {
+        try
+        {
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression = System.Net.DecompressionMethods.All,
+                ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+            };
+            _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            _httpClient.DefaultRequestHeaders.Add("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
+            _httpClient.DefaultRequestHeaders.Add("Referer", "https://www.bachhoaxanh.com/");
+        }
+        catch
+        {
+            _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        }
+
         try
         {
             if (!Directory.Exists(CacheDirectory))
@@ -52,7 +69,8 @@ public static class ImageHelper
             try
             {
                 using var stream = new FileStream(imageUrl, FileMode.Open, FileAccess.Read, FileShare.Read);
-                var localImg = Image.FromStream(stream);
+                using var temp = Image.FromStream(stream);
+                var localImg = new Bitmap(temp);
                 picBox.Image = localImg;
                 return;
             }
@@ -80,12 +98,17 @@ public static class ImageHelper
                 {
                     byte[] bytes = File.ReadAllBytes(cachedFilePath);
                     using var ms = new MemoryStream(bytes);
-                    var diskImg = Image.FromStream(ms);
+                    using var temp = Image.FromStream(ms);
+                    var diskImg = new Bitmap(temp);
                     _memoryCache[imageUrl] = diskImg;
                     picBox.Image = diskImg;
                     return;
                 }
-                catch { }
+                catch
+                {
+                    // If cached file is corrupted, delete it to re-download
+                    try { File.Delete(cachedFilePath); } catch { }
+                }
             }
 
             // Download asynchronously in background without freezing UI
@@ -104,18 +127,34 @@ public static class ImageHelper
                         catch { }
 
                         using var ms = new MemoryStream(data);
-                        var downloadedImg = Image.FromStream(ms);
+                        using var temp = Image.FromStream(ms);
+                        var downloadedImg = new Bitmap(temp);
                         _memoryCache[imageUrl] = downloadedImg;
 
-                        if (!picBox.IsDisposed && picBox.IsHandleCreated)
+                        void ApplyImage()
                         {
-                            picBox.BeginInvoke(new Action(() =>
+                            if (!picBox.IsDisposed)
                             {
-                                if (!picBox.IsDisposed)
+                                picBox.Image = downloadedImg;
+                            }
+                        }
+
+                        if (!picBox.IsDisposed)
+                        {
+                            if (picBox.IsHandleCreated)
+                            {
+                                picBox.BeginInvoke(new Action(ApplyImage));
+                            }
+                            else
+                            {
+                                picBox.HandleCreated += (s, e) =>
                                 {
-                                    picBox.Image = downloadedImg;
-                                }
-                            }));
+                                    if (!picBox.IsDisposed && picBox.IsHandleCreated)
+                                    {
+                                        picBox.BeginInvoke(new Action(ApplyImage));
+                                    }
+                                };
+                            }
                         }
                     }
                 }

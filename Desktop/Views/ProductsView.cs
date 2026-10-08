@@ -804,11 +804,6 @@ public class ProductsView : UserControl
             AutoEllipsis = true
         };
 
-        card.Controls.Add(lblProfitBadge);
-        if (lblExpiryBadge != null) card.Controls.Add(lblExpiryBadge);
-        lblProfitBadge.BringToFront();
-        if (lblExpiryBadge != null) lblExpiryBadge.BringToFront();
-
         card.Controls.Add(picProduct);
         card.Controls.Add(pnlCategoryBar);
         card.Controls.Add(lblName);
@@ -816,6 +811,14 @@ public class ProductsView : UserControl
         card.Controls.Add(lblCostMargin);
         card.Controls.Add(pnlDivider);
         card.Controls.Add(lblIdBarcode);
+
+        card.Controls.Add(lblProfitBadge);
+        lblProfitBadge.BringToFront();
+        if (lblExpiryBadge != null)
+        {
+            card.Controls.Add(lblExpiryBadge);
+            lblExpiryBadge.BringToFront();
+        }
 
         // Click / Double click to view details
         card.DoubleClick += (s, e) => ShowProductDetailQuick(p);
