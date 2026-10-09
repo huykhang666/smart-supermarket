@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Desktop.Services;
 
 namespace Desktop.Views;
 
@@ -488,7 +489,8 @@ public class PosOrderForm : Form
 
                     if (qrResult == DialogResult.OK)
                     {
-                        MessageBox.Show("✅ THANH TOÁN CHUYỂN KHOẢN QR THÀNH CÔNG!\nĐã cập nhật đơn hàng & in hóa đơn.", "Bách Hóa Xanh POS", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        PrintInvoicePdf(orderId, finalAmount, "VietQR");
+                        MessageBox.Show("✅ THANH TOÁN CHUYỂN KHOẢN QR THÀNH CÔNG!\nĐã cập nhật đơn hàng & xuất hóa đơn PDF.", "Bách Hóa Xanh POS", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         this.DialogResult = DialogResult.OK;
                         this.Close();
                     }
@@ -506,7 +508,8 @@ public class PosOrderForm : Form
             else
             {
                 // Thanh toán Tiền mặt hoặc Thẻ
-                MessageBox.Show("✅ Thanh toán đơn hàng thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                PrintInvoicePdf(orderId, finalAmount, selectedPay.Value);
+                MessageBox.Show("✅ Thanh toán đơn hàng thành công!\nĐã xuất và mở xem trước hóa đơn PDF.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
@@ -519,6 +522,40 @@ public class PosOrderForm : Form
         {
             btnCheckout.Enabled = true;
             btnCheckout.Text = "HOÀN TẤT THANH TOÁN";
+        }
+    }
+
+    private void PrintInvoicePdf(int orderId, decimal finalAmount, string paymentMethod)
+    {
+        try
+        {
+            decimal subTotal = _cartItems.Sum(x => x.SubTotal);
+            var model = new InvoicePrintModel
+            {
+                OrderCode = $"ORD-{orderId:D5}",
+                OrderDate = DateTime.Now,
+                CustomerName = "Khách Lẻ",
+                CashierName = $"Nhân viên #{_employeeId}",
+                SubTotal = subTotal,
+                DiscountTotal = _discountAmount,
+                VatTotal = Math.Round(finalAmount - (finalAmount / 1.08m), 0),
+                GrandTotal = finalAmount,
+                PaymentMethod = paymentMethod,
+                CashGiven = finalAmount,
+                ChangeDue = 0,
+                Items = _cartItems.Select(x => new InvoicePrintItem
+                {
+                    ProductName = x.ProductName,
+                    Barcode = x.Barcode,
+                    Quantity = x.Quantity,
+                    UnitPrice = x.UnitPrice
+                }).ToList()
+            };
+            InvoicePdfService.PrintOrPreview(model, autoOpen: true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PosOrderForm] Print invoice PDF error: {ex.Message}");
         }
     }
 

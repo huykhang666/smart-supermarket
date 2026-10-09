@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FontAwesome.Sharp;
+using Desktop.Services;
 
 namespace Desktop.Views;
 
@@ -979,6 +980,42 @@ public class PosScanView : UserControl
             // Fallback: Offline mode handled cleanly via DataStore
         }
 
+        string pdfPath = "";
+        try
+        {
+            var invoiceModel = new InvoicePrintModel
+            {
+                OrderCode = orderRecord.OrderCode,
+                OrderDate = orderRecord.OrderDate,
+                CustomerName = orderRecord.CustomerName,
+                CustomerPhone = txtCustomerPhone?.Text.Trim() ?? "",
+                CashierName = "Thu ngân POS",
+                SubTotal = netSubTotal,
+                VatTotal = vatTotal,
+                DiscountTotal = _appliedDiscountAmount,
+                GrandTotal = grandTotal,
+                PaymentMethod = methodStr,
+                CashGiven = numCashPaid.Value > 0 ? numCashPaid.Value : grandTotal,
+                ChangeDue = Math.Max(0, (numCashPaid.Value > 0 ? numCashPaid.Value : grandTotal) - grandTotal),
+                Items = _cart.Select(c => new InvoicePrintItem
+                {
+                    ProductName = c.Name,
+                    Barcode = c.Barcode,
+                    Quantity = c.Quantity,
+                    UnitPrice = c.Price
+                }).ToList()
+            };
+            pdfPath = InvoicePdfService.PrintOrPreview(invoiceModel, autoOpen: true);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PosScanView] PDF Export error: {ex.Message}");
+        }
+
+        string pdfInfo = !string.IsNullOrEmpty(pdfPath)
+            ? $"• Hóa đơn PDF: Đã xuất & mở xem trước tại:\n  {pdfPath}\n\n"
+            : "";
+
         MessageBox.Show(
             $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ!\n\n" +
             $"• Mã hóa đơn: {orderRecord.OrderCode}\n" +
@@ -986,7 +1023,8 @@ public class PosScanView : UserControl
             $"• Tổng thanh toán: {grandTotal:N0} VNĐ\n" +
             $"• Hình thức: {methodStr}\n" +
             $"• Điểm cộng thêm: +{Math.Round(grandTotal / 10000):N0} điểm\n\n" +
-            $"Đã in hóa đơn, lưu CSDL và cập nhật realtime trên Dashboard.",
+            pdfInfo +
+            $"Đã lưu CSDL và cập nhật realtime trên hệ thống.",
             "Thanh toán thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         _cart.Clear();
