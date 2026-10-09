@@ -13,6 +13,13 @@ public class DiscountRuleRepository : IDiscountRuleRepository
         _dbContext = dbContext;
     }
 
+    public async Task<IEnumerable<DiscountRule>> GetAllAsync()
+    {
+        return await _dbContext.DiscountRules
+            .OrderByDescending(r => r.DaysBeforeExpiry)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<DiscountRule>> GetAllActiveAsync()
     {
         return await _dbContext.DiscountRules
@@ -34,9 +41,20 @@ public class DiscountRuleRepository : IDiscountRuleRepository
         return await _dbContext.DiscountRules.FindAsync(id);
     }
 
+    public async Task AddAsync(DiscountRule discountRule)
+    {
+        await _dbContext.DiscountRules.AddAsync(discountRule);
+    }
+
     public async Task UpdateAsync(DiscountRule discountRule)
     {
         _dbContext.DiscountRules.Update(discountRule);
+        await Task.CompletedTask;
+    }
+
+    public async Task DeleteAsync(DiscountRule discountRule)
+    {
+        _dbContext.DiscountRules.Remove(discountRule);
         await Task.CompletedTask;
     }
 

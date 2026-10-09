@@ -126,7 +126,18 @@ public class InventoryView : UserControl
             Cursor = Cursors.Hand
         };
         AppTheme.ApplyPrimaryButton(btnAiInsights);
+
+        var btnRefresh = new Button
+        {
+            Text = "🔄 Tải Lại",
+            Size = new Size(110, 40),
+            Location = new Point(260, 10),
+            Cursor = Cursors.Hand
+        };
+        AppTheme.ApplySecondaryButton(btnRefresh);
+
         pnlTop.Controls.Add(btnAiInsights);
+        pnlTop.Controls.Add(btnRefresh);
 
         var dgv = new DataGridView();
         AppTheme.ApplyGridStyle(dgv);
@@ -136,7 +147,44 @@ public class InventoryView : UserControl
         dgv.Columns.Add("Qty", "SL Còn Lại");
         dgv.Columns.Add("ExpiryDate", "Hạn Sử Dụng");
         dgv.Columns.Add("DaysLeft", "Số Ngày Còn Lại");
-        dgv.Columns.Add("Action", "Khuyến Nghị AI");
+        dgv.Columns.Add("Action", "Khuyến Nghị / Xả Hàng");
+
+        async Task LoadDataAsync()
+        {
+            try
+            {
+                dgv.Rows.Clear();
+                using var http = new System.Net.Http.HttpClient();
+                var resp = await http.GetAsync("http://localhost:5137/api/v1/discount-rules/expiring-products");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var json = await resp.Content.ReadAsStringAsync();
+                    using var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    var data = root.TryGetProperty("data", out var d) ? d : root;
+                    if (data.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var item in data.EnumerateArray())
+                        {
+                            string batch = item.GetProperty("batchCode").GetString() ?? "";
+                            string name = item.GetProperty("productName").GetString() ?? "";
+                            int qty = item.GetProperty("quantity").GetInt32();
+                            string expRaw = item.GetProperty("expiryDate").GetString() ?? "";
+                            string expDate = DateTime.TryParse(expRaw, out var exp) ? exp.ToString("dd/MM/yyyy") : expRaw;
+                            int daysLeft = item.GetProperty("daysRemaining").GetInt32();
+                            decimal discPct = item.GetProperty("discountPercent").GetDecimal();
+                            string alertStr = discPct > 0 ? $"🏷️ Giảm {discPct:N0}% xả hàng" : "Bình thường";
+
+                            dgv.Rows.Add(batch, name, qty, expDate, $"{daysLeft} ngày", alertStr);
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        btnRefresh.Click += async (s, e) => await LoadDataAsync();
+        _ = LoadDataAsync();
 
         btnAiInsights.Click += async (s, e) =>
         {
@@ -154,7 +202,7 @@ public class InventoryView : UserControl
                     var jsonObj = System.Text.Json.JsonDocument.Parse(json);
                     string aiText = jsonObj.RootElement.GetProperty("data").GetProperty("content").GetString() ?? "";
 
-                    MessageBox.Show(aiText, "🤖 Báo Cáo AI", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(aiText, "🤖 Báo Cáo AI Gợi Ý Cận Date", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {

@@ -601,6 +601,41 @@ public class PosScanView : UserControl
             }
         }
 
+        // 3. Quét các sản phẩm cận date từ DiscountRule để cập nhật giá xả hàng
+        try
+        {
+            var expResp = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/discount-rules/expiring-products");
+            if (expResp.IsSuccessStatusCode)
+            {
+                var expJson = await expResp.Content.ReadAsStringAsync();
+                using var expDoc = JsonDocument.Parse(expJson);
+                var expRoot = expDoc.RootElement;
+                var expData = expRoot.TryGetProperty("data", out var ed) ? ed : expRoot;
+                if (expData.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in expData.EnumerateArray())
+                    {
+                        string bcode = item.TryGetProperty("barcode", out var bc) ? (bc.GetString() ?? "") : "";
+                        int pId = item.TryGetProperty("productId", out var pi) ? pi.GetInt32() : 0;
+                        decimal discPct = item.TryGetProperty("discountPercent", out var dp) ? dp.GetDecimal() : 0m;
+                        decimal clearPrice = item.TryGetProperty("clearancePrice", out var cp) ? cp.GetDecimal() : 0m;
+                        int daysLeft = item.TryGetProperty("daysRemaining", out var dl) ? dl.GetInt32() : 0;
+
+                        var match = _catalog.FirstOrDefault(c => (!string.IsNullOrEmpty(bcode) && c.Barcode == bcode) || (pId > 0 && c.Id == pId));
+                        if (match != null && discPct > 0)
+                        {
+                            match.OriginalPrice = match.Price;
+                            match.Price = clearPrice;
+                            match.DiscountPercent = discPct;
+                            match.IsNearExpiry = true;
+                            match.ExpiryNote = $"Xả hàng cận date ({daysLeft}d) -{discPct:N0}%";
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+
         FilterProducts(txtSearchProd?.Text.Trim() ?? "");
     }
 
@@ -631,26 +666,41 @@ public class PosScanView : UserControl
             var card = new Panel
             {
                 Size = new Size(125, 120),
-                BackColor = AppTheme.BackgroundGray,
+                BackColor = prod.IsNearExpiry ? Color.FromArgb(254, 242, 242) : AppTheme.BackgroundGray,
                 Margin = new Padding(0, 0, 8, 8),
                 Padding = new Padding(6),
                 Cursor = Cursors.Hand
             };
             card.Paint += (s, e) =>
             {
-                using var p = new Pen(AppTheme.BorderLight, 1);
+                using var p = new Pen(prod.IsNearExpiry ? Color.FromArgb(239, 68, 68) : AppTheme.BorderLight, 1);
                 e.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
             };
 
             var lblIcon = new Label { Text = prod.Icon, Font = new Font("Segoe UI", 16f), Location = new Point(4, 4), AutoSize = true };
             var lblName = new Label { Text = prod.Name, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = AppTheme.TextPrimary, Location = new Point(4, 34), Size = new Size(117, 32) };
-            var lblPrice = new Label { Text = $"{prod.Price:N0} đ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Primary, Location = new Point(4, 70), AutoSize = true };
+            var lblPrice = new Label { Text = $"{prod.Price:N0} đ", Font = AppTheme.FontBodyBold, ForeColor = prod.IsNearExpiry ? Color.FromArgb(220, 38, 38) : AppTheme.Primary, Location = new Point(4, 70), AutoSize = true };
             var lblStock = new Label { Text = $"Tồn: {prod.Stock}", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(4, 94), AutoSize = true };
 
             card.Controls.Add(lblIcon);
             card.Controls.Add(lblName);
             card.Controls.Add(lblPrice);
             card.Controls.Add(lblStock);
+
+            if (prod.IsNearExpiry)
+            {
+                var lblBadge = new Label
+                {
+                    Text = $"-{prod.DiscountPercent:N0}% HSD",
+                    Font = new Font("Segoe UI", 7f, FontStyle.Bold),
+                    ForeColor = Color.White,
+                    BackColor = Color.FromArgb(220, 38, 38),
+                    Location = new Point(50, 4),
+                    AutoSize = true,
+                    Padding = new Padding(1)
+                };
+                card.Controls.Add(lblBadge);
+            }
 
             // Click or Double-click to add to cart
             card.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
@@ -682,13 +732,21 @@ public class PosScanView : UserControl
                 Barcode = prod.Barcode,
                 Name = prod.Name,
                 Price = prod.Price,
+                OriginalPrice = prod.OriginalPrice > 0 ? prod.OriginalPrice : prod.Price,
+                DiscountPercent = prod.DiscountPercent,
+                IsNearExpiry = prod.IsNearExpiry,
+                ExpiryNote = prod.ExpiryNote,
                 Quantity = 1,
                 VatPercent = 8,
                 Icon = prod.Icon
             });
         }
         RefreshCartGrid();
-        AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã thêm {prod.Name} vào giỏ!");
+
+        string msg = prod.IsNearExpiry
+            ? $"Đã thêm {prod.Name} (🏷️ Xả hàng cận date -{prod.DiscountPercent:N0}%: {prod.Price:N0} đ) vào giỏ!"
+            : $"Đã thêm {prod.Name} vào giỏ!";
+        AntdUI.Message.success(this.FindForm() ?? new Form(), msg);
     }
 
     private void RefreshCartGrid()
@@ -697,14 +755,17 @@ public class PosScanView : UserControl
         foreach (var item in _cart)
         {
             decimal itemSubTotal = item.Price * item.Quantity;
+            string displayName = item.IsNearExpiry ? $"{item.Name} 🏷️[-{item.DiscountPercent:N0}% Cận date]" : item.Name;
+            string discountNote = item.IsNearExpiry ? $"-{(item.OriginalPrice - item.Price) * item.Quantity:N0} đ" : "0 đ";
+
             dgvCart.Rows.Add(
                 item.Icon,
-                item.Name,
+                displayName,
                 item.Barcode,
                 $"{item.Price:N0} đ",
                 item.Quantity,
                 $"{item.VatPercent}%",
-                "0 đ",
+                discountNote,
                 $"{itemSubTotal:N0} đ"
             );
         }
@@ -1042,6 +1103,10 @@ public class PosScanView : UserControl
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
         public decimal Price { get; set; }
+        public decimal OriginalPrice { get; set; }
+        public decimal DiscountPercent { get; set; }
+        public bool IsNearExpiry { get; set; }
+        public string ExpiryNote { get; set; } = "";
         public int Stock { get; set; }
         public string Icon { get; set; } = "📦";
     }
@@ -1052,6 +1117,10 @@ public class PosScanView : UserControl
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
         public decimal Price { get; set; }
+        public decimal OriginalPrice { get; set; }
+        public decimal DiscountPercent { get; set; }
+        public bool IsNearExpiry { get; set; }
+        public string ExpiryNote { get; set; } = "";
         public int Quantity { get; set; }
         public decimal VatPercent { get; set; }
         public string Icon { get; set; } = "📦";
