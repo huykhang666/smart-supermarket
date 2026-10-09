@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Desktop.Services;
 
 namespace Desktop.Views;
 
@@ -14,6 +17,7 @@ public class OrdersView : UserControl
     private Button btnRefresh = null!;
     private Button btnPos = null!;
     private Button btnViewDetail = null!;
+    private Button btnExportPdf = null!;
     private Button btnCancel = null!;
     private Label lblStatus = null!;
     private readonly HttpClient _httpClient = new();
@@ -73,6 +77,10 @@ public class OrdersView : UserControl
         AppTheme.ApplySecondaryButton(btnViewDetail);
         btnViewDetail.Click += BtnViewDetail_Click;
 
+        btnExportPdf = new Button { Text = "🖨️ In / Xuất PDF", Size = new Size(135, 32), Margin = new Padding(0, 0, 8, 4) };
+        AppTheme.ApplyPrimaryButton(btnExportPdf);
+        btnExportPdf.Click += BtnExportPdf_Click;
+
         btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyDangerButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
@@ -89,6 +97,7 @@ public class OrdersView : UserControl
         pnlToolbar.Controls.Add(btnPos);
         pnlToolbar.Controls.Add(btnRefresh);
         pnlToolbar.Controls.Add(btnViewDetail);
+        pnlToolbar.Controls.Add(btnExportPdf);
         pnlToolbar.Controls.Add(btnCancel);
         pnlToolbar.Controls.Add(lblStatus);
 
@@ -228,6 +237,157 @@ public class OrdersView : UserControl
             $"• Ngày đặt: {date}\n" +
             $"• Trạng thái: {status}",
             "Chi tiết đơn hàng", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    private async void BtnExportPdf_Click(object? sender, EventArgs e)
+    {
+        if (dgvOrders.CurrentRow == null)
+        {
+            MessageBox.Show("Vui lòng chọn một đơn hàng trong danh sách để in hóa đơn PDF!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var row = dgvOrders.CurrentRow;
+        var rawId = row.Cells["RawOrderId"].Value;
+        if (rawId == null) return;
+        int orderId = Convert.ToInt32(rawId);
+        string code = row.Cells["OrderId"].Value?.ToString() ?? $"ORD-{orderId:D5}";
+
+        lblStatus.Text = $"Đang xuất PDF cho {code}...";
+
+        try
+        {
+            InvoicePrintModel model;
+
+            // 1. Cố gắng lấy chi tiết đơn hàng từ Backend API
+            HttpResponseMessage? response = null;
+            try
+            {
+                response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/orders/{orderId}");
+            }
+            catch { }
+
+            if (response != null && response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+                var data = root.TryGetProperty("data", out var d) ? d : root;
+
+                string custName = data.TryGetProperty("customerName", out var cn) && cn.ValueKind != JsonValueKind.Null ? (cn.GetString() ?? "Khách Lẻ") : "Khách Lẻ";
+                string empName = data.TryGetProperty("employeeName", out var en) && en.ValueKind != JsonValueKind.Null ? (en.GetString() ?? "Thu ngân") : "Thu ngân";
+                decimal totalAmount = data.GetProperty("totalAmount").GetDecimal();
+                decimal discountAmount = data.TryGetProperty("discountAmount", out var da) ? da.GetDecimal() : 0m;
+                decimal finalAmount = data.GetProperty("finalAmount").GetDecimal();
+                DateTime orderDate = data.TryGetProperty("orderDate", out var od) ? DateTime.Parse(od.GetString() ?? DateTime.UtcNow.ToString()).ToLocalTime() : DateTime.Now;
+                int payInt = data.TryGetProperty("paymentMethod", out var pm) ? pm.GetInt32() : 1;
+                string payStr = payInt == 2 ? "VietQR" : payInt == 3 ? "Thẻ POS" : "Tiền mặt";
+
+                var items = new List<InvoicePrintItem>();
+                if (data.TryGetProperty("orderDetails", out var details) && details.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var itm in details.EnumerateArray())
+                    {
+                        string pName = itm.TryGetProperty("productName", out var pn) ? (pn.GetString() ?? "") : "Sản phẩm";
+                        string barcode = itm.TryGetProperty("barcode", out var bc) ? (bc.GetString() ?? "") : "";
+                        string unit = itm.TryGetProperty("unit", out var un) && un.ValueKind != JsonValueKind.Null ? (un.GetString() ?? "Cái") : "Cái";
+                        int qty = itm.GetProperty("quantity").GetInt32();
+                        decimal price = itm.GetProperty("unitPrice").GetDecimal();
+
+                        items.Add(new InvoicePrintItem
+                        {
+                            ProductName = pName,
+                            Barcode = barcode,
+                            Unit = string.IsNullOrEmpty(unit) ? "Cái" : unit,
+                            Quantity = qty,
+                            UnitPrice = price
+                        });
+                    }
+                }
+
+                model = new InvoicePrintModel
+                {
+                    OrderCode = code,
+                    OrderDate = orderDate,
+                    CustomerName = custName,
+                    CashierName = empName,
+                    SubTotal = totalAmount,
+                    DiscountTotal = discountAmount,
+                    VatTotal = Math.Round(finalAmount - (finalAmount / 1.08m), 0),
+                    GrandTotal = finalAmount,
+                    PaymentMethod = payStr,
+                    CashGiven = finalAmount,
+                    ChangeDue = 0,
+                    Items = items
+                };
+            }
+            else
+            {
+                // 2. Fallback nếu dữ liệu lưu trong DataStore cục bộ
+                var localOrder = DataStore.Orders.FirstOrDefault(o => o.OrderId == orderId || o.OrderCode == code);
+                if (localOrder != null)
+                {
+                    model = new InvoicePrintModel
+                    {
+                        OrderCode = localOrder.OrderCode,
+                        OrderDate = localOrder.OrderDate,
+                        CustomerName = localOrder.CustomerName,
+                        CashierName = "Thu ngân POS",
+                        SubTotal = localOrder.SubTotal,
+                        DiscountTotal = localOrder.DiscountTotal,
+                        VatTotal = localOrder.VatTotal,
+                        GrandTotal = localOrder.GrandTotal,
+                        PaymentMethod = localOrder.PaymentMethod,
+                        CashGiven = localOrder.GrandTotal,
+                        ChangeDue = 0,
+                        Items = localOrder.Items.Select(i => new InvoicePrintItem
+                        {
+                            ProductName = i.ProductName,
+                            Barcode = i.Barcode,
+                            Quantity = i.Quantity,
+                            UnitPrice = i.Price
+                        }).ToList()
+                    };
+                }
+                else
+                {
+                    // Fallback từ các cột DataGridView
+                    string cust = row.Cells["Customer"].Value?.ToString() ?? "Khách Lẻ";
+                    string emp = row.Cells["Employee"].Value?.ToString() ?? "Thu ngân";
+                    string finalStr = row.Cells["FinalAmount"].Value?.ToString()?.Replace("₫", "").Replace(",", "").Trim() ?? "0";
+                    decimal finalAmt = decimal.TryParse(finalStr, out var fa) ? fa : 0m;
+                    string payStr = row.Cells["PaymentMethod"].Value?.ToString() ?? "Tiền mặt";
+
+                    model = new InvoicePrintModel
+                    {
+                        OrderCode = code,
+                        OrderDate = DateTime.Now,
+                        CustomerName = cust,
+                        CashierName = emp,
+                        SubTotal = finalAmt,
+                        DiscountTotal = 0,
+                        VatTotal = Math.Round(finalAmt - (finalAmt / 1.08m), 0),
+                        GrandTotal = finalAmt,
+                        PaymentMethod = payStr,
+                        CashGiven = finalAmt,
+                        ChangeDue = 0,
+                        Items = new List<InvoicePrintItem>
+                        {
+                            new InvoicePrintItem { ProductName = "Mặt hàng theo đơn " + code, Quantity = 1, UnitPrice = finalAmt }
+                        }
+                    };
+                }
+            }
+
+            string pdfPath = InvoicePdfService.PrintOrPreview(model, autoOpen: true);
+            lblStatus.Text = $"Đã xuất hóa đơn {code}.";
+            MessageBox.Show($"✅ Đã xuất và mở xem trước hóa đơn PDF thành công cho đơn {code}!\n\nFile đã lưu tại:\n{pdfPath}", "In Hóa Đơn PDF", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = "Lỗi xuất PDF.";
+            MessageBox.Show($"Lỗi khi xuất hóa đơn PDF: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private async Task CancelSelectedOrderAsync()
