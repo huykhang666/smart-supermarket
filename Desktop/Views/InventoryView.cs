@@ -29,25 +29,26 @@ public class InventoryView : UserControl
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 55,
-            BackColor = Color.Transparent
+            Height = 65,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 8)
         };
 
         var lblTitle = new Label
         {
             Text = "📦 Quản Lý Kho Hàng & Hạn Sử Dụng (Warehouse ERP)",
-            Font = AppTheme.FontH1,
+            Font = new Font("Segoe UI", 15f, FontStyle.Bold),
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(0, 4),
+            Location = new Point(0, 2),
             AutoSize = true
         };
 
         var lblSub = new Label
         {
             Text = "Kiểm soát lượng tồn thực tế, theo dõi date hàng nhập, phân vùng kệ hàng và điều phối kho nội bộ",
-            Font = AppTheme.FontCaption,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Regular),
             ForeColor = AppTheme.TextSecondary,
-            Location = new Point(2, 34),
+            Location = new Point(2, 36),
             AutoSize = true
         };
 
@@ -58,7 +59,7 @@ public class InventoryView : UserControl
         var pnlKpis = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 105,
+            Height = 125,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 8, 0, 8)
         };
@@ -69,7 +70,7 @@ public class InventoryView : UserControl
         var c4 = AppTheme.CreateKpiCard("CẬN HSD (≤ 5 NGÀY)", "0", "⏳ Cần xả hàng / dán tem", AppTheme.Warning);
         var kpiCards = new List<Control> { c1, c2, c3, c4 };
 
-        AppTheme.EnableResponsiveKpiGrid(pnlKpis, kpiCards, this, 850, 440, 105);
+        AppTheme.EnableResponsiveKpiGrid(pnlKpis, kpiCards, this, 850, 440, 125);
 
         // --- 3. TabControl Kho (Danh sách tồn, Kiểm kê, HSD, Chuyển kho) ---
         tabInventory = new TabControl

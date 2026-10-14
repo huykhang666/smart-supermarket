@@ -62,7 +62,7 @@ public class WorkspaceView : UserControl
         var pnlKpi = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 110,
+            Height = 125,
             BackColor = Color.Transparent
         };
         
@@ -72,7 +72,7 @@ public class WorkspaceView : UserControl
         var c4 = AppTheme.CreateKpiCard("YÊU CẦU HỖ TRỢ", "0 việc", "Hệ thống ổn định", AppTheme.Primary);
         var kpiCards = new List<Control> { c1, c2, c3, c4 };
 
-        AppTheme.EnableResponsiveKpiGrid(pnlKpi, kpiCards, this, 850, 440, 110);
+        AppTheme.EnableResponsiveKpiGrid(pnlKpi, kpiCards, this, 850, 440, 125);
 
         this.Controls.Add(pnlKpi);
 
@@ -105,16 +105,16 @@ public class WorkspaceView : UserControl
 
     private Panel CreateTaskPanel()
     {
-        var pnl = new Panel { Dock = DockStyle.Top, Height = 240, BackColor = Color.White };
-        ThemeManager.ApplyCardPanel(pnl);
+        var pnl = new Panel { Dock = DockStyle.Top, Height = 220, BackColor = Color.White };
+        AppTheme.ApplyCardPanel(pnl);
 
-        var lblTitle = new Label { Text = "✔️ NHIỆM VỤ CA TRỰC & CHECK-LIST NHÂN VIÊN", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), ForeColor = Color.FromArgb(40, 50, 60), AutoSize = true, Location = new Point(15, 15) };
-        var lblProgress = new Label { Text = "Sẵn sàng", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), BackColor = Color.FromArgb(30, 80, 120), ForeColor = Color.White, AutoSize = true, Location = new Point(pnl.Width - 140, 15), Anchor = AnchorStyles.Top | AnchorStyles.Right };
+        var lblTitle = new Label { Text = "✔️ NHIỆM VỤ CA TRỰC & CHECK-LIST NHÂN VIÊN", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true, Location = new Point(16, 16) };
+        var lblProgress = new Label { Text = "🟢 Sẵn sàng", Font = new Font("Segoe UI", 9f, FontStyle.Bold), BackColor = AppTheme.SuccessSubtle, ForeColor = AppTheme.Success, AutoSize = true, Location = new Point(pnl.Width - 140, 16), Anchor = AnchorStyles.Top | AnchorStyles.Right, Padding = new Padding(6, 2, 6, 2) };
 
         pnl.Controls.Add(lblTitle);
         pnl.Controls.Add(lblProgress);
 
-        var lblEmpty = new Label { Text = "Hiện tại không có nhiệm vụ tồn đọng. Hệ thống vận hành bình thường.", Font = new Font("Segoe UI", 9.5f, FontStyle.Italic), ForeColor = Color.Gray, Location = new Point(20, 60), AutoSize = true };
+        var lblEmpty = new Label { Text = "Hiện tại không có nhiệm vụ tồn đọng. Hệ thống vận hành bình thường.", Font = new Font("Segoe UI", 9.5f, FontStyle.Italic), ForeColor = AppTheme.TextSecondary, Location = new Point(20, 60), AutoSize = true };
         pnl.Controls.Add(lblEmpty);
 
         return pnl;
@@ -123,17 +123,18 @@ public class WorkspaceView : UserControl
     private Panel CreateGridPanel()
     {
         var pnl = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(12) };
-        ThemeManager.ApplyCardPanel(pnl);
+        AppTheme.ApplyCardPanel(pnl);
 
         var pnlHeader = new Panel { Dock = DockStyle.Top, Height = 38, BackColor = Color.Transparent };
-        var lblTitle = new Label { Text = "🖨️ HÀNG CẬN DATE CẦN DÁN TEM NHANH", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), ForeColor = Color.FromArgb(40, 50, 60), AutoSize = true, Dock = DockStyle.Left, TextAlign = ContentAlignment.MiddleLeft };
-        var btnPrintAll = new Button { Text = "In Tất Cả Tem (F8)", BackColor = Color.Crimson, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Size = new Size(130, 30), Dock = DockStyle.Right, Cursor = Cursors.Hand };
-        btnPrintAll.FlatAppearance.BorderSize = 0;
+        var lblTitle = new Label { Text = "🖨️ HÀNG CẬN DATE CẦN DÁN TEM NHANH", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true, Dock = DockStyle.Left, TextAlign = ContentAlignment.MiddleLeft };
+        var btnPrintAll = new Button { Text = "In Tất Cả Tem (F8)", Size = new Size(140, 32), Dock = DockStyle.Right, Cursor = Cursors.Hand };
+        AppTheme.ApplyDangerButton(btnPrintAll);
+
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(btnPrintAll);
 
-        var dgv = new DataGridView { Dock = DockStyle.Fill, BackgroundColor = Color.White, BorderStyle = BorderStyle.None, ReadOnly = true, AllowUserToAddRows = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill };
-        ThemeManager.ApplyGridStyle(dgv);
+        var dgv = new DataGridView { Dock = DockStyle.Fill };
+        AppTheme.ApplyGridStyle(dgv);
 
         dgv.Columns.Add("SKU", "MÃ SKU");
         dgv.Columns.Add("Name", "TÊN SẢN PHẨM");
@@ -149,8 +150,8 @@ public class WorkspaceView : UserControl
     private Panel CreateMapPanel()
     {
         var pnl = new Panel { Dock = DockStyle.Top, Height = 220, BackColor = Color.White };
-        ThemeManager.ApplyCardPanel(pnl);
-        var lblTitle = new Label { Text = "🗺️ SƠ ĐỒ KỆ HÀNG (PLANOGRAM TẦNG 1)", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
+        AppTheme.ApplyCardPanel(pnl);
+        var lblTitle = new Label { Text = "🗺️ SƠ ĐỒ KỆ HÀNG (PLANOGRAM TẦNG 1)", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true, Location = new Point(16, 16) };
         pnl.Controls.Add(lblTitle);
         return pnl;
     }
@@ -158,10 +159,10 @@ public class WorkspaceView : UserControl
     private Panel CreateAiPanel()
     {
         var pnl = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
-        ThemeManager.ApplyCardPanel(pnl);
-        var lblTitle = new Label { Text = "🤖 AI CO-PILOT TRỢ GIÚP TÁC NGHIỆP", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
+        AppTheme.ApplyCardPanel(pnl);
+        var lblTitle = new Label { Text = "🤖 AI CO-PILOT TRỢ GIÚP TÁC NGHIỆP", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true, Location = new Point(16, 16) };
         
-        var lblTraffic = new Label { Text = "Dự Báo Lưu Lượng Khách:\nLưu lượng quầy dự kiến tăng +40% vào lúc 11:30 - 12:45. (Giờ nghỉ trưa của tòa nhà văn phòng lân cận).", Font = new Font("Segoe UI", 9.5f), AutoSize = true, Location = new Point(15, 50), MaximumSize = new Size(400, 0) };
+        var lblTraffic = new Label { Text = "Dự Báo Lưu Lượng Khách:\nLưu lượng quầy dự kiến tăng +40% vào lúc 11:30 - 12:45. (Giờ nghỉ trưa của tòa nhà văn phòng lân cận).", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, AutoSize = true, Location = new Point(16, 50), MaximumSize = new Size(400, 0) };
         
         pnl.Controls.Add(lblTitle);
         pnl.Controls.Add(lblTraffic);

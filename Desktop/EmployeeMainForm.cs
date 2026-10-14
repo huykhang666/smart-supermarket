@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using FontAwesome.Sharp;
 using Desktop.Views;
@@ -138,7 +139,7 @@ public class EmployeeMainForm : Form
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 12, 0, 8)
+            Padding = new Padding(0, 14, 0, 0)
         };
 
         pnlHeader.Resize += (s, e) =>
@@ -168,7 +169,7 @@ public class EmployeeMainForm : Form
             Text = "👤 Thu Ngân (Staff)",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Margin = new Padding(8, 6, 8, 0),
+            Margin = new Padding(8, 7, 8, 0),
             AutoSize = true
         };
         // Badge 6: Clock
@@ -177,7 +178,7 @@ public class EmployeeMainForm : Form
             Text = $"🕒 {DateTime.Now:HH:mm:ss}",
             Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             ForeColor = AppTheme.Primary,
-            Margin = new Padding(8, 5, 8, 0),
+            Margin = new Padding(8, 6, 8, 0),
             AutoSize = true
         };
         _clockTimer = new System.Windows.Forms.Timer { Interval = 1000 };
@@ -189,11 +190,11 @@ public class EmployeeMainForm : Form
         {
             Text = "🚪 Đăng Xuất",
             Font = AppTheme.FontBodyBold,
-            Size = new Size(110, 32),
-            Margin = new Padding(8, 0, 0, 0),
+            Size = new Size(130, 34),
+            Margin = new Padding(10, 0, 0, 0),
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyDangerButton(btnLogout);
+        AppTheme.ApplyDangerButton(btnLogout, radius: 6);
         btnLogout.Click += (s, e) =>
         {
             var res = MessageBox.Show("Bạn có muốn đăng xuất khỏi phiên làm việc thu ngân?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -386,25 +387,36 @@ public class EmployeeMainForm : Form
 
     private Control CreateTopStatusBadge(string text, Color bg, Color fg)
     {
-        var pnl = new Panel
+        var badge = new Panel
         {
             BackColor = bg,
-            Margin = new Padding(0, 0, 8, 0),
+            Margin = new Padding(0, 1, 8, 0),
             Height = 32,
             AutoSize = true,
-            Padding = new Padding(10, 6, 10, 6)
+            MinimumSize = new Size(110, 32),
+            Padding = new Padding(12, 6, 12, 6),
+            Cursor = Cursors.Default
         };
+
+        badge.Paint += (s, e) =>
+        {
+            using var p = new Pen(Color.FromArgb(100, fg), 1f);
+            e.Graphics.DrawRectangle(p, 0, 0, badge.Width - 1, badge.Height - 1);
+        };
+
         var lbl = new Label
         {
             Text = text,
-            Font = AppTheme.FontBodyBold,
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             ForeColor = fg,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            BackColor = Color.Transparent,
             AutoSize = true
         };
-        pnl.Controls.Add(lbl);
-        return pnl;
+
+        badge.Controls.Add(lbl);
+        return badge;
     }
 
     private IconButton CreateNavButton(string name, string text, IconChar icon)
@@ -414,7 +426,7 @@ public class EmployeeMainForm : Form
             Name = name,
             Dock = DockStyle.Top,
             Height = 46,
-            Text = "  " + text,
+            Text = "   " + text,
             IconChar = icon,
             IconColor = AppTheme.SidebarText,
             IconSize = 18,
@@ -435,8 +447,9 @@ public class EmployeeMainForm : Form
         {
             if (btn == _activeNavButton)
             {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 using var accentBar = new SolidBrush(AppTheme.SidebarAccent);
-                e.Graphics.FillRectangle(accentBar, 0, 6, 3, btn.Height - 12);
+                e.Graphics.FillRectangle(accentBar, 0, 8, 4, btn.Height - 16);
             }
         };
 

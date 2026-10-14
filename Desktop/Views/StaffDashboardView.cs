@@ -99,7 +99,7 @@ public class StaffDashboardView : UserControl
         var pnlKpis = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 105,
+            Height = 125,
             BackColor = Color.Transparent,
             Margin = new Padding(0, 8, 0, 8)
         };
@@ -111,7 +111,7 @@ public class StaffDashboardView : UserControl
         var c5 = AppTheme.CreateKpiCard("LỖI QUÉT BARCODE", "0", "⚠️ Cần kiểm tra tem", AppTheme.Danger);
         var kpiCards = new List<Control> { c1, c2, c3, c4, c5 };
 
-        AppTheme.EnableResponsiveKpiGrid(pnlKpis, kpiCards, this, 980, 480, 105);
+        AppTheme.EnableResponsiveKpiGrid(pnlKpis, kpiCards, this, 980, 480, 125);
 
         // --- 3. Content Split (Left: Top Sản Phẩm Bán Chạy, Right: Tác Vụ & Lỗi Thao Tác) ---
         var pnlSplit = new TableLayoutPanel

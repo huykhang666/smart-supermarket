@@ -73,8 +73,9 @@ public static class AppTheme
         dgv.ReadOnly = true;
         dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        dgv.RowTemplate.Height = 36;
-        dgv.ColumnHeadersHeight = 38;
+        dgv.RowTemplate.Height = 38;
+        dgv.ColumnHeadersHeight = 44;
+        dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
         dgv.EnableHeadersVisualStyles = false;
         dgv.Font = FontBody;
 
@@ -85,6 +86,7 @@ public static class AppTheme
         dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = GridHeaderBg;
         dgv.ColumnHeadersDefaultCellStyle.SelectionForeColor = TextPrimary;
         dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        dgv.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
         dgv.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
 
         // Rows Styling
@@ -93,6 +95,7 @@ public static class AppTheme
         dgv.DefaultCellStyle.SelectionBackColor = PrimarySubtle;
         dgv.DefaultCellStyle.SelectionForeColor = TextPrimary;
         dgv.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        dgv.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
 
         // Alternating Rows (Zebra Striping)
         dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(0xFA, 0xFA, 0xFA);
@@ -126,7 +129,7 @@ public static class AppTheme
         };
     }
 
-    public static void ApplyPrimaryButton(Button btn)
+    public static void ApplyPrimaryButton(Button btn, int radius = 6)
     {
         btn.Font = FontBodyBold;
         btn.ForeColor = Color.White;
@@ -134,25 +137,13 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
         btn.Cursor = Cursors.Hand;
-        btn.Height = 32;
+        if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) => btn.BackColor = PrimaryHover;
         btn.MouseLeave += (s, e) => btn.BackColor = Primary;
     }
 
-    public static void ApplyAccentButton(Button btn)
-    {
-        btn.Font = FontBodyBold;
-        btn.ForeColor = Color.White;
-        btn.BackColor = Primary;
-        btn.FlatStyle = FlatStyle.Flat;
-        btn.FlatAppearance.BorderSize = 0;
-        btn.Cursor = Cursors.Hand;
-        btn.Height = 32;
-
-        btn.MouseEnter += (s, e) => btn.BackColor = PrimaryHover;
-        btn.MouseLeave += (s, e) => btn.BackColor = Primary;
-    }
+    public static void ApplyAccentButton(Button btn, int radius = 6) => ApplyPrimaryButton(btn, radius);
 
     // --- Spacing Tokens ---
     public const int Space1 = 4;
@@ -164,7 +155,7 @@ public static class AppTheme
     // --- System Centralized API Base URL ---
     public const string ApiBaseUrl = "http://localhost:5137";
 
-    public static void ApplyOutlineButton(Button btn)
+    public static void ApplyOutlineButton(Button btn, int radius = 6)
     {
         btn.Font = FontBodyBold;
         btn.ForeColor = TextPrimary;
@@ -173,7 +164,7 @@ public static class AppTheme
         btn.FlatAppearance.BorderSize = 1;
         btn.FlatAppearance.BorderColor = BorderLight;
         btn.Cursor = Cursors.Hand;
-        btn.Height = 32;
+        if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) => btn.BackColor = PrimarySubtle;
         btn.MouseLeave += (s, e) => btn.BackColor = SurfaceWhite;
@@ -200,9 +191,9 @@ public static class AppTheme
         };
     }
 
-    public static void ApplySecondaryButton(Button btn) => ApplyOutlineButton(btn);
+    public static void ApplySecondaryButton(Button btn, int radius = 6) => ApplyOutlineButton(btn, radius);
 
-    public static void ApplyDangerButton(Button btn)
+    public static void ApplyDangerButton(Button btn, int radius = 6)
     {
         btn.Font = FontBodyBold;
         btn.ForeColor = Color.White;
@@ -210,7 +201,7 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
         btn.Cursor = Cursors.Hand;
-        btn.Height = 32;
+        if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(0xA4, 0x26, 0x1C);
         btn.MouseLeave += (s, e) => btn.BackColor = Danger;
@@ -242,14 +233,14 @@ public static class AppTheme
             Dock = DockStyle.Fill,
             BackColor = SurfaceWhite,
             Margin = new Padding(6),
-            Padding = new Padding(14)
+            Padding = new Padding(16, 12, 16, 12)
         };
         card.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // Draw Card Body
-            using (var cardPath = GetRoundedPath(new Rectangle(0, 0, card.Width - 3, card.Height - 3), 8))
+            // Draw Card Body with subtle border
+            using (var cardPath = GetRoundedPath(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 8))
             {
                 using (var cardBrush = new SolidBrush(SurfaceWhite))
                     e.Graphics.FillPath(cardBrush, cardPath);
@@ -257,41 +248,59 @@ public static class AppTheme
                     e.Graphics.DrawPath(borderPen, cardPath);
             }
 
-            // Accent Bar on Left (3px)
+            // Accent Bar on Left (4px)
             using var leftBar = new SolidBrush(accentColor);
-            e.Graphics.FillRectangle(leftBar, 0, 2, 4, card.Height - 6);
+            e.Graphics.FillRectangle(leftBar, 0, 4, 4, card.Height - 8);
         };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0),
+            Padding = new Padding(4, 0, 0, 0)
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24f));
 
         var lblTitle = new Label
         {
             Text = title.ToUpper(),
-            Font = FontCaption,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
             ForeColor = TextSecondary,
-            Location = new Point(16, 12),
-            AutoSize = true
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
         };
 
         lblValue = new Label
         {
             Text = value,
-            Font = FontKpi,
+            Font = new Font("Segoe UI", 18f, FontStyle.Bold),
             ForeColor = TextPrimary,
-            Location = new Point(14, 30),
-            AutoSize = true
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
         };
 
         lblNote = new Label
         {
             Text = note,
-            Font = FontCaption,
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
             ForeColor = accentColor,
-            Location = new Point(16, 70),
-            AutoSize = true
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
         };
 
-        card.Controls.Add(lblTitle);
-        card.Controls.Add(lblValue);
-        card.Controls.Add(lblNote);
+        layout.Controls.Add(lblTitle, 0, 0);
+        layout.Controls.Add(lblValue, 0, 1);
+        layout.Controls.Add(lblNote, 0, 2);
+
+        card.Controls.Add(layout);
         return card;
     }
 
@@ -307,7 +316,7 @@ public static class AppTheme
         return path;
     }
 
-    public static void EnableResponsiveKpiGrid(TableLayoutPanel tlp, IList<Control> cards, Control parentView, int singleRowMinTotalWidth = 850, int twoRowMinTotalWidth = 440, int baseCardHeight = 110)
+    public static void EnableResponsiveKpiGrid(TableLayoutPanel tlp, IList<Control> cards, Control parentView, int singleRowMinTotalWidth = 850, int twoRowMinTotalWidth = 440, int baseCardHeight = 125)
     {
         int lastCols = -1;
         void Relayout()

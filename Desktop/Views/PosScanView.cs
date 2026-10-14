@@ -99,7 +99,7 @@ public class PosScanView : UserControl
         this.BackColor = AppTheme.BackgroundGray;
         this.Padding = new Padding(16);
 
-        // 3-Column Split: Col 1 (22% - Danh mục & Thẻ SP), Col 2 (50% - Barcode & Giỏ hàng), Col 3 (28% - Khách & Thanh toán)
+        // 3-Column Split: Col 1 (250px CỐ ĐỊNH - Danh mục sản phẩm), Col 2 (DÃN RỘNG TOÀN BỘ PHẦN CÒN LẠI), Col 3 (400px CỐ ĐỊNH - Khách & Hóa Đơn)
         var pnlMainContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -107,9 +107,9 @@ public class PosScanView : UserControl
             RowCount = 1,
             BackColor = Color.Transparent
         };
-        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22f));
-        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
-        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28f));
+        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250f));
+        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400f));
         pnlMainContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 
         // ==========================================
@@ -180,9 +180,9 @@ public class PosScanView : UserControl
         var pnlBarcodeCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 72,
+            Height = 78,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(14, 8, 14, 8),
+            Padding = new Padding(14, 10, 14, 10),
             Margin = new Padding(0, 0, 0, 8)
         };
         AppTheme.ApplyCardPanel(pnlBarcodeCard);
@@ -198,15 +198,15 @@ public class PosScanView : UserControl
 
         var pnlBarcodeRow = new TableLayoutPanel
         {
-            Location = new Point(12, 30),
-            Size = new Size(pnlBarcodeCard.Width - 24, 34),
+            Location = new Point(12, 32),
+            Size = new Size(pnlBarcodeCard.Width - 24, 36),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             ColumnCount = 2,
             RowCount = 1,
             BackColor = Color.Transparent
         };
         pnlBarcodeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        pnlBarcodeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115f));
+        pnlBarcodeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
 
         txtBarcode = new TextBox
         {
@@ -225,7 +225,7 @@ public class PosScanView : UserControl
             Margin = new Padding(8, 0, 0, 0),
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnScan);
+        AppTheme.ApplyPrimaryButton(btnScan, radius: 6);
         btnScan.Click += BtnScan_Click;
 
         pnlBarcodeRow.Controls.Add(txtBarcode, 0, 0);
@@ -244,58 +244,71 @@ public class PosScanView : UserControl
         AppTheme.ApplyCardPanel(pnlCartContainer);
 
         // Toolbar above Grid (+ / - / Delete / Clear)
-        var pnlCartToolbar = new FlowLayoutPanel
+        var pnlCartToolbar = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            AutoSize = true,
-            MinimumSize = new Size(0, 42),
+            Height = 44,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(8, 6, 8, 4),
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = true
+            Padding = new Padding(8, 5, 8, 5),
+            ColumnCount = 5,
+            RowCount = 1
         };
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f)); // Empty flexible space
 
-        btnQtyPlus = new Button { Text = "➕ Tăng (+1)", Size = new Size(95, 30), Margin = new Padding(0, 0, 6, 4) };
-        AppTheme.ApplySecondaryButton(btnQtyPlus);
+        btnQtyPlus = new Button { Text = "➕ Tăng (+1)", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 6, 0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
+        AppTheme.ApplyPrimaryButton(btnQtyPlus, radius: 6);
         btnQtyPlus.Click += (s, e) => ChangeSelectedQty(1);
 
-        btnQtyMinus = new Button { Text = "➖ Giảm (-1)", Size = new Size(95, 30), Margin = new Padding(0, 0, 6, 4) };
-        AppTheme.ApplySecondaryButton(btnQtyMinus);
+        btnQtyMinus = new Button { Text = "➖ Giảm (-1)", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 6, 0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
+        AppTheme.ApplySecondaryButton(btnQtyMinus, radius: 6);
         btnQtyMinus.Click += (s, e) => ChangeSelectedQty(-1);
 
-        btnRemoveItem = new Button { Text = "🗑️ Xóa dòng", Size = new Size(100, 30), Margin = new Padding(0, 0, 6, 4) };
-        AppTheme.ApplySecondaryButton(btnRemoveItem);
+        btnRemoveItem = new Button { Text = "🗑️ Xóa dòng", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 6, 0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
+        AppTheme.ApplyDangerButton(btnRemoveItem, radius: 6);
         btnRemoveItem.Click += (s, e) => RemoveSelectedItem();
 
-        btnClearCart = new Button { Text = "🔄 Hủy giỏ", Size = new Size(95, 30), Margin = new Padding(0, 0, 0, 4) };
-        AppTheme.ApplySecondaryButton(btnClearCart);
+        btnClearCart = new Button { Text = "🔄 Hủy cả giỏ", Dock = DockStyle.Fill, Margin = new Padding(0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
+        AppTheme.ApplySecondaryButton(btnClearCart, radius: 6);
         btnClearCart.Click += (s, e) => { _cart.Clear(); RefreshCartGrid(); };
 
-        pnlCartToolbar.Controls.Add(btnQtyPlus);
-        pnlCartToolbar.Controls.Add(btnQtyMinus);
-        pnlCartToolbar.Controls.Add(btnRemoveItem);
-        pnlCartToolbar.Controls.Add(btnClearCart);
+        pnlCartToolbar.Controls.Add(btnQtyPlus, 0, 0);
+        pnlCartToolbar.Controls.Add(btnQtyMinus, 1, 0);
+        pnlCartToolbar.Controls.Add(btnRemoveItem, 2, 0);
+        pnlCartToolbar.Controls.Add(btnClearCart, 3, 0);
 
         dgvCart = new DataGridView();
         AppTheme.ApplyGridStyle(dgvCart);
         dgvCart.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         dgvCart.Columns.Add("Icon", "Ảnh");
         dgvCart.Columns.Add("Name", "Tên Sản Phẩm");
-        dgvCart.Columns.Add("Barcode", "SKU / Barcode");
+        dgvCart.Columns.Add("Barcode", "Mã Barcode");
         dgvCart.Columns.Add("Price", "Đơn Giá");
         dgvCart.Columns.Add("Quantity", "SL");
         dgvCart.Columns.Add("Vat", "VAT");
         dgvCart.Columns.Add("Discount", "KM");
         dgvCart.Columns.Add("Total", "Thành Tiền");
 
-        dgvCart.Columns["Icon"].FillWeight = 8;
-        dgvCart.Columns["Name"].FillWeight = 32;
-        dgvCart.Columns["Barcode"].FillWeight = 18;
-        dgvCart.Columns["Price"].FillWeight = 14;
-        dgvCart.Columns["Quantity"].FillWeight = 9;
-        dgvCart.Columns["Vat"].FillWeight = 9;
-        dgvCart.Columns["Discount"].FillWeight = 10;
-        dgvCart.Columns["Total"].FillWeight = 16;
+        // Giảm tỷ trọng cột Tên Sản Phẩm để nhường chỗ cho các cột số liệu hiển thị đầy đủ, không bị rớt dòng hay mất chữ
+        dgvCart.Columns["Icon"].FillWeight = 5;
+        dgvCart.Columns["Icon"].MinimumWidth = 35;
+        dgvCart.Columns["Name"].FillWeight = 22;
+        dgvCart.Columns["Name"].MinimumWidth = 90;
+        dgvCart.Columns["Barcode"].FillWeight = 15;
+        dgvCart.Columns["Barcode"].MinimumWidth = 85;
+        dgvCart.Columns["Price"].FillWeight = 16;
+        dgvCart.Columns["Price"].MinimumWidth = 75;
+        dgvCart.Columns["Quantity"].FillWeight = 7;
+        dgvCart.Columns["Quantity"].MinimumWidth = 40;
+        dgvCart.Columns["Vat"].FillWeight = 7;
+        dgvCart.Columns["Vat"].MinimumWidth = 40;
+        dgvCart.Columns["Discount"].FillWeight = 8;
+        dgvCart.Columns["Discount"].MinimumWidth = 45;
+        dgvCart.Columns["Total"].FillWeight = 20;
+        dgvCart.Columns["Total"].MinimumWidth = 85;
 
         pnlCartContainer.Controls.Add(dgvCart);
         pnlCartContainer.Controls.Add(pnlCartToolbar);
@@ -304,7 +317,7 @@ public class PosScanView : UserControl
         pnlCol2.Controls.Add(pnlBarcodeCard);
 
         // ==========================================
-        // CỘT 3 (BÊN PHẢI): KHÁCH LOYALTY & GỢI Ý VOUCHER & THANH TOÁN
+        // CỘT 3 (BÊN PHẢI): KHÁCH LOYALTY & GỢI Ý VOUCHER & HÓA ĐƠN
         // ==========================================
         var pnlCol3 = new Panel
         {
@@ -316,12 +329,12 @@ public class PosScanView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlCol3);
 
-        // Khối 1: Thông tin khách
-        var lblCustTitle = new Label { Text = "👤 KHÁCH HÀNG & TÍCH ĐIỂM", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(12, 10), AutoSize = true };
+        // Khối 1: Thông tin khách hàng
+        var lblCustTitle = new Label { Text = "👤 KHÁCH HÀNG & TÍCH ĐIỂM", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 12), AutoSize = true };
         txtCustomerPhone = new TextBox
         {
-            Location = new Point(12, 32),
-            Size = new Size(pnlCol3.Width - 24, 28),
+            Location = new Point(14, 36),
+            Size = new Size(pnlCol3.Width - 28, 30),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             Font = AppTheme.FontBody,
             Text = "",
@@ -329,15 +342,15 @@ public class PosScanView : UserControl
         };
         txtCustomerPhone.TextChanged += async (s, e) => await ApplyCustomerPhoneAsync();
 
-        lblCustName = new Label { Text = "Khách Lẻ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Primary, Location = new Point(12, 65), AutoSize = true };
-        lblCustPoints = new Label { Text = "Điểm tích lũy: 0 điểm", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(12, 85), AutoSize = true };
-        lblCustTier = new Label { Text = "Hạng thành viên: Thành viên mới", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(12, 105), AutoSize = true };
+        lblCustName = new Label { Text = "Khách Lẻ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Primary, Location = new Point(14, 72), AutoSize = true };
+        lblCustPoints = new Label { Text = "Điểm tích lũy: 0 điểm", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(14, 94), AutoSize = true };
+        lblCustTier = new Label { Text = "Hạng thành viên: Thành viên mới", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(14, 116), AutoSize = true };
 
         // Khối 2: Gợi ý đổi Voucher thông minh
         pnlVoucherSuggestion = new Panel
         {
-            Location = new Point(12, 128),
-            Size = new Size(pnlCol3.Width - 24, 60),
+            Location = new Point(14, 142),
+            Size = new Size(pnlCol3.Width - 28, 64),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             BackColor = Color.FromArgb(240, 248, 255),
             Padding = new Padding(8),
@@ -354,18 +367,18 @@ public class PosScanView : UserControl
             Text = "💡 Khách đủ 1,000 điểm đổi Voucher 50.000đ",
             Font = AppTheme.FontCaption,
             ForeColor = AppTheme.Primary,
-            Location = new Point(6, 6),
+            Location = new Point(8, 8),
             AutoSize = true
         };
         btnApplySuggestedVoucher = new Button
         {
             Text = "🎁 [ÁP DỤNG NGAY]",
             Font = AppTheme.FontCaption,
-            Size = new Size(140, 24),
-            Location = new Point(6, 28),
+            Size = new Size(140, 26),
+            Location = new Point(8, 30),
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnApplySuggestedVoucher);
+        AppTheme.ApplyPrimaryButton(btnApplySuggestedVoucher, radius: 4);
         btnApplySuggestedVoucher.Click += (s, e) =>
         {
             _appliedDiscountAmount = 50000m;
@@ -379,13 +392,13 @@ public class PosScanView : UserControl
         pnlVoucherSuggestion.Controls.Add(lblVoucherSuggestText);
         pnlVoucherSuggestion.Controls.Add(btnApplySuggestedVoucher);
 
-        // Khối 3: Bảng tính tiền
-        var lblDividerA = new Panel { Location = new Point(12, 185), Size = new Size(pnlCol3.Width - 24, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        // Khối 3: Hóa đơn & Bảng tính tiền
+        var lblDividerA = new Panel { Location = new Point(14, 148), Size = new Size(pnlCol3.Width - 28, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
 
         var pnlBillingTable = new TableLayoutPanel
         {
-            Location = new Point(12, 195),
-            Size = new Size(pnlCol3.Width - 24, 80),
+            Location = new Point(14, 160),
+            Size = new Size(pnlCol3.Width - 28, 85),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             ColumnCount = 2,
             RowCount = 3,
@@ -393,9 +406,9 @@ public class PosScanView : UserControl
         };
         pnlBillingTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55f));
         pnlBillingTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45f));
-        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 26f));
-        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 26f));
-        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 26f));
+        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
+        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
+        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
 
         var lblSubTot = new Label { Text = "Tạm tính hàng:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
         lblSubTotalVal = new Label { Text = "0 đ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
@@ -404,7 +417,7 @@ public class PosScanView : UserControl
         lblVatVal = new Label { Text = "0 đ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
 
         var lblDisc = new Label { Text = "Khuyến mãi / Voucher:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-        lblDiscountVal = new Label { Text = "0 đ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Success, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
+        lblDiscountVal = new Label { Text = "-0 đ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Success, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
 
         pnlBillingTable.Controls.Add(lblSubTot, 0, 0);
         pnlBillingTable.Controls.Add(lblSubTotalVal, 1, 0);
@@ -413,40 +426,57 @@ public class PosScanView : UserControl
         pnlBillingTable.Controls.Add(lblDisc, 0, 2);
         pnlBillingTable.Controls.Add(lblDiscountVal, 1, 2);
 
-        // Voucher input thủ công (Flow / Panel)
-        var pnlVoucherRow = new Panel
+        // Voucher input hàng ngang dùng TableLayoutPanel chống tràn/lệch
+        var pnlVoucherRow = new TableLayoutPanel
         {
-            Location = new Point(12, 282),
-            Size = new Size(pnlCol3.Width - 24, 30),
+            Location = new Point(14, 252),
+            Size = new Size(pnlCol3.Width - 28, 34),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            ColumnCount = 2,
+            RowCount = 1,
             BackColor = Color.Transparent
         };
-        btnApplyVoucher = new Button { Text = "Áp dụng", Size = new Size(80, 28), Dock = DockStyle.Right };
-        AppTheme.ApplySecondaryButton(btnApplyVoucher);
+        pnlVoucherRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        pnlVoucherRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95f));
+
+        txtVoucherCode = new TextBox
+        {
+            Dock = DockStyle.Fill,
+            Font = AppTheme.FontBody,
+            PlaceholderText = "Nhập mã voucher giảm giá..."
+        };
+
+        btnApplyVoucher = new Button
+        {
+            Text = "Áp Dụng",
+            Dock = DockStyle.Fill,
+            Font = AppTheme.FontBodyBold,
+            Margin = new Padding(6, 0, 0, 0),
+            Cursor = Cursors.Hand
+        };
+        AppTheme.ApplyPrimaryButton(btnApplyVoucher, radius: 6);
         btnApplyVoucher.Click += async (s, e) => await ApplyVoucherAsync();
 
-        txtVoucherCode = new TextBox { Dock = DockStyle.Fill, Font = AppTheme.FontCaption, PlaceholderText = "Nhập mã voucher giảm giá..." };
+        pnlVoucherRow.Controls.Add(txtVoucherCode, 0, 0);
+        pnlVoucherRow.Controls.Add(btnApplyVoucher, 1, 0);
 
-        pnlVoucherRow.Controls.Add(txtVoucherCode);
-        pnlVoucherRow.Controls.Add(btnApplyVoucher);
+        lblVoucherStatus = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.Success, Location = new Point(14, 290), AutoSize = true };
 
-        lblVoucherStatus = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.Success, Location = new Point(12, 316), AutoSize = true };
-
-        var lblTotalTitle = new Label { Text = "TỔNG TIỀN PHẢI THU", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(12, 334), AutoSize = true };
+        var lblTotalTitle = new Label { Text = "TỔNG TIỀN PHẢI THU", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, Location = new Point(14, 312), AutoSize = true };
         lblGrandTotal = new Label
         {
             Text = "0 VNĐ",
-            Font = new Font("Segoe UI", 18f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 20f, FontStyle.Bold),
             ForeColor = AppTheme.Primary,
-            Location = new Point(10, 350),
+            Location = new Point(12, 332),
             AutoSize = true
         };
 
         // Payment Method Select (Tiền mặt / QR / Thẻ) - 3 Equal Columns
         var pnlPayMethods = new TableLayoutPanel
         {
-            Location = new Point(12, 396),
-            Size = new Size(pnlCol3.Width - 24, 34),
+            Location = new Point(14, 388),
+            Size = new Size(pnlCol3.Width - 28, 38),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             ColumnCount = 3,
             RowCount = 1,
@@ -456,12 +486,12 @@ public class PosScanView : UserControl
         pnlPayMethods.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
         pnlPayMethods.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34f));
 
-        btnPayCash = new Button { Text = "💵 Tiền mặt", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 2, 0) };
-        btnPayQr = new Button { Text = "📱 VietQR", Dock = DockStyle.Fill, Margin = new Padding(2, 0, 2, 0) };
-        btnPayCard = new Button { Text = "💳 Thẻ POS", Dock = DockStyle.Fill, Margin = new Padding(2, 0, 0, 0) };
-        AppTheme.ApplySecondaryButton(btnPayCash);
-        AppTheme.ApplySecondaryButton(btnPayQr);
-        AppTheme.ApplySecondaryButton(btnPayCard);
+        btnPayCash = new Button { Text = "💵 Tiền mặt", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 3, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+        btnPayQr = new Button { Text = "📱 VietQR", Dock = DockStyle.Fill, Margin = new Padding(3, 0, 3, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+        btnPayCard = new Button { Text = "💳 Thẻ POS", Dock = DockStyle.Fill, Margin = new Padding(3, 0, 0, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+        AppTheme.ApplySecondaryButton(btnPayCash, radius: 6);
+        AppTheme.ApplySecondaryButton(btnPayQr, radius: 6);
+        AppTheme.ApplySecondaryButton(btnPayCard, radius: 6);
 
         btnPayCash.Click += (s, e) => SetPaymentMethod(1);
         btnPayQr.Click += (s, e) => SetPaymentMethod(2);
@@ -472,13 +502,13 @@ public class PosScanView : UserControl
         pnlPayMethods.Controls.Add(btnPayQr, 1, 0);
         pnlPayMethods.Controls.Add(btnPayCard, 2, 0);
 
-        var lblCashP = new Label { Text = "Tiền khách đưa (VNĐ):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(12, 436), AutoSize = true };
+        var lblCashP = new Label { Text = "Tiền khách đưa (VNĐ):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 436), AutoSize = true };
         numCashPaid = new NumericUpDown
         {
-            Location = new Point(12, 458),
-            Size = new Size(pnlCol3.Width - 24, 32),
+            Location = new Point(14, 460),
+            Size = new Size(pnlCol3.Width - 28, 34),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
             Maximum = 100000000,
             ThousandsSeparator = true
         };
@@ -486,8 +516,8 @@ public class PosScanView : UserControl
 
         var pnlChangeRow = new TableLayoutPanel
         {
-            Location = new Point(12, 498),
-            Size = new Size(pnlCol3.Width - 24, 28),
+            Location = new Point(14, 502),
+            Size = new Size(pnlCol3.Width - 28, 30),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             ColumnCount = 2,
             RowCount = 1,
@@ -497,20 +527,20 @@ public class PosScanView : UserControl
         pnlChangeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55f));
 
         var lblChangeT = new Label { Text = "Tiền thừa trả khách:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-        lblChangeVal = new Label { Text = "0 VNĐ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Success, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
+        lblChangeVal = new Label { Text = "0 VNĐ", Font = new Font("Segoe UI", 11.5f, FontStyle.Bold), ForeColor = AppTheme.Success, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
         pnlChangeRow.Controls.Add(lblChangeT, 0, 0);
         pnlChangeRow.Controls.Add(lblChangeVal, 1, 0);
 
         btnCheckout = new Button
         {
-            Text = "💳 HOÀN TẤT THANH TOÁN (F9)",
-            Font = AppTheme.FontBodyBold,
-            Size = new Size(pnlCol3.Width - 24, 44),
-            Location = new Point(12, 536),
+            Text = "⚡ HOÀN TẤT THANH TOÁN (F9)",
+            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+            Size = new Size(pnlCol3.Width - 28, 50),
+            Location = new Point(14, 542),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnCheckout);
+        AppTheme.ApplyPrimaryButton(btnCheckout, radius: 8);
         btnCheckout.Click += async (s, e) => await CheckoutAsync();
 
         pnlCol3.Controls.Add(lblCustTitle);
@@ -530,6 +560,26 @@ public class PosScanView : UserControl
         pnlCol3.Controls.Add(numCashPaid);
         pnlCol3.Controls.Add(pnlChangeRow);
         pnlCol3.Controls.Add(btnCheckout);
+
+        // Đảm bảo toàn bộ control bên trong pnlCol3 co giãn vừa khít 100% bề ngang card
+        void AdjustCol3Layout()
+        {
+            int targetWidth = pnlCol3.ClientSize.Width - 32;
+            if (targetWidth < 280) targetWidth = 280;
+            txtCustomerPhone.Width = targetWidth;
+            pnlVoucherSuggestion.Width = targetWidth;
+            lblDividerA.Width = targetWidth;
+            pnlBillingTable.Width = targetWidth;
+            pnlVoucherRow.Width = targetWidth;
+            pnlPayMethods.Width = targetWidth;
+            numCashPaid.Width = targetWidth;
+            pnlChangeRow.Width = targetWidth;
+            btnCheckout.Width = targetWidth;
+        }
+
+        pnlCol3.Resize += (s, e) => AdjustCol3Layout();
+        pnlCol3.HandleCreated += (s, e) => AdjustCol3Layout();
+        pnlCol3.SizeChanged += (s, e) => AdjustCol3Layout();
 
         pnlMainContainer.Controls.Add(pnlCol1, 0, 0);
         pnlMainContainer.Controls.Add(pnlCol2, 1, 0);
@@ -665,22 +715,30 @@ public class PosScanView : UserControl
         {
             var card = new Panel
             {
-                Size = new Size(125, 120),
-                BackColor = prod.IsNearExpiry ? Color.FromArgb(254, 242, 242) : AppTheme.BackgroundGray,
-                Margin = new Padding(0, 0, 8, 8),
-                Padding = new Padding(6),
+                Size = new Size(130, 130),
+                BackColor = prod.IsNearExpiry ? Color.FromArgb(255, 245, 245) : AppTheme.SurfaceWhite,
+                Margin = new Padding(0, 0, 10, 10),
+                Padding = new Padding(8),
                 Cursor = Cursors.Hand
             };
+
+            bool isHovered = false;
+            card.MouseEnter += (s, e) => { isHovered = true; card.BackColor = prod.IsNearExpiry ? Color.FromArgb(254, 235, 235) : AppTheme.PrimarySubtle; card.Invalidate(); };
+            card.MouseLeave += (s, e) => { isHovered = false; card.BackColor = prod.IsNearExpiry ? Color.FromArgb(255, 245, 245) : AppTheme.SurfaceWhite; card.Invalidate(); };
+
             card.Paint += (s, e) =>
             {
-                using var p = new Pen(prod.IsNearExpiry ? Color.FromArgb(239, 68, 68) : AppTheme.BorderLight, 1);
-                e.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                Color borderColor = prod.IsNearExpiry ? Color.FromArgb(239, 68, 68) : (isHovered ? AppTheme.Primary : AppTheme.BorderLight);
+                using var p = new Pen(borderColor, isHovered ? 1.5f : 1f);
+                using var path = AppTheme.GetRoundedPath(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 8);
+                e.Graphics.DrawPath(p, path);
             };
 
-            var lblIcon = new Label { Text = prod.Icon, Font = new Font("Segoe UI", 16f), Location = new Point(4, 4), AutoSize = true };
-            var lblName = new Label { Text = prod.Name, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = AppTheme.TextPrimary, Location = new Point(4, 34), Size = new Size(117, 32) };
-            var lblPrice = new Label { Text = $"{prod.Price:N0} đ", Font = AppTheme.FontBodyBold, ForeColor = prod.IsNearExpiry ? Color.FromArgb(220, 38, 38) : AppTheme.Primary, Location = new Point(4, 70), AutoSize = true };
-            var lblStock = new Label { Text = $"Tồn: {prod.Stock}", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(4, 94), AutoSize = true };
+            var lblIcon = new Label { Text = prod.Icon, Font = new Font("Segoe UI", 18f), Location = new Point(6, 6), AutoSize = true, BackColor = Color.Transparent };
+            var lblName = new Label { Text = prod.Name, Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextPrimary, Location = new Point(6, 40), Size = new Size(118, 34), BackColor = Color.Transparent };
+            var lblPrice = new Label { Text = $"{prod.Price:N0} đ", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), ForeColor = prod.IsNearExpiry ? Color.FromArgb(220, 38, 38) : AppTheme.Primary, Location = new Point(6, 78), AutoSize = true, BackColor = Color.Transparent };
+            var lblStock = new Label { Text = $"Tồn kho: {prod.Stock}", Font = new Font("Segoe UI", 8.5f), ForeColor = AppTheme.TextSecondary, Location = new Point(6, 104), AutoSize = true, BackColor = Color.Transparent };
 
             card.Controls.Add(lblIcon);
             card.Controls.Add(lblName);
@@ -691,27 +749,32 @@ public class PosScanView : UserControl
             {
                 var lblBadge = new Label
                 {
-                    Text = $"-{prod.DiscountPercent:N0}% HSD",
-                    Font = new Font("Segoe UI", 7f, FontStyle.Bold),
+                    Text = $"-{prod.DiscountPercent:N0}%",
+                    Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
                     ForeColor = Color.White,
                     BackColor = Color.FromArgb(220, 38, 38),
-                    Location = new Point(50, 4),
+                    Location = new Point(78, 6),
                     AutoSize = true,
-                    Padding = new Padding(1)
+                    Padding = new Padding(3, 1, 3, 1)
                 };
                 card.Controls.Add(lblBadge);
             }
 
             // Click or Double-click to add to cart
-            card.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
-            lblIcon.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
-            lblName.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
-            lblPrice.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
-
-            card.Click += (s, e) => AddCatalogItemToCart(prod);
-            lblIcon.Click += (s, e) => AddCatalogItemToCart(prod);
-            lblName.Click += (s, e) => AddCatalogItemToCart(prod);
-            lblPrice.Click += (s, e) => AddCatalogItemToCart(prod);
+            Action attachEvents = () =>
+            {
+                foreach (Control ctrl in card.Controls)
+                {
+                    ctrl.Cursor = Cursors.Hand;
+                    ctrl.MouseEnter += (s, e) => { isHovered = true; card.BackColor = prod.IsNearExpiry ? Color.FromArgb(254, 235, 235) : AppTheme.PrimarySubtle; card.Invalidate(); };
+                    ctrl.MouseLeave += (s, e) => { isHovered = false; card.BackColor = prod.IsNearExpiry ? Color.FromArgb(255, 245, 245) : AppTheme.SurfaceWhite; card.Invalidate(); };
+                    ctrl.Click += (s, e) => AddCatalogItemToCart(prod);
+                    ctrl.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
+                }
+                card.Click += (s, e) => AddCatalogItemToCart(prod);
+                card.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
+            };
+            attachEvents();
 
             pnlProductCards.Controls.Add(card);
         }
@@ -817,13 +880,17 @@ public class PosScanView : UserControl
     private void SetPaymentMethod(int method)
     {
         _selectedPaymentMethod = method;
-        btnPayCash.BackColor = method == 1 ? AppTheme.PrimarySubtle : Color.Transparent;
-        btnPayQr.BackColor = method == 2 ? AppTheme.PrimarySubtle : Color.Transparent;
-        btnPayCard.BackColor = method == 3 ? AppTheme.PrimarySubtle : Color.Transparent;
+        btnPayCash.BackColor = method == 1 ? AppTheme.Primary : Color.FromArgb(245, 247, 250);
+        btnPayQr.BackColor = method == 2 ? AppTheme.Primary : Color.FromArgb(245, 247, 250);
+        btnPayCard.BackColor = method == 3 ? AppTheme.Primary : Color.FromArgb(245, 247, 250);
 
-        btnPayCash.ForeColor = method == 1 ? AppTheme.Primary : AppTheme.TextPrimary;
-        btnPayQr.ForeColor = method == 2 ? AppTheme.Primary : AppTheme.TextPrimary;
-        btnPayCard.ForeColor = method == 3 ? AppTheme.Primary : AppTheme.TextPrimary;
+        btnPayCash.ForeColor = method == 1 ? Color.White : AppTheme.TextPrimary;
+        btnPayQr.ForeColor = method == 2 ? Color.White : AppTheme.TextPrimary;
+        btnPayCard.ForeColor = method == 3 ? Color.White : AppTheme.TextPrimary;
+
+        btnPayCash.Invalidate();
+        btnPayQr.Invalidate();
+        btnPayCard.Invalidate();
     }
 
     private void ChangeSelectedQty(int delta)
