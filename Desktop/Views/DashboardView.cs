@@ -59,10 +59,10 @@ public class DashboardView : UserControl
         pnlHeaderBanner = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 75,
+            Height = 88,
             BackColor = ThemeManager.CardBg,
-            Padding = new Padding(16, 12, 16, 12),
-            Margin = new Padding(0, 0, 0, 6)
+            Padding = new Padding(18, 14, 18, 14),
+            Margin = new Padding(0, 0, 0, 10)
         };
         ThemeManager.ApplyCardPanel(pnlHeaderBanner);
 
@@ -72,13 +72,13 @@ public class DashboardView : UserControl
             AutoSize = true,
             FlowDirection = FlowDirection.RightToLeft,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 6, 0, 0)
+            Padding = new Padding(0, 12, 0, 0)
         };
 
         var btnRefreshRealtime = new Button
         {
-            Text = "🔄 Làm Mới Tức Thì",
-            Size = new Size(150, 36)
+            Text = "🔄 Làm Mới Dữ Liệu",
+            Size = new Size(160, 36)
         };
         ThemeManager.ApplyPrimaryButton(btnRefreshRealtime);
         btnRefreshRealtime.Click += (s, e) => LoadRealtimeDataAsync();
@@ -92,28 +92,20 @@ public class DashboardView : UserControl
 
         var lblBannerTitle = new Label
         {
-            Text = "TRUNG TÂM ĐIỀU HÀNH ERP & AI INSIGHTS  •  REALTIME DỮ LIỆU THỰC",
-            Font = ThemeManager.HeaderFont,
+            Text = "TRUNG TÂM ĐIỀU HÀNH ERP & AI INSIGHTS  •  DỮ LIỆU THỰC TẾ",
+            Font = AppTheme.FontH1,
             ForeColor = ThemeManager.Primary,
-            AutoSize = true,
-            AutoEllipsis = true,
-            Location = new Point(4, 2)
+            Location = new Point(0, 4),
+            AutoSize = true
         };
 
         var lblBannerSub = new Label
         {
-            Text = "Dữ liệu truy vấn trực tiếp từ Cơ sở dữ liệu Hệ thống  •  Tự động cập nhật theo thời gian thực",
-            Font = ThemeManager.SmallFont,
+            Text = "Dữ liệu truy vấn trực tiếp từ Cơ sở dữ liệu Hệ thống  •  Tự động đồng bộ theo thời gian thực",
+            Font = AppTheme.FontBody,
             ForeColor = ThemeManager.TextSecondary,
-            AutoSize = true,
-            AutoEllipsis = true,
-            Location = new Point(4, 30)
-        };
-
-        pnlBannerLeft.Resize += (s, e) =>
-        {
-            lblBannerTitle.MaximumSize = new Size(Math.Max(50, pnlBannerLeft.Width - 10), 26);
-            lblBannerSub.MaximumSize = new Size(Math.Max(50, pnlBannerLeft.Width - 10), 24);
+            Location = new Point(0, 36),
+            AutoSize = true
         };
 
         pnlBannerLeft.Controls.Add(lblBannerTitle);
@@ -126,9 +118,9 @@ public class DashboardView : UserControl
         tlpKpis = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 110,
+            Height = 125,
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 6, 0, 6)
+            Margin = new Padding(0, 8, 0, 10)
         };
 
         var card1 = CreateDynamicKpiCard("DOANH THU HÔM NAY 💵", "0 đ", "▲ Cập nhật từ DB", ThemeManager.Primary, out lblRevenueValue);
@@ -137,7 +129,7 @@ public class DashboardView : UserControl
         var card4 = CreateDynamicKpiCard("CẢNH BÁO KHO & HSD ⚠️", "0 mặt hàng", "Cận kho & sắp hết hạn", ThemeManager.Danger, out lblWarningValue);
         var kpiCards = new List<Control> { card1, card2, card3, card4 };
 
-        AppTheme.EnableResponsiveKpiGrid(tlpKpis, kpiCards, this, 850, 440, 110);
+        AppTheme.EnableResponsiveKpiGrid(tlpKpis, kpiCards, this, 850, 440, 125);
 
         // --- 3. LiveChart Revenue Panel ---
         pnlChartContainer = new Panel
@@ -171,29 +163,29 @@ public class DashboardView : UserControl
         pnlAiInsightsContainer = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 120,
+            Height = 135,
             BackColor = ThemeManager.CardBg,
-            Padding = new Padding(16),
-            Margin = new Padding(0, 6, 0, 6)
+            Padding = new Padding(18, 14, 18, 14),
+            Margin = new Padding(0, 8, 0, 10)
         };
         ThemeManager.ApplyCardPanel(pnlAiInsightsContainer);
 
         var lblAiAnalysisHeader = new Label
         {
-            Text = "🤖 AI GIẢI TRÌNH PHÂN TÍCH THEO DỮ LIỆU THỰC TE",
-            Font = ThemeManager.SubtitleFont,
+            Text = "🤖 AI GIẢI TRÌNH & PHÂN TÍCH THEO DỮ LIỆU THỰC TẾ",
+            Font = AppTheme.FontH2,
             ForeColor = ThemeManager.Primary,
             AutoSize = true,
-            Location = new Point(20, 15)
+            Location = new Point(18, 14)
         };
 
         lblAiAnalysisBody = new Label
         {
             Text = "Đang tải phân tích dữ liệu thực từ Server Backend...",
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
+            Font = new Font("Segoe UI", 10f, FontStyle.Regular),
             ForeColor = ThemeManager.TextSecondary,
-            Location = new Point(20, 45),
-            Size = new Size(pnlAiInsightsContainer.Width - 40, 55),
+            Location = new Point(18, 48),
+            Size = new Size(pnlAiInsightsContainer.Width - 36, 68),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         };
 
@@ -213,25 +205,64 @@ public class DashboardView : UserControl
             Dock = DockStyle.Fill,
             BackColor = ThemeManager.CardBg,
             Margin = new Padding(6),
-            Padding = new Padding(14)
+            Padding = new Padding(16, 12, 16, 12)
         };
         card.Paint += (s, e) =>
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var cardPath = ThemeManager.GetRoundedPath(new Rectangle(0, 0, card.Width - 3, card.Height - 3), 10);
+            using var cardPath = ThemeManager.GetRoundedPath(new Rectangle(0, 0, card.Width - 3, card.Height - 3), 8);
             using var borderPen = new Pen(ThemeManager.Border, 1);
             e.Graphics.DrawPath(borderPen, cardPath);
             using var leftAccent = new SolidBrush(badgeColor);
-            e.Graphics.FillRectangle(leftAccent, 0, 2, 5, card.Height - 6);
+            e.Graphics.FillRectangle(leftAccent, 0, 4, 4, card.Height - 10);
         };
 
-        var lblTitle = new Label { Text = title.ToUpper(), Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = ThemeManager.TextSecondary, Location = new Point(18, 12), AutoSize = true };
-        valueLabel = new Label { Text = initialVal, Font = new Font("Segoe UI", 16f, FontStyle.Bold), ForeColor = ThemeManager.TextPrimary, Location = new Point(16, 34), AutoSize = true };
-        var lblBadge = new Label { Text = note, Font = new Font("Segoe UI", 9f, FontStyle.Regular), ForeColor = badgeColor, Location = new Point(18, 72), AutoSize = true };
+        var tlp = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = Color.Transparent
+        };
+        tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 22f));
+        tlp.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, 24f));
 
-        card.Controls.Add(lblTitle);
-        card.Controls.Add(valueLabel);
-        card.Controls.Add(lblBadge);
+        var lblTitle = new Label
+        {
+            Text = title.ToUpper(),
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            ForeColor = ThemeManager.TextSecondary,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
+        };
+
+        valueLabel = new Label
+        {
+            Text = initialVal,
+            Font = new Font("Segoe UI", 18f, FontStyle.Bold),
+            ForeColor = ThemeManager.TextPrimary,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
+        };
+
+        var lblBadge = new Label
+        {
+            Text = note,
+            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
+            ForeColor = badgeColor,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            AutoEllipsis = true
+        };
+
+        tlp.Controls.Add(lblTitle, 0, 0);
+        tlp.Controls.Add(valueLabel, 0, 1);
+        tlp.Controls.Add(lblBadge, 0, 2);
+
+        card.Controls.Add(tlp);
         return card;
     }
 

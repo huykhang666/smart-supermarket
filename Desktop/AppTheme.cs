@@ -73,8 +73,8 @@ public static class AppTheme
         dgv.ReadOnly = true;
         dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        dgv.RowTemplate.Height = 38;
-        dgv.ColumnHeadersHeight = 44;
+        dgv.RowTemplate.Height = 40;
+        dgv.ColumnHeadersHeight = 58;
         dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
         dgv.EnableHeadersVisualStyles = false;
         dgv.Font = FontBody;
@@ -82,11 +82,12 @@ public static class AppTheme
         // Header Styling (Fluent 2 Light Gray #F3F2F1 Header, Dark Text #242424)
         dgv.ColumnHeadersDefaultCellStyle.BackColor = GridHeaderBg;
         dgv.ColumnHeadersDefaultCellStyle.ForeColor = TextPrimary;
-        dgv.ColumnHeadersDefaultCellStyle.Font = FontH3;
+        dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
         dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = GridHeaderBg;
         dgv.ColumnHeadersDefaultCellStyle.SelectionForeColor = TextPrimary;
         dgv.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
-        dgv.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
+        dgv.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
+        dgv.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
         dgv.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single;
 
         // Rows Styling

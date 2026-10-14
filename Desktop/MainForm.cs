@@ -73,13 +73,13 @@ public class MainForm : Form
         this.BackColor = AppTheme.BackgroundGray;
         this.Font = AppTheme.FontBody;
 
-        // --- 1. Top Header Panel (Height 60px, White & KATQ Sky Blue Theme) ---
+        // --- 1. Top Header Panel (Height 62px, Fluent 2 Clean Design) ---
         pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 60,
-            BackColor = Color.White,
-            Padding = new Padding(10, 10, 20, 10)
+            Height = 62,
+            BackColor = AppTheme.SurfaceWhite,
+            Padding = new Padding(10, 0, 15, 0)
         };
         pnlHeader.Paint += (s, e) =>
         {
@@ -94,7 +94,7 @@ public class MainForm : Form
             IconColor = AppTheme.TextPrimary,
             IconSize = 20,
             Size = new Size(38, 38),
-            Location = new Point(10, 11),
+            Location = new Point(10, 12),
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.Transparent,
             Cursor = Cursors.Hand
@@ -113,7 +113,7 @@ public class MainForm : Form
         var picLogo = new PictureBox
         {
             Size = new Size(130, 42),
-            Location = new Point(54, 9),
+            Location = new Point(54, 10),
             SizeMode = PictureBoxSizeMode.Zoom,
             BackColor = Color.Transparent
         };
@@ -136,7 +136,7 @@ public class MainForm : Form
 
         lblAppTitle = new Label
         {
-            Text = "Smart SuperMarket  |  ENTERPRISE ERP POS CONTROL CENTER",
+            Text = "Smart SuperMarket  |  ENTERPRISE ERP CONTROL CENTER",
             Font = AppTheme.FontH2,
             ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
@@ -144,7 +144,7 @@ public class MainForm : Form
             Location = new Point(190, 18)
         };
 
-        // Right Controls Flow (Notification, Profile Chip, Logout)
+        // Right Controls Flow (Notification, Profile Chip, Clock, Logout)
         var pnlHeaderRight = new FlowLayoutPanel
         {
             Dock = DockStyle.Right,
@@ -152,7 +152,7 @@ public class MainForm : Form
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 5, 10, 5)
+            Padding = new Padding(0, 14, 0, 0)
         };
 
         pnlHeader.Resize += (s, e) =>
@@ -163,17 +163,27 @@ public class MainForm : Form
         // Server Ready Pill Badge
         pnlStatusBadge = new Panel
         {
-            Size = new Size(180, 32),
-            Margin = new Padding(0, 0, 10, 0),
+            Height = 32,
+            AutoSize = true,
+            MinimumSize = new Size(150, 32),
+            Margin = new Padding(0, 1, 8, 0),
+            Padding = new Padding(12, 6, 12, 6),
             BackColor = AppTheme.SuccessSubtle
+        };
+        pnlStatusBadge.Paint += (s, e) =>
+        {
+            using var p = new Pen(Color.FromArgb(100, AppTheme.Success), 1f);
+            e.Graphics.DrawRectangle(p, 0, 0, pnlStatusBadge.Width - 1, pnlStatusBadge.Height - 1);
         };
         var lblStatus = new Label
         {
-            Text = "🟢 Ready • POS Server",
-            Font = AppTheme.FontBodyBold,
+            Text = "🟢 Server Online • POS Ready",
+            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             ForeColor = AppTheme.Success,
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
+            TextAlign = ContentAlignment.MiddleCenter,
+            BackColor = Color.Transparent,
+            AutoSize = true
         };
         pnlStatusBadge.Controls.Add(lblStatus);
 
@@ -183,43 +193,53 @@ public class MainForm : Form
             IconChar = IconChar.Bell,
             IconColor = AppTheme.Primary,
             IconSize = 18,
-            Text = " 🔔 (0)",
+            Text = " (0)",
             TextImageRelation = TextImageRelation.ImageBeforeText,
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.Primary,
             BackColor = AppTheme.PrimarySubtle,
             FlatStyle = FlatStyle.Flat,
-            Size = new Size(85, 32),
-            Margin = new Padding(0, 0, 10, 0),
+            Size = new Size(82, 32),
+            Margin = new Padding(0, 1, 8, 0),
             Cursor = Cursors.Hand
         };
         btnNotification.FlatAppearance.BorderSize = 0;
-        btnNotification.Click += (s, e) =>
-        {
-            ShowNotificationPopup();
-        };
+        btnNotification.Click += (s, e) => ShowNotificationPopup();
 
         // Admin User Profile Chip
         lblAdminProfile = new Label
         {
-            Text = "👤 Quản trị viên (Admin)",
+            Text = "👤 Quản Trị Viên (Admin)",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
             AutoSize = true,
-            Margin = new Padding(0, 7, 12, 0),
-            Cursor = Cursors.Hand
+            Margin = new Padding(8, 7, 8, 0),
+            Cursor = Cursors.Default
         };
+
+        // Realtime Clock Label
+        var lblHeaderClock = new Label
+        {
+            Text = $"🕒 {DateTime.Now:HH:mm:ss}",
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            ForeColor = AppTheme.Primary,
+            Margin = new Padding(8, 6, 8, 0),
+            AutoSize = true
+        };
+        var headerTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+        headerTimer.Tick += (s, e) => lblHeaderClock.Text = $"🕒 {DateTime.Now:HH:mm:ss}";
+        headerTimer.Start();
 
         // Logout Button
         btnLogout = new Button
         {
             Text = "🚪 Đăng Xuất",
             Font = AppTheme.FontBodyBold,
-            Size = new Size(115, 32),
-            Margin = new Padding(0, 0, 5, 0),
+            Size = new Size(130, 34),
+            Margin = new Padding(10, 0, 0, 0),
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyDangerButton(btnLogout);
+        AppTheme.ApplyDangerButton(btnLogout, radius: 6);
         btnLogout.Click += (s, e) =>
         {
             var result = MessageBox.Show("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị?", "Xác nhận đăng xuất", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -234,6 +254,7 @@ public class MainForm : Form
         pnlHeaderRight.Controls.Add(pnlStatusBadge);
         pnlHeaderRight.Controls.Add(btnNotification);
         pnlHeaderRight.Controls.Add(lblAdminProfile);
+        pnlHeaderRight.Controls.Add(lblHeaderClock);
         pnlHeaderRight.Controls.Add(btnLogout);
 
         pnlHeader.Controls.Add(btnToggleSidebar);

@@ -127,7 +127,7 @@ public class ProductsView : UserControl
         {
             PlaceholderText = "🔍 Tìm Tên / Barcode...",
             Font = AppTheme.FontBody,
-            Size = new Size(180, 32),
+            Size = new Size(160, 32),
             Margin = new Padding(0, 0, 6, 0),
             BorderStyle = BorderStyle.FixedSingle
         };
@@ -142,7 +142,7 @@ public class ProductsView : UserControl
 
         cbCategory = new ComboBox
         {
-            Size = new Size(160, 32),
+            Size = new Size(150, 32),
             DropDownWidth = 240,
             Margin = new Padding(0, 0, 6, 0)
         };
@@ -177,7 +177,7 @@ public class ProductsView : UserControl
         btnSearch = new Button
         {
             Text = "Tìm kiếm",
-            Size = new Size(75, 32),
+            Size = new Size(80, 32),
             Margin = new Padding(0)
         };
         AppTheme.ApplySecondaryButton(btnSearch);
@@ -203,17 +203,17 @@ public class ProductsView : UserControl
         btnViewTable = new Button
         {
             Text = "📋 Bảng",
-            Size = new Size(78, 32),
-            Margin = new Padding(0, 0, 5, 0),
+            Size = new Size(75, 32),
+            Margin = new Padding(0, 0, 4, 0),
             Font = AppTheme.FontBodyBold,
             Cursor = Cursors.Hand
         };
 
         btnViewCard = new Button
         {
-            Text = "🎴 Dạng Thẻ",
-            Size = new Size(110, 32),
-            Margin = new Padding(0, 0, 10, 0),
+            Text = "🎴 Thẻ",
+            Size = new Size(75, 32),
+            Margin = new Padding(0, 0, 8, 0),
             Font = AppTheme.FontBodyBold,
             Cursor = Cursors.Hand
         };
@@ -223,17 +223,17 @@ public class ProductsView : UserControl
 
         btnAddProduct = new Button
         {
-            Text = "➕ Thêm Sản Phẩm",
-            Size = new Size(160, 32),
-            Margin = new Padding(0, 0, 5, 0)
+            Text = "➕ Thêm SP",
+            Size = new Size(115, 32),
+            Margin = new Padding(0, 0, 4, 0)
         };
         AppTheme.ApplyPrimaryButton(btnAddProduct);
         btnAddProduct.Click += BtnAddProduct_Click;
 
         btnScanBarcode = new Button
         {
-            Text = "📷 Quét",
-            Size = new Size(80, 32),
+            Text = "📷 Quét Barcode",
+            Size = new Size(125, 32),
             Margin = new Padding(0)
         };
         AppTheme.ApplySecondaryButton(btnScanBarcode);
@@ -262,13 +262,36 @@ public class ProductsView : UserControl
         dgvProducts.Columns.Add("Barcode", "Mã Vạch");
         dgvProducts.Columns.Add("ProductName", "Tên Sản Phẩm");
         dgvProducts.Columns.Add("CategoryName", "Danh Mục");
-        dgvProducts.Columns.Add("Price", "Giá Bán (VNĐ)");
-        dgvProducts.Columns.Add("CostPrice", "Giá Vốn (VNĐ)");
-        dgvProducts.Columns.Add("Margin", "Biên Lợi Nhuận");
-        dgvProducts.Columns.Add("Unit", "Đơn Vị");
+        dgvProducts.Columns.Add("Price", "Giá Bán");
+        dgvProducts.Columns.Add("CostPrice", "Giá Vốn");
+        dgvProducts.Columns.Add("Margin", "Biên LN");
+        dgvProducts.Columns.Add("Unit", "ĐVT");
         dgvProducts.Columns.Add("MfgDate", "Ngày SX");
-        dgvProducts.Columns.Add("ExpDate", "Hạn Sử Dụng");
+        dgvProducts.Columns.Add("ExpDate", "Hạn Dùng");
         dgvProducts.Columns.Add("Status", "Trạng Thái");
+
+        dgvProducts.Columns["ProductId"].FillWeight = 5;
+        dgvProducts.Columns["ProductId"].MinimumWidth = 45;
+        dgvProducts.Columns["Barcode"].FillWeight = 12;
+        dgvProducts.Columns["Barcode"].MinimumWidth = 95;
+        dgvProducts.Columns["ProductName"].FillWeight = 20;
+        dgvProducts.Columns["ProductName"].MinimumWidth = 140;
+        dgvProducts.Columns["CategoryName"].FillWeight = 13;
+        dgvProducts.Columns["CategoryName"].MinimumWidth = 100;
+        dgvProducts.Columns["Price"].FillWeight = 10;
+        dgvProducts.Columns["Price"].MinimumWidth = 85;
+        dgvProducts.Columns["CostPrice"].FillWeight = 10;
+        dgvProducts.Columns["CostPrice"].MinimumWidth = 85;
+        dgvProducts.Columns["Margin"].FillWeight = 8;
+        dgvProducts.Columns["Margin"].MinimumWidth = 70;
+        dgvProducts.Columns["Unit"].FillWeight = 6;
+        dgvProducts.Columns["Unit"].MinimumWidth = 50;
+        dgvProducts.Columns["MfgDate"].FillWeight = 8;
+        dgvProducts.Columns["MfgDate"].MinimumWidth = 75;
+        dgvProducts.Columns["ExpDate"].FillWeight = 8;
+        dgvProducts.Columns["ExpDate"].MinimumWidth = 75;
+        dgvProducts.Columns["Status"].FillWeight = 10;
+        dgvProducts.Columns["Status"].MinimumWidth = 85;
 
         // FlowLayoutPanel Card Grid View (Responsive Web-like Grid)
         flpCardView = new FlowLayoutPanel

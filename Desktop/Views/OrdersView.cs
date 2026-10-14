@@ -126,14 +126,23 @@ public class OrdersView : UserControl
         dgvOrders.Columns["RawOrderId"].Visible = false;
 
         dgvOrders.Columns["OrderId"].FillWeight = 11;
+        dgvOrders.Columns["OrderId"].MinimumWidth = 80;
         dgvOrders.Columns["Customer"].FillWeight = 14;
+        dgvOrders.Columns["Customer"].MinimumWidth = 95;
         dgvOrders.Columns["Employee"].FillWeight = 12;
+        dgvOrders.Columns["Employee"].MinimumWidth = 90;
         dgvOrders.Columns["TotalAmount"].FillWeight = 11;
+        dgvOrders.Columns["TotalAmount"].MinimumWidth = 80;
         dgvOrders.Columns["DiscountAmount"].FillWeight = 10;
+        dgvOrders.Columns["DiscountAmount"].MinimumWidth = 75;
         dgvOrders.Columns["FinalAmount"].FillWeight = 12;
+        dgvOrders.Columns["FinalAmount"].MinimumWidth = 85;
         dgvOrders.Columns["PaymentMethod"].FillWeight = 12;
+        dgvOrders.Columns["PaymentMethod"].MinimumWidth = 85;
         dgvOrders.Columns["OrderDate"].FillWeight = 14;
+        dgvOrders.Columns["OrderDate"].MinimumWidth = 95;
         dgvOrders.Columns["Status"].FillWeight = 10;
+        dgvOrders.Columns["Status"].MinimumWidth = 75;
 
         pnlGrid.Controls.Add(dgvOrders);
 
