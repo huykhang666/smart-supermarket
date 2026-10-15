@@ -443,6 +443,11 @@ public class LoginForm : Form
         if ((username.Equals("admin", StringComparison.OrdinalIgnoreCase) && password == "admin123") ||
             (username.Equals("quanly", StringComparison.OrdinalIgnoreCase)))
         {
+            CurrentSession.UserId = 1;
+            CurrentSession.Username = "admin";
+            CurrentSession.FullName = "Quản trị viên Hệ thống";
+            CurrentSession.Role = "Admin";
+
             AntdUI.Message.success(this, "Đăng nhập thành công! Đang chuyển đến Trung Tâm Điều Hành Admin...");
 
             var timer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -458,6 +463,11 @@ public class LoginForm : Form
         }
         else if (username.Equals("nhanvien", StringComparison.OrdinalIgnoreCase) && password == "nhanvien123")
         {
+            CurrentSession.UserId = 2;
+            CurrentSession.Username = "staff";
+            CurrentSession.FullName = "Nhân viên Thu ngân";
+            CurrentSession.Role = "Staff";
+
             AntdUI.Message.success(this, "Đăng nhập thành công! Mở ca làm việc Thu Ngân...");
 
             var timer = new System.Windows.Forms.Timer { Interval = 500 };

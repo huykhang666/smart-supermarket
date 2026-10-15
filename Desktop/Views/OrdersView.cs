@@ -18,6 +18,7 @@ public class OrdersView : UserControl
     private Button btnPos = null!;
     private Button btnViewDetail = null!;
     private Button btnExportPdf = null!;
+    private Button btnExportExcel = null!;
     private Button btnCancel = null!;
     private Label lblStatus = null!;
     private readonly HttpClient _httpClient = new();
@@ -71,7 +72,7 @@ public class OrdersView : UserControl
 
         btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(95, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnRefresh);
-        btnRefresh.Click += BtnRefresh_Click;
+        btnRefresh.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnRefresh, "Đang tải...", () => LoadOrdersAsync());
 
         btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnViewDetail);
@@ -79,7 +80,11 @@ public class OrdersView : UserControl
 
         btnExportPdf = new Button { Text = "🖨️ In / Xuất PDF", Size = new Size(135, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyPrimaryButton(btnExportPdf);
-        btnExportPdf.Click += BtnExportPdf_Click;
+        btnExportPdf.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnExportPdf, "Đang tạo PDF...", () => ExportSelectedOrderPdfAsync());
+
+        btnExportExcel = new Button { Text = "📥 Xuất Excel", Size = new Size(120, 32), Margin = new Padding(0, 0, 8, 4) };
+        AppTheme.ApplySuccessButton(btnExportExcel);
+        btnExportExcel.Click += (s, e) => AppTheme.ExecuteWithLoading(btnExportExcel, "Đang xuất...", () => ExcelExportService.ExportDataGridViewToExcel(dgvOrders, "Lịch Sử Đơn Hàng POS", "LichSuDonHang"));
 
         btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyDangerButton(btnCancel);
@@ -98,6 +103,7 @@ public class OrdersView : UserControl
         pnlToolbar.Controls.Add(btnRefresh);
         pnlToolbar.Controls.Add(btnViewDetail);
         pnlToolbar.Controls.Add(btnExportPdf);
+        pnlToolbar.Controls.Add(btnExportExcel);
         pnlToolbar.Controls.Add(btnCancel);
         pnlToolbar.Controls.Add(lblStatus);
 
@@ -249,6 +255,11 @@ public class OrdersView : UserControl
     }
 
     private async void BtnExportPdf_Click(object? sender, EventArgs e)
+    {
+        await ExportSelectedOrderPdfAsync();
+    }
+
+    private async Task ExportSelectedOrderPdfAsync()
     {
         if (dgvOrders.CurrentRow == null)
         {

@@ -42,4 +42,6 @@ public static class ThemeManager
     public static void ApplyDangerButton(Button btn) => AppTheme.ApplyDangerButton(btn);
     public static Panel CreateKpiStatCard(string title, string value, string badgeText, Color badgeColor) => AppTheme.CreateKpiCard(title, value, badgeText, badgeColor);
     public static GraphicsPath GetRoundedPath(Rectangle rect, int radius) => AppTheme.GetRoundedPath(rect, radius);
+    public static Task ExecuteWithLoadingAsync(Button btn, string loadingText, Func<Task> action) => AppTheme.ExecuteWithLoadingAsync(btn, loadingText, action);
+    public static void ExecuteWithLoading(Button btn, string loadingText, Action action) => AppTheme.ExecuteWithLoading(btn, loadingText, action);
 }

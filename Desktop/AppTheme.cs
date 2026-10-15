@@ -137,11 +137,49 @@ public static class AppTheme
         btn.BackColor = Primary;
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
+        btn.FlatAppearance.MouseDownBackColor = PrimaryPressed;
+        btn.FlatAppearance.MouseOverBackColor = PrimaryHover;
         btn.Cursor = Cursors.Hand;
         if (btn.Height < 34) btn.Height = 34;
 
-        btn.MouseEnter += (s, e) => btn.BackColor = PrimaryHover;
-        btn.MouseLeave += (s, e) => btn.BackColor = Primary;
+        btn.MouseEnter += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = PrimaryHover;
+            btn.ForeColor = Color.White;
+        };
+        btn.MouseLeave += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = Primary;
+            btn.ForeColor = Color.White;
+        };
+    }
+
+    public static void ApplySuccessButton(Button btn, int radius = 6)
+    {
+        btn.Font = FontBodyBold;
+        btn.ForeColor = Color.White;
+        btn.BackColor = Success;
+        btn.FlatStyle = FlatStyle.Flat;
+        btn.FlatAppearance.BorderSize = 0;
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(0x0E, 0x68, 0x0E);
+        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(0x13, 0x8C, 0x13);
+        btn.Cursor = Cursors.Hand;
+        if (btn.Height < 34) btn.Height = 34;
+
+        btn.MouseEnter += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = Color.FromArgb(0x13, 0x8C, 0x13);
+            btn.ForeColor = Color.White;
+        };
+        btn.MouseLeave += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = Success;
+            btn.ForeColor = Color.White;
+        };
     }
 
     public static void ApplyAccentButton(Button btn, int radius = 6) => ApplyPrimaryButton(btn, radius);
@@ -164,11 +202,23 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 1;
         btn.FlatAppearance.BorderColor = BorderLight;
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(0xD4, 0xEB, 0xFA);
+        btn.FlatAppearance.MouseOverBackColor = PrimarySubtle;
         btn.Cursor = Cursors.Hand;
         if (btn.Height < 34) btn.Height = 34;
 
-        btn.MouseEnter += (s, e) => btn.BackColor = PrimarySubtle;
-        btn.MouseLeave += (s, e) => btn.BackColor = SurfaceWhite;
+        btn.MouseEnter += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = PrimarySubtle;
+            btn.ForeColor = Primary;
+        };
+        btn.MouseLeave += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = SurfaceWhite;
+            btn.ForeColor = TextPrimary;
+        };
     }
 
     public static void ApplyComboBoxStyle(ComboBox cb, int height = 32)
@@ -201,11 +251,126 @@ public static class AppTheme
         btn.BackColor = Danger;
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
+        btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(0x8B, 0x1F, 0x14);
+        btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(0xA4, 0x26, 0x1C);
         btn.Cursor = Cursors.Hand;
         if (btn.Height < 34) btn.Height = 34;
 
-        btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(0xA4, 0x26, 0x1C);
-        btn.MouseLeave += (s, e) => btn.BackColor = Danger;
+        btn.MouseEnter += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = Color.FromArgb(0xA4, 0x26, 0x1C);
+            btn.ForeColor = Color.White;
+        };
+        btn.MouseLeave += (s, e) =>
+        {
+            if (btn.Tag?.ToString() == "loading") return;
+            btn.BackColor = Danger;
+            btn.ForeColor = Color.White;
+        };
+    }
+
+    /// <summary>
+    /// Thực thi một tác vụ bất đồng bộ với hiệu ứng loading trên nút:
+    /// - Khi bấm: Chuyển sang Nền Trắng (#FFFFFF), Chữ Đen Đậm (#242424) kèm biểu tượng ⏳, Viền Primary rõ nét.
+    /// - Chuột rê qua / click trong lúc loading: Giữ nguyên nền trắng chữ đen (không bị biến màu/trùng màu).
+    /// - Khi hoàn tất: Khôi phục chính xác trạng thái, màu sắc và viền ban đầu.
+    /// </summary>
+    public static async Task ExecuteWithLoadingAsync(Button btn, string loadingText, Func<Task> action)
+    {
+        if (btn.Tag?.ToString() == "loading") return;
+
+        string origText = btn.Text;
+        Color origBg = btn.BackColor;
+        Color origFg = btn.ForeColor;
+        Font origFont = btn.Font;
+        int origBorderSize = btn.FlatAppearance.BorderSize;
+        Color origBorderColor = btn.FlatAppearance.BorderColor;
+        Color origMouseOver = btn.FlatAppearance.MouseOverBackColor;
+        Color origMouseDown = btn.FlatAppearance.MouseDownBackColor;
+        Cursor origCursor = btn.Cursor;
+
+        try
+        {
+            btn.Tag = "loading";
+            btn.Text = $"⏳ {loadingText}";
+            btn.Font = FontBodyBold;
+            btn.BackColor = Color.White;
+            btn.ForeColor = TextPrimary; // Chữ đen đậm nét #242424
+            btn.FlatAppearance.BorderSize = 1;
+            btn.FlatAppearance.BorderColor = Primary;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(245, 247, 250);
+            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(235, 238, 242);
+            btn.Cursor = Cursors.WaitCursor;
+            btn.Refresh();
+
+            var task = action();
+            await Task.WhenAll(task, Task.Delay(250));
+        }
+        finally
+        {
+            btn.Text = origText;
+            btn.Font = origFont;
+            btn.BackColor = origBg;
+            btn.ForeColor = origFg;
+            btn.FlatAppearance.BorderSize = origBorderSize;
+            btn.FlatAppearance.BorderColor = origBorderColor;
+            btn.FlatAppearance.MouseOverBackColor = origMouseOver;
+            btn.FlatAppearance.MouseDownBackColor = origMouseDown;
+            btn.Cursor = origCursor;
+            btn.Tag = null;
+            btn.Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Thực thi một tác vụ đồng bộ (như Xuất Excel, In PDF) với hiệu ứng loading trên nút:
+    /// Nền Trắng, Chữ Đen Đậm, Viền rõ nét, khôi phục sau khi xong.
+    /// </summary>
+    public static void ExecuteWithLoading(Button btn, string loadingText, Action action)
+    {
+        if (btn.Tag?.ToString() == "loading") return;
+
+        string origText = btn.Text;
+        Color origBg = btn.BackColor;
+        Color origFg = btn.ForeColor;
+        Font origFont = btn.Font;
+        int origBorderSize = btn.FlatAppearance.BorderSize;
+        Color origBorderColor = btn.FlatAppearance.BorderColor;
+        Color origMouseOver = btn.FlatAppearance.MouseOverBackColor;
+        Color origMouseDown = btn.FlatAppearance.MouseDownBackColor;
+        Cursor origCursor = btn.Cursor;
+
+        try
+        {
+            btn.Tag = "loading";
+            btn.Text = $"⏳ {loadingText}";
+            btn.Font = FontBodyBold;
+            btn.BackColor = Color.White;
+            btn.ForeColor = TextPrimary; // Chữ đen đậm nét #242424
+            btn.FlatAppearance.BorderSize = 1;
+            btn.FlatAppearance.BorderColor = Primary;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(245, 247, 250);
+            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(235, 238, 242);
+            btn.Cursor = Cursors.WaitCursor;
+            btn.Refresh();
+
+            action();
+        }
+        finally
+        {
+            btn.Text = origText;
+            btn.Font = origFont;
+            btn.BackColor = origBg;
+            btn.ForeColor = origFg;
+            btn.FlatAppearance.BorderSize = origBorderSize;
+            btn.FlatAppearance.BorderColor = origBorderColor;
+            btn.FlatAppearance.MouseOverBackColor = origMouseOver;
+            btn.FlatAppearance.MouseDownBackColor = origMouseDown;
+            btn.Cursor = origCursor;
+            btn.Tag = null;
+            btn.Refresh();
+        }
     }
 
     public static void ApplyGhostButton(Button btn)
