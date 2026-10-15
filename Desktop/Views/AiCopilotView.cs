@@ -54,7 +54,7 @@ public class AiCopilotView : UserControl
 
         var lblTitle = new Label
         {
-            Text = "🤖 Trợ Lý AI – Google Gemini",
+            Text = "🤖 Trợ Lý AI Bán Lẻ & Dự Báo Thông Minh",
             Font = AppTheme.FontH1,
             ForeColor = AppTheme.TextPrimary,
             Location = new Point(0, 4),
@@ -62,7 +62,7 @@ public class AiCopilotView : UserControl
         };
         var lblSub = new Label
         {
-            Text = "Phân tích dữ liệu thực tế từ CSDL siêu thị, sinh báo cáo bằng Google Gemini AI",
+            Text = "Phân tích dữ liệu thực tế từ CSDL siêu thị, dự báo nhập hàng và tối ưu rủi ro tồn kho",
             Font = AppTheme.FontCaption,
             ForeColor = AppTheme.TextSecondary,
             Location = new Point(2, 36),

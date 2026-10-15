@@ -237,7 +237,7 @@ public class EmployeeMainForm : Form
         var btnAudit = CreateNavButton("btnNavAudit", "Kiểm kê", IconChar.ClipboardCheck);
         var btnShift = CreateNavButton("btnNavShift", "Ca làm việc", IconChar.Clock);
         var btnDashboard = CreateNavButton("btnNavDashboard", "Dashboard", IconChar.ChartLine);
-        var btnAi = CreateNavButton("btnNavAi", "AI Assistant", IconChar.Robot);
+        var btnAi = CreateNavButton("btnNavAi", "Trợ Lý AI Bán Lẻ", IconChar.Robot);
 
         btnPos.Click += (s, e) => SelectNavButton(btnPos, _posScanView);
         btnInventory.Click += (s, e) => SelectNavButton(btnInventory, _inventoryView);

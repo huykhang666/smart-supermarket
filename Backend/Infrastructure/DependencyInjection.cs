@@ -58,6 +58,9 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddSingleton<GeminiService>();
         services.AddScoped<IAiService, AiService>();
+        services.AddHttpClient<GroqClient>();
+        services.AddScoped<ILlmClient, GroqClient>();
+        services.AddScoped<IAiRetailService, AiRetailService>();
 
         // Module 05_Inventory
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IInventoryRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.InventoryRepository>();
