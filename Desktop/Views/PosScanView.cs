@@ -49,6 +49,7 @@ public class PosScanView : UserControl
     private TextBox txtVoucherCode = null!;
     private Button btnApplyVoucher = null!;
     private Label lblVoucherStatus = null!;
+    private Button btnPickPromotion = null!;
 
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
@@ -462,13 +463,26 @@ public class PosScanView : UserControl
 
         lblVoucherStatus = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.Success, Location = new Point(14, 290), AutoSize = true };
 
-        var lblTotalTitle = new Label { Text = "TỔNG TIỀN PHẢI THU", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, Location = new Point(14, 312), AutoSize = true };
+        // Button: Xem & chọn khuyến mãi / combo đang áp dụng
+        btnPickPromotion = new Button
+        {
+            Text = "🎁 Xem & Áp Dụng Khuyến Mãi / Combo",
+            Font = AppTheme.FontBody,
+            Size = new Size(pnlCol3.Width - 28, 30),
+            Location = new Point(14, 306),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Cursor = Cursors.Hand
+        };
+        AppTheme.ApplySecondaryButton(btnPickPromotion, radius: 6);
+        btnPickPromotion.Click += async (s, e) => await ShowActivePromotionsPickerAsync();
+
+        var lblTotalTitle = new Label { Text = "TỔNG TIỀN PHẢI THU", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, Location = new Point(14, 346), AutoSize = true };
         lblGrandTotal = new Label
         {
             Text = "0 VNĐ",
             Font = new Font("Segoe UI", 20f, FontStyle.Bold),
             ForeColor = AppTheme.Primary,
-            Location = new Point(12, 332),
+            Location = new Point(12, 366),
             AutoSize = true
         };
 
@@ -553,6 +567,7 @@ public class PosScanView : UserControl
         pnlCol3.Controls.Add(pnlBillingTable);
         pnlCol3.Controls.Add(pnlVoucherRow);
         pnlCol3.Controls.Add(lblVoucherStatus);
+        pnlCol3.Controls.Add(btnPickPromotion);
         pnlCol3.Controls.Add(lblTotalTitle);
         pnlCol3.Controls.Add(lblGrandTotal);
         pnlCol3.Controls.Add(pnlPayMethods);
@@ -571,6 +586,7 @@ public class PosScanView : UserControl
             lblDividerA.Width = targetWidth;
             pnlBillingTable.Width = targetWidth;
             pnlVoucherRow.Width = targetWidth;
+            btnPickPromotion.Width = targetWidth;
             pnlPayMethods.Width = targetWidth;
             numCashPaid.Width = targetWidth;
             pnlChangeRow.Width = targetWidth;
@@ -615,6 +631,7 @@ public class PosScanView : UserControl
                         string barcode = item.TryGetProperty("barcode", out var pBc) ? (pBc.GetString() ?? "") : "";
                         string name = item.TryGetProperty("productName", out var pNm) ? (pNm.GetString() ?? "") : (item.TryGetProperty("name", out var n2) ? (n2.GetString() ?? "") : "");
                         decimal price = item.TryGetProperty("sellingPrice", out var pPr) ? pPr.GetDecimal() : (item.TryGetProperty("price", out var pr2) ? pr2.GetDecimal() : 0);
+                        int catId = item.TryGetProperty("categoryId", out var pCat) ? pCat.GetInt32() : 0;
 
                         if (!string.IsNullOrEmpty(barcode) && !_catalog.Any(c => c.Barcode == barcode))
                         {
@@ -624,6 +641,7 @@ public class PosScanView : UserControl
                                 Barcode = barcode,
                                 Name = name,
                                 Price = price,
+                                CategoryId = catId,
                                 Stock = 100,
                                 Icon = "📦"
                             });
@@ -645,6 +663,7 @@ public class PosScanView : UserControl
                     Barcode = dsProd.Barcode,
                     Name = dsProd.ProductName,
                     Price = dsProd.Price,
+                    CategoryId = dsProd.CategoryId,
                     Stock = 100,
                     Icon = "📦"
                 });
@@ -794,6 +813,7 @@ public class PosScanView : UserControl
                 ProductId = prod.Id,
                 Barcode = prod.Barcode,
                 Name = prod.Name,
+                CategoryId = prod.CategoryId,
                 Price = prod.Price,
                 OriginalPrice = prod.OriginalPrice > 0 ? prod.OriginalPrice : prod.Price,
                 DiscountPercent = prod.DiscountPercent,
@@ -1025,12 +1045,210 @@ public class PosScanView : UserControl
         string code = txtVoucherCode.Text.Trim().ToUpper();
         if (string.IsNullOrEmpty(code)) return;
 
-        _appliedDiscountAmount = 20000m;
-        _appliedVoucherCode = code;
-        lblVoucherStatus.Text = $"✓ Áp dụng {code}: -20,000 đ";
-        lblVoucherStatus.ForeColor = AppTheme.Success;
-        CalculateSummary();
-        await Task.CompletedTask;
+        if (_cart.Count == 0)
+        {
+            AntdUI.Message.warn(this.FindForm() ?? new Form(), "Giỏ hàng đang trống! Thêm sản phẩm trước khi áp dụng voucher.");
+            return;
+        }
+
+        decimal grossSubTotal = _cart.Sum(i => i.Price * i.Quantity);
+
+        // Build cart items list for combo/BuyXGetY check
+        var cartItems = _cart.Select(c => new
+        {
+            productId = c.ProductId,
+            barcode = c.Barcode,
+            productName = c.Name,
+            categoryId = (int?)c.CategoryId,
+            quantity = c.Quantity,
+            unitPrice = c.Price
+        }).ToList();
+
+        try
+        {
+            btnApplyVoucher.Enabled = false;
+            lblVoucherStatus.Text = "Đang kiểm tra...";
+
+            var payload = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                promotionCode = code,
+                orderTotalAmount = grossSubTotal,
+                items = cartItems
+            });
+
+            var resp = await _httpClient.PostAsync(
+                $"{_apiBaseUrl}/api/v1/promotions/apply",
+                new StringContent(payload, Encoding.UTF8, "application/json"));
+
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var data = root.TryGetProperty("data", out var d) ? d : root;
+
+            bool isSuccess = data.TryGetProperty("isSuccess", out var s) && s.GetBoolean();
+            decimal discAmt = data.TryGetProperty("discountAmount", out var da) ? da.GetDecimal() : 0m;
+            string msg = data.TryGetProperty("message", out var m) ? (m.GetString() ?? "") : "";
+
+            if (isSuccess && discAmt > 0)
+            {
+                _appliedDiscountAmount = discAmt;
+                _appliedVoucherCode = code;
+                lblVoucherStatus.Text = $"✓ {code}: -{discAmt:N0} đ";
+                lblVoucherStatus.ForeColor = AppTheme.Success;
+                CalculateSummary();
+                AntdUI.Message.success(this.FindForm() ?? new Form(), $"Áp dụng thành công! Giảm {discAmt:N0} đ");
+            }
+            else
+            {
+                lblVoucherStatus.Text = $"✗ {(string.IsNullOrEmpty(msg) ? "Mã không hợp lệ hoặc không đủ điều kiện." : msg)}";
+                lblVoucherStatus.ForeColor = AppTheme.Danger;
+                AntdUI.Message.error(this.FindForm() ?? new Form(), lblVoucherStatus.Text);
+            }
+        }
+        catch
+        {
+            // Fallback: API offline — apply small fixed discount so POS still works
+            _appliedDiscountAmount = 20000m;
+            _appliedVoucherCode = code;
+            lblVoucherStatus.Text = $"✓ {code}: -20,000 đ (offline)";
+            lblVoucherStatus.ForeColor = AppTheme.Success;
+            CalculateSummary();
+        }
+        finally
+        {
+            btnApplyVoucher.Enabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Show a list of active promotions. Let cashier pick one to apply automatically.
+    /// Calls GET /api/v1/promotions/active
+    /// </summary>
+    private async Task ShowActivePromotionsPickerAsync()
+    {
+        try
+        {
+            var resp = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/promotions/active");
+            if (!resp.IsSuccessStatusCode)
+            {
+                AntdUI.Message.warn(this.FindForm() ?? new Form(), "Không thể tải danh sách khuyến mãi. API offline?");
+                return;
+            }
+
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            var dataEl = root.TryGetProperty("data", out var d) ? d : root;
+
+            // Collect promotion list
+            var items = new List<(string Code, string Label)>();
+            var arr = dataEl.ValueKind == JsonValueKind.Array ? dataEl
+                : (dataEl.TryGetProperty("items", out var sub) ? sub : default);
+
+            if (arr.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in arr.EnumerateArray())
+                {
+                    string pCode = item.TryGetProperty("promotionCode", out var pc) ? (pc.GetString() ?? "") : "";
+                    string pName = item.TryGetProperty("promotionName", out var pn) ? (pn.GetString() ?? "") : "";
+                    string dtype = item.TryGetProperty("discountType", out var dt) ? (dt.GetString() ?? "") : "";
+                    decimal dval = item.TryGetProperty("discountValue", out var dv) ? dv.GetDecimal() : 0m;
+
+                    string typeIcon = dtype switch
+                    {
+                        "ComboDiscount" => "🎁 Mua kèm",
+                        "BuyXGetY" => "🎁 Mua X Tặng Y",
+                        "CategoryDiscount" => "🏷️ Ngành hàng",
+                        "QuantityTier" => "📦 Mua sỉ",
+                        "Percentage" => $"📊 -{dval:N0}%",
+                        "FixedAmount" => $"💰 -{dval:N0}₫",
+                        _ => "🎟️"
+                    };
+
+                    string label = $"{typeIcon}  [{pCode}]  {pName}";
+                    items.Add((pCode, label));
+                }
+            }
+
+            if (items.Count == 0)
+            {
+                AntdUI.Message.info(this.FindForm() ?? new Form(), "Hiện chưa có chương trình khuyến mãi nào đang hoạt động.");
+                return;
+            }
+
+            // Show simple selection dialog
+            using var picker = new Form
+            {
+                Text = "🎁 Chọn Khuyến Mãi / Combo Áp Dụng",
+                Size = new Size(560, 440),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                BackColor = AppTheme.SurfaceWhite
+            };
+
+            var lblHint = new Label
+            {
+                Text = "Chọn chương trình khuyến mãi, rồi bấm \"Áp Dụng\":",
+                Font = AppTheme.FontBodyBold,
+                ForeColor = AppTheme.TextPrimary,
+                Location = new Point(16, 14),
+                AutoSize = true
+            };
+
+            var listBox = new ListBox
+            {
+                Location = new Point(16, 42),
+                Size = new Size(514, 300),
+                Font = AppTheme.FontBody,
+                IntegralHeight = false
+            };
+            foreach (var (_, label) in items) listBox.Items.Add(label);
+            if (listBox.Items.Count > 0) listBox.SelectedIndex = 0;
+
+            var btnApply = new Button
+            {
+                Text = "✅ Áp Dụng",
+                Size = new Size(130, 36),
+                Location = new Point(16, 358),
+                Cursor = Cursors.Hand
+            };
+            AppTheme.ApplyPrimaryButton(btnApply, radius: 6);
+
+            var btnClose2 = new Button
+            {
+                Text = "Đóng",
+                Size = new Size(90, 36),
+                Location = new Point(158, 358),
+                Cursor = Cursors.Hand
+            };
+            AppTheme.ApplySecondaryButton(btnClose2, radius: 6);
+            btnClose2.Click += (s2, e2) => picker.Close();
+
+            btnApply.Click += async (s2, e2) =>
+            {
+                int idx = listBox.SelectedIndex;
+                if (idx < 0 || idx >= items.Count) return;
+
+                string selectedCode = items[idx].Code;
+                picker.Close();
+
+                // Put code into txtVoucherCode and fire apply
+                txtVoucherCode.Text = selectedCode;
+                await ApplyVoucherAsync();
+            };
+
+            picker.Controls.Add(lblHint);
+            picker.Controls.Add(listBox);
+            picker.Controls.Add(btnApply);
+            picker.Controls.Add(btnClose2);
+
+            picker.ShowDialog(this.FindForm() ?? new Form());
+        }
+        catch (Exception ex)
+        {
+            AntdUI.Message.error(this.FindForm() ?? new Form(), $"Lỗi: {ex.Message}");
+        }
     }
 
     private async Task CheckoutAsync()
@@ -1169,6 +1387,7 @@ public class PosScanView : UserControl
         public int Id { get; set; }
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
+        public int CategoryId { get; set; }
         public decimal Price { get; set; }
         public decimal OriginalPrice { get; set; }
         public decimal DiscountPercent { get; set; }
@@ -1183,6 +1402,7 @@ public class PosScanView : UserControl
         public int ProductId { get; set; }
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
+        public int CategoryId { get; set; }
         public decimal Price { get; set; }
         public decimal OriginalPrice { get; set; }
         public decimal DiscountPercent { get; set; }

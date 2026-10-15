@@ -329,13 +329,29 @@ public class PromotionsView : UserControl
                             string name = item.GetProperty("promotionName").GetString() ?? "";
                             string discType = item.TryGetProperty("discountType", out var dt) ? (dt.GetString() ?? "Percentage") : "Percentage";
                             decimal discVal = item.GetProperty("discountValue").GetDecimal();
-                            string discStr = discType.Equals("Percentage", StringComparison.OrdinalIgnoreCase)
-                                ? $"{discVal:N0}%" : $"{discVal:N0} ₫";
+                            string discStr = discType switch
+                            {
+                                "Percentage" => $"{discVal:N0}%",
+                                "FixedAmount" => $"{discVal:N0} ₫",
+                                "BuyXGetY" => $"Mua {(item.TryGetProperty("requiredQuantity", out var rq) ? rq.GetInt32() : 2)} Tặng {(item.TryGetProperty("giftQuantity", out var gq) ? gq.GetInt32() : 1)}",
+                                "ComboDiscount" => $"{discVal:N0}%",
+                                "CategoryDiscount" => $"{discVal:N0}%",
+                                "QuantityTier" => $"{discVal:N0}%",
+                                _ => $"{discVal:N0}"
+                            };
                             decimal minOrder = item.TryGetProperty("minimumOrderAmount", out var mo) ? mo.GetDecimal() : 0m;
                             string maxStr = item.TryGetProperty("maximumDiscountAmount", out var mx) && mx.ValueKind != JsonValueKind.Null
                                 ? $"{mx.GetDecimal():N0} ₫" : "Không giới hạn";
-                            string discTypeLbl = discType.Equals("Percentage", StringComparison.OrdinalIgnoreCase)
-                                ? "📊 % Phần Trăm" : "💰 Cố Định";
+                            string discTypeLbl = discType switch
+                            {
+                                "Percentage" => "📊 % Phần Trăm",
+                                "FixedAmount" => "💰 Cố Định",
+                                "BuyXGetY" => "🎁 Mua X Tặng Y",
+                                "ComboDiscount" => "🎁 Mua Kèm / Combo",
+                                "CategoryDiscount" => "🏷️ Ngành Hàng",
+                                "QuantityTier" => "📦 Mua Sỉ / SL",
+                                _ => discType
+                            };
 
                             string startRaw = item.TryGetProperty("startDate", out var sd) ? sd.GetString() ?? "" : "";
                             string endRaw = item.TryGetProperty("endDate", out var ed) ? ed.GetString() ?? "" : "";
@@ -800,7 +816,7 @@ internal class AiMarkdownAdviceDialog : Form
 }
 
 // =========================================================================
-// FORM POPUP CŨ: THÊM VOUCHER
+// FORM POPUP: THÊM VOUCHER / KHUYẾN MÃI ĐA DẠNG
 // =========================================================================
 internal class AddPromotionForm : Form
 {
@@ -821,6 +837,14 @@ internal class AddPromotionForm : Form
     private Button btnSave = null!;
     private Button btnCancel_ = null!;
 
+    // Extra fields for Combo / BuyXGetY / Category / Quantity types
+    private Panel pnlComboExtra = null!;
+    private NumericUpDown numTriggerProductId = null!;
+    private NumericUpDown numTargetProductId = null!;
+    private NumericUpDown numTargetCategoryId = null!;
+    private NumericUpDown numRequiredQty = null!;
+    private NumericUpDown numGiftQty = null!;
+
     public AddPromotionForm(string apiBaseUrl, HttpClient httpClient)
     {
         _apiBaseUrl = apiBaseUrl;
@@ -830,8 +854,8 @@ internal class AddPromotionForm : Form
 
     private void InitForm()
     {
-        this.Text = "➕ Thêm Mã Khuyến Mãi";
-        this.Size = new Size(620, 580);
+        this.Text = "➕ Thêm Mã Khuyến Mãi / Chương Trình";
+        this.Size = new Size(660, 760);
         this.StartPosition = FormStartPosition.CenterParent;
         this.BackColor = ThemeManager.Background;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -839,8 +863,8 @@ internal class AddPromotionForm : Form
 
         int y = 20;
         int lx = 20;
-        int cx = 225;
-        int cw = 320;
+        int cx = 230;
+        int cw = 360;
 
         Label Lbl(string text) => new Label
         {
@@ -873,24 +897,25 @@ internal class AddPromotionForm : Form
             Font = ThemeManager.BodyFont,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        cboType.Items.Add(new KeyValuePair<string, string>("Percentage", "Giảm theo % (Phần trăm)"));
-        cboType.Items.Add(new KeyValuePair<string, string>("FixedAmount", "Giảm số tiền cố định (VNĐ)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("Percentage", "📊 Giảm theo % (Phần trăm)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("FixedAmount", "💰 Giảm số tiền cố định (VNĐ)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("BuyXGetY", "🎁 Mua X Tặng Y (VD: Mua 2 Tặng 1)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("ComboDiscount", "🎁 Mua kèm / Combo (VD: Mua A giảm 50% B)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("CategoryDiscount", "🏷️ Giảm giá Ngành Hàng"));
+        cboType.Items.Add(new KeyValuePair<string, string>("QuantityTier", "📦 Giảm giá theo Số lượng mua sỉ"));
         cboType.DisplayMember = "Value";
         cboType.ValueMember = "Key";
         cboType.SelectedIndex = 0;
         cboType.SelectedIndexChanged += (s, e) =>
         {
             var selected = (KeyValuePair<string, string>)cboType.SelectedItem!;
-            if (selected.Key == "Percentage")
-            {
-                lblUnitValue.Text = "%";
-                numValue.Maximum = 100;
-            }
-            else
-            {
-                lblUnitValue.Text = "VNĐ";
-                numValue.Maximum = 100000000;
-            }
+            bool isFixed = selected.Key == "FixedAmount";
+            bool isPct = selected.Key is "Percentage" or "ComboDiscount" or "CategoryDiscount" or "QuantityTier";
+            bool isBuyXGetY = selected.Key == "BuyXGetY";
+            lblUnitValue.Text = isFixed ? "VNĐ" : "%";
+            numValue.Maximum = isFixed ? 100000000 : 100;
+            // Show extra combo panel for special types
+            pnlComboExtra.Visible = selected.Key is "ComboDiscount" or "BuyXGetY" or "CategoryDiscount" or "QuantityTier";
         };
         this.Controls.Add(cboType); NextRow();
 
@@ -914,6 +939,60 @@ internal class AddPromotionForm : Form
         this.Controls.Add(numMaxDiscount);
         this.Controls.Add(lblUnitMax);
         NextRow();
+
+        // --- Extra fields for Combo / BuyXGetY / Category / Quantity ---
+        pnlComboExtra = new Panel
+        {
+            Location = new Point(lx, y),
+            Size = new Size(this.ClientSize.Width - lx * 2, 220),
+            BackColor = Color.FromArgb(245, 248, 255),
+            BorderStyle = BorderStyle.FixedSingle,
+            Visible = false
+        };
+
+        int ey = 10;
+        Label ELbl(string text) => new Label
+        {
+            Text = text,
+            Font = ThemeManager.BodyBold,
+            ForeColor = ThemeManager.TextPrimary,
+            Location = new Point(10, ey + 4),
+            AutoSize = true
+        };
+        void ENext(int h = 40) { ey += h; }
+
+        var lblExtraHint = new Label
+        {
+            Text = "📋 Thông tin bổ sung (cho loại khuyến mãi đặc biệt)",
+            Font = ThemeManager.BodyBold,
+            ForeColor = Color.FromArgb(9, 88, 217),
+            Location = new Point(10, ey),
+            AutoSize = true
+        };
+        pnlComboExtra.Controls.Add(lblExtraHint); ENext(30);
+
+        pnlComboExtra.Controls.Add(ELbl("ID Sản phẩm mua (Trigger):"));
+        numTriggerProductId = new NumericUpDown { Location = new Point(230, ey), Size = new Size(120, 28), Font = ThemeManager.BodyFont, Maximum = 999999, Minimum = 0 };
+        pnlComboExtra.Controls.Add(numTriggerProductId); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("ID Sản phẩm được giảm (Target):"));
+        numTargetProductId = new NumericUpDown { Location = new Point(230, ey), Size = new Size(120, 28), Font = ThemeManager.BodyFont, Maximum = 999999, Minimum = 0 };
+        pnlComboExtra.Controls.Add(numTargetProductId); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("ID Ngành hàng được giảm (CategoryId):"));
+        numTargetCategoryId = new NumericUpDown { Location = new Point(230, ey), Size = new Size(120, 28), Font = ThemeManager.BodyFont, Maximum = 999999, Minimum = 0 };
+        pnlComboExtra.Controls.Add(numTargetCategoryId); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("Số lượng cần mua (RequiredQty):"));
+        numRequiredQty = new NumericUpDown { Location = new Point(230, ey), Size = new Size(80, 28), Font = ThemeManager.BodyFont, Maximum = 100, Minimum = 1, Value = 2 };
+        pnlComboExtra.Controls.Add(numRequiredQty); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("Số lượng được tặng (GiftQty):"));
+        numGiftQty = new NumericUpDown { Location = new Point(230, ey), Size = new Size(80, 28), Font = ThemeManager.BodyFont, Maximum = 100, Minimum = 0, Value = 1 };
+        pnlComboExtra.Controls.Add(numGiftQty); ENext();
+
+        this.Controls.Add(pnlComboExtra);
+        NextRow(230);
 
         this.Controls.Add(Lbl("Ngày bắt đầu:"));
         dtpStart = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today };
@@ -947,6 +1026,7 @@ internal class AddPromotionForm : Form
         }
 
         var selectedType = (KeyValuePair<string, string>)cboType.SelectedItem!;
+        bool hasExtra = pnlComboExtra.Visible;
 
         var payload = new
         {
@@ -957,6 +1037,11 @@ internal class AddPromotionForm : Form
             discountValue = numValue.Value,
             minimumOrderAmount = numMinOrder.Value,
             maximumDiscountAmount = numMaxDiscount.Value > 0 ? (decimal?)numMaxDiscount.Value : null,
+            triggerProductId = hasExtra && numTriggerProductId.Value > 0 ? (int?)numTriggerProductId.Value : null,
+            targetProductId = hasExtra && numTargetProductId.Value > 0 ? (int?)numTargetProductId.Value : null,
+            targetCategoryId = hasExtra && numTargetCategoryId.Value > 0 ? (int?)numTargetCategoryId.Value : null,
+            requiredQuantity = hasExtra && numRequiredQty.Value > 0 ? (int?)numRequiredQty.Value : null,
+            giftQuantity = hasExtra && numGiftQty.Value > 0 ? (int?)numGiftQty.Value : null,
             startDate = dtpStart.Value.ToUniversalTime(),
             endDate = dtpEnd.Value.ToUniversalTime(),
             isActive = chkActive.Checked

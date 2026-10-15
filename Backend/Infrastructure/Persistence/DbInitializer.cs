@@ -293,6 +293,77 @@ public static class DbInitializer
             }
         }
 
+        // 5b. Seed specific sample Combo & Near-Expiry products for retail scenarios (SCRUM-23)
+        if (!await dbContext.Products.AnyAsync(p => p.Barcode == "8934588012991"))
+        {
+            var pBanChai = new Product
+            {
+                ProductName = "Bàn chải đánh răng Colgate Slim Soft",
+                Barcode = "8934588012991",
+                CategoryId = 8,
+                SupplierId = 6,
+                CostPrice = 15000,
+                Price = 25000,
+                Unit = "Cái",
+                Status = ProductStatus.Active,
+                ImageUrl = "/images/products/colgate-brush.png",
+                CreatedAt = DateTime.UtcNow
+            };
+            var pKemDanhRang = new Product
+            {
+                ProductName = "Kem đánh răng Colgate Total 12 150g",
+                Barcode = "8934588012992",
+                CategoryId = 8,
+                SupplierId = 6,
+                CostPrice = 22000,
+                Price = 38000,
+                Unit = "Tuýp 150g",
+                Status = ProductStatus.Active,
+                ImageUrl = "/images/products/colgate-total.png",
+                CreatedAt = DateTime.UtcNow
+            };
+            var pSuaChua = new Product
+            {
+                ProductName = "Sữa chua Vinamilk có đường 100g",
+                Barcode = "8934588012993",
+                CategoryId = 2,
+                SupplierId = 2,
+                CostPrice = 5000,
+                Price = 7500,
+                Unit = "Hộp 100g",
+                Status = ProductStatus.Active,
+                ImageUrl = "/images/products/vinamilk-yogurt.png",
+                ManufacturingDate = DateTime.UtcNow.AddDays(-23),
+                ExpiryDate = DateTime.UtcNow.AddDays(7), // Còn 7 ngày -> Cận date!
+                CreatedAt = DateTime.UtcNow
+            };
+            var pBanhMi = new Product
+            {
+                ProductName = "Bánh mì sandwich tươi hoa cúc 300g",
+                Barcode = "8934588012994",
+                CategoryId = 3,
+                SupplierId = 3,
+                CostPrice = 28000,
+                Price = 42000,
+                Unit = "Ổ 300g",
+                Status = ProductStatus.Active,
+                ImageUrl = "/images/products/fresh-bread.png",
+                ManufacturingDate = DateTime.UtcNow.AddDays(-7),
+                ExpiryDate = DateTime.UtcNow.AddDays(3), // Còn 3 ngày -> Cận date!
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await dbContext.Products.AddRangeAsync(pBanChai, pKemDanhRang, pSuaChua, pBanhMi);
+            await dbContext.SaveChangesAsync();
+
+            // Add batches for near-expiry products so inventory tracking finds them
+            await dbContext.InventoryBatches.AddRangeAsync(
+                new InventoryBatch { ProductId = pSuaChua.ProductId, BatchCode = "LOT-SUACHUA-01", Quantity = 40, ManufacturingDate = pSuaChua.ManufacturingDate ?? DateTime.UtcNow, ExpiryDate = pSuaChua.ExpiryDate ?? DateTime.UtcNow.AddDays(7), Status = "Good" },
+                new InventoryBatch { ProductId = pBanhMi.ProductId, BatchCode = "LOT-BANHMI-01", Quantity = 25, ManufacturingDate = pBanhMi.ManufacturingDate ?? DateTime.UtcNow, ExpiryDate = pBanhMi.ExpiryDate ?? DateTime.UtcNow.AddDays(3), Status = "Good" }
+            );
+            await dbContext.SaveChangesAsync();
+        }
+
         // 6. Seed Promotions
         if (!await dbContext.Promotions.AnyAsync())
         {
@@ -333,6 +404,60 @@ public static class DbInitializer
                     DiscountType = "Percentage",
                     DiscountValue = 15,
                     MinimumOrderAmount = 150000,
+                    StartDate = DateTime.UtcNow.AddDays(-30),
+                    EndDate = DateTime.UtcNow.AddDays(365),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Promotion
+                {
+                    PromotionCode = "MUA2TANG1",
+                    PromotionName = "Chương trình Mua 2 Tặng 1 cùng loại",
+                    Description = "Mua 2 sản phẩm tặng ngay 1 sản phẩm miễn phí",
+                    DiscountType = "BuyXGetY",
+                    DiscountValue = 0,
+                    RequiredQuantity = 2,
+                    GiftQuantity = 1,
+                    StartDate = DateTime.UtcNow.AddDays(-30),
+                    EndDate = DateTime.UtcNow.AddDays(365),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Promotion
+                {
+                    PromotionCode = "GIAM15NUOC",
+                    PromotionName = "Giảm 15% tất cả Nước giải khát",
+                    Description = "Áp dụng cho toàn bộ đồ uống và nước giải khát (Category 1)",
+                    DiscountType = "CategoryDiscount",
+                    DiscountValue = 15,
+                    TargetCategoryId = 1,
+                    StartDate = DateTime.UtcNow.AddDays(-30),
+                    EndDate = DateTime.UtcNow.AddDays(365),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Promotion
+                {
+                    PromotionCode = "SILE20",
+                    PromotionName = "Mua số lượng lớn: Từ 3 món giảm 20%",
+                    Description = "Khách hàng mua từ 3 đơn vị sản phẩm bất kỳ được chiết khấu 20%",
+                    DiscountType = "QuantityTier",
+                    DiscountValue = 20,
+                    RequiredQuantity = 3,
+                    StartDate = DateTime.UtcNow.AddDays(-30),
+                    EndDate = DateTime.UtcNow.AddDays(365),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Promotion
+                {
+                    PromotionCode = "COMBODENTAL",
+                    PromotionName = "Mua bàn chải giảm 50% kem đánh răng",
+                    Description = "Khuyến mãi Mua kèm / Combo: Mua Bàn chải Colgate giảm ngay 50% Kem đánh răng Colgate",
+                    DiscountType = "ComboDiscount",
+                    DiscountValue = 50,
+                    TriggerProductId = dbContext.Products.FirstOrDefault(p => p.Barcode == "8934588012991")?.ProductId,
+                    TargetProductId = dbContext.Products.FirstOrDefault(p => p.Barcode == "8934588012992")?.ProductId,
                     StartDate = DateTime.UtcNow.AddDays(-30),
                     EndDate = DateTime.UtcNow.AddDays(365),
                     IsActive = true,
@@ -572,6 +697,12 @@ public static class DbInitializer
                     ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     ""UpdatedAt"" TIMESTAMPTZ NULL
                 );
+
+                ALTER TABLE ""Promotions"" ADD COLUMN IF NOT EXISTS ""TriggerProductId"" INT NULL;
+                ALTER TABLE ""Promotions"" ADD COLUMN IF NOT EXISTS ""TargetCategoryId"" INT NULL;
+                ALTER TABLE ""Promotions"" ADD COLUMN IF NOT EXISTS ""TargetProductId"" INT NULL;
+                ALTER TABLE ""Promotions"" ADD COLUMN IF NOT EXISTS ""RequiredQuantity"" INT NULL;
+                ALTER TABLE ""Promotions"" ADD COLUMN IF NOT EXISTS ""GiftQuantity"" INT NULL;
 
                 CREATE TABLE IF NOT EXISTS ""OrderDetails"" (
                     ""OrderDetailId"" SERIAL PRIMARY KEY,
