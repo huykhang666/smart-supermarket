@@ -57,6 +57,15 @@ public class PromotionRepository : IPromotionRepository
         return (items, totalCount);
     }
 
+    public async Task<List<Promotion>> GetActivePromotionsAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        return await _dbContext.Promotions
+            .Where(p => p.IsActive && p.StartDate <= now && p.EndDate >= now)
+            .OrderByDescending(p => p.PromotionId)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Promotion promotion, CancellationToken cancellationToken = default)
     {
         await _dbContext.Promotions.AddAsync(promotion, cancellationToken);

@@ -135,17 +135,86 @@ public class OrderService : IOrderService
                 if (now >= promotion.StartDate && now <= promotion.EndDate
                     && totalAmount >= promotion.MinimumOrderAmount)
                 {
-                    if (promotion.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+                    switch (promotion.DiscountType)
                     {
-                        discountAmount = totalAmount * (promotion.DiscountValue / 100m);
-                        if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
-                        {
-                            discountAmount = promotion.MaximumDiscountAmount.Value;
-                        }
-                    }
-                    else
-                    {
-                        discountAmount = promotion.DiscountValue;
+                        case "Percentage":
+                            discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                            if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                            {
+                                discountAmount = promotion.MaximumDiscountAmount.Value;
+                            }
+                            break;
+
+                        case "FixedAmount":
+                            discountAmount = promotion.DiscountValue;
+                            break;
+
+                        case "BuyXGetY":
+                            int reqQty = promotion.RequiredQuantity.GetValueOrDefault(2);
+                            int giftQty = promotion.GiftQuantity.GetValueOrDefault(1);
+                            var eligibleDetails = promotion.TargetProductId.HasValue
+                                ? orderDetails.Where(od => od.ProductId == promotion.TargetProductId.Value)
+                                : orderDetails;
+                            foreach (var od in eligibleDetails)
+                            {
+                                int bundleSize = reqQty + giftQty;
+                                int freeUnits = (od.Quantity / bundleSize) * giftQty;
+                                if (freeUnits == 0 && od.Quantity >= reqQty)
+                                {
+                                    freeUnits = giftQty;
+                                }
+                                discountAmount += freeUnits * od.UnitPrice;
+                            }
+                            break;
+
+                        case "CategoryDiscount":
+                            if (promotion.TargetCategoryId.HasValue)
+                            {
+                                var catDetails = orderDetails.Where(od => products[od.ProductId].CategoryId == promotion.TargetCategoryId.Value).ToList();
+                                decimal catSubTotal = catDetails.Sum(od => od.SubTotal);
+                                discountAmount = catSubTotal * (promotion.DiscountValue / 100m);
+                                if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                                {
+                                    discountAmount = promotion.MaximumDiscountAmount.Value;
+                                }
+                            }
+                            else
+                            {
+                                discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                            }
+                            break;
+
+                        case "QuantityTier":
+                            int minTier = promotion.RequiredQuantity.GetValueOrDefault(3);
+                            var tierDetails = promotion.TargetProductId.HasValue
+                                ? orderDetails.Where(od => od.ProductId == promotion.TargetProductId.Value && od.Quantity >= minTier)
+                                : orderDetails.Where(od => od.Quantity >= minTier);
+                            foreach (var od in tierDetails)
+                            {
+                                discountAmount += od.SubTotal * (promotion.DiscountValue / 100m);
+                            }
+                            break;
+
+                        case "ComboDiscount":
+                            if (promotion.TriggerProductId.HasValue && promotion.TargetProductId.HasValue)
+                            {
+                                var trig = orderDetails.FirstOrDefault(od => od.ProductId == promotion.TriggerProductId.Value);
+                                var targ = orderDetails.FirstOrDefault(od => od.ProductId == promotion.TargetProductId.Value);
+                                if (trig != null && targ != null)
+                                {
+                                    int sets = Math.Min(trig.Quantity, targ.Quantity);
+                                    discountAmount = (sets * targ.UnitPrice) * (promotion.DiscountValue / 100m);
+                                    if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                                    {
+                                        discountAmount = promotion.MaximumDiscountAmount.Value;
+                                    }
+                                }
+                            }
+                            break;
+
+                        default:
+                            discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                            break;
                     }
 
                     if (discountAmount > totalAmount)

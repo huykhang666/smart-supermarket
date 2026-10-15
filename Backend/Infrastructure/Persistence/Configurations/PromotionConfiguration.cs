@@ -20,6 +20,10 @@ public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(p => p.DiscountType)
+            .HasMaxLength(50)
+            .IsRequired();
+
         builder.Property(p => p.DiscountValue)
             .HasColumnType("decimal(18,2)");
 
@@ -28,5 +32,20 @@ public class PromotionConfiguration : IEntityTypeConfiguration<Promotion>
 
         builder.Property(p => p.MaximumDiscountAmount)
             .HasColumnType("decimal(18,2)");
+
+        builder.Property(p => p.TriggerProductId)
+            .IsRequired(false);
+
+        builder.Property(p => p.TargetCategoryId)
+            .IsRequired(false);
+
+        builder.Property(p => p.TargetProductId)
+            .IsRequired(false);
+
+        builder.Property(p => p.RequiredQuantity)
+            .IsRequired(false);
+
+        builder.Property(p => p.GiftQuantity)
+            .IsRequired(false);
     }
 }
