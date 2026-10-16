@@ -1,8 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/api/admin/users/3"
-method: DELETE
-auth:
-  type: bearer
-  credentials:
-    token: "{{authToken}}"
-order: 4000

@@ -61,6 +61,9 @@ public static class DependencyInjection
         services.AddHttpClient<GroqClient>();
         services.AddScoped<ILlmClient, GroqClient>();
         services.AddScoped<IAiRetailService, AiRetailService>();
+        services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IShelfLifeProcessor, SmartSupermarket.Backend.Features.Inventory.Services.ShelfLifeProcessor>();
+        services.AddHostedService<SmartSupermarket.Backend.Features.Inventory.BackgroundServices.ShelfLifeBackgroundService>();
 
         // Module 05_Inventory
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IInventoryRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.InventoryRepository>();
