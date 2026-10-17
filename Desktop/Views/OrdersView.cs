@@ -26,6 +26,13 @@ public class OrdersView : UserControl
     public OrdersView()
     {
         InitializeComponent();
+        this.VisibleChanged += (s, e) =>
+        {
+            if (this.Visible)
+            {
+                _ = LoadOrdersAsync();
+            }
+        };
         _ = LoadOrdersAsync();
     }
 

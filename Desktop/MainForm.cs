@@ -309,6 +309,7 @@ public class MainForm : Form
         pnlSidebar.Controls.Add(btnNavPromotions);
         pnlSidebar.Controls.Add(btnNavCustomers);
         pnlSidebar.Controls.Add(btnNavOrders);
+        pnlSidebar.Controls.Add(btnNavPosScan);
         pnlSidebar.Controls.Add(btnNavInventory);
         pnlSidebar.Controls.Add(btnNavImport);
         pnlSidebar.Controls.Add(btnNavSuppliers);

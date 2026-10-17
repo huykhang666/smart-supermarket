@@ -9,6 +9,7 @@ public class OrderDto
     public string? EmployeeName { get; set; }
     public int? CustomerId { get; set; }
     public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
     public int BranchId { get; set; }
     public DateTime OrderDate { get; set; }
     public decimal TotalAmount { get; set; }
