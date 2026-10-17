@@ -47,6 +47,8 @@ public static class InvoicePdfService
     static InvoicePdfService()
     {
         QuestPDF.Settings.License = LicenseType.Community;
+        QuestPDF.Settings.UseSystemFonts = true;
+        QuestPDF.Settings.ThrowOnMissingFontFamilies = false;
     }
 
     public static string GenerateInvoicePdf(InvoicePrintModel model, string? targetFolder = null)
@@ -68,7 +70,7 @@ public static class InvoicePdfService
                 page.Size(PageSizes.A5);
                 page.Margin(18, Unit.Millimetre);
                 page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontFamily("Segoe UI").FontSize(9.5f).FontColor(Colors.Grey.Darken3));
+                page.DefaultTextStyle(x => x.FontFamily("Lato").FontSize(9.5f).FontColor(Colors.Grey.Darken3));
 
                 page.Header().Element(c => ComposeHeader(c, model));
                 page.Content().Element(c => ComposeContent(c, model));
