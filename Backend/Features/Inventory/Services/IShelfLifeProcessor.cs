@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
-using SmartSupermarket.Backend.Features.Inventory.DTOs;
+using SmartSupermarket.Backend.Features.Inventory.DTOs.Requests;
+using SmartSupermarket.Backend.Features.Inventory.DTOs.Responses;
 
 namespace SmartSupermarket.Backend.Features.Inventory.Services;
 
@@ -13,8 +14,10 @@ public interface IShelfLifeProcessor
     /// Thực hiện quét hạn sử dụng:
     /// - Hàng <= 3 ngày: Tự động giảm giá 30%
     /// - Hàng <= 1 ngày: Tự động giảm giá 50%
-    /// - Hàng đã quá hạn: Khóa bán (Lock sales), đánh dấu Expired, sẵn sàng hủy kho
+    /// - Hàng đã quá hạn: Khóa bán (Lock sales), đánh dấu Expired
     /// - Hàng tươi sống sau 18h: Tự động kích hoạt Flash Sale chiều tối (giảm 20%)
     /// </summary>
-    Task<ShelfLifeScanResultDto> ExecuteShelfLifeAndPricingScanAsync(bool isEveningFlashSale = false, CancellationToken cancellationToken = default);
+    Task<ShelfLifeScanResponse> ExecuteShelfLifeAndPricingScanAsync(
+        ShelfLifeScanRequest request, 
+        CancellationToken cancellationToken = default);
 }
