@@ -347,4 +347,71 @@ public class OrderServiceTests
             It.Is<PointHistory>(p => p.CustomerId == 10 && p.OrderId == 1 && p.PointChange == -25 && p.Type == 3),
             default), Times.Once);
     }
+
+    // =========================================================
+    // GenerateInvoicePdfAsync
+    // =========================================================
+
+    [Fact]
+    public async Task GenerateInvoicePdfAsync_WhenOrderExists_ShouldReturnValidPdfBytes()
+    {
+        // Arrange
+        var order = new Order
+        {
+            OrderId = 101,
+            EmployeeId = 1,
+            CustomerId = null,
+            BranchId = 1,
+            TotalAmount = 30000m,
+            DiscountAmount = 0m,
+            FinalAmount = 30000m,
+            Status = OrderStatus.Completed,
+            OrderDate = DateTime.UtcNow,
+            OrderDetails = new List<OrderDetail>
+            {
+                new OrderDetail
+                {
+                    OrderDetailId = 1,
+                    ProductId = 1,
+                    Quantity = 2,
+                    UnitPrice = 15000m,
+                    SubTotal = 30000m
+                }
+            },
+            Payments = new List<Payment>
+            {
+                new Payment
+                {
+                    PaymentId = 1,
+                    PaymentMethod = PaymentMethod.Cash,
+                    AmountPaid = 30000m,
+                    PaymentDate = DateTime.UtcNow
+                }
+            }
+        };
+
+        _mockOrderRepo.Setup(r => r.GetByIdAsync(101, default)).ReturnsAsync(order);
+
+        // Act
+        var pdfBytes = await _orderService.GenerateInvoicePdfAsync(101);
+
+        // Assert
+        Assert.NotNull(pdfBytes);
+        Assert.True(pdfBytes.Length > 0);
+        // PDF header magic bytes %PDF
+        Assert.Equal((byte)'%', pdfBytes[0]);
+        Assert.Equal((byte)'P', pdfBytes[1]);
+        Assert.Equal((byte)'D', pdfBytes[2]);
+        Assert.Equal((byte)'F', pdfBytes[3]);
+    }
+
+    [Fact]
+    public async Task GenerateInvoicePdfAsync_WhenOrderNotFound_ShouldThrowKeyNotFoundException()
+    {
+        // Arrange
+        _mockOrderRepo.Setup(r => r.GetByIdAsync(999, default)).ReturnsAsync((Order?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _orderService.GenerateInvoicePdfAsync(999));
+    }
 }

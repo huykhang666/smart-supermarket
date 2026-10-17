@@ -17,19 +17,22 @@ public class OrderService : IOrderService
     private readonly IPromotionRepository _promotionRepository;
     private readonly ICustomerRepository _customerRepository;
     private readonly AppDbContext _dbContext;
+    private readonly IInvoicePdfService _invoicePdfService;
 
     public OrderService(
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
         IPromotionRepository promotionRepository,
         ICustomerRepository customerRepository,
-        AppDbContext dbContext)
+        AppDbContext dbContext,
+        IInvoicePdfService? invoicePdfService = null)
     {
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
         _promotionRepository = promotionRepository;
         _customerRepository = customerRepository;
         _dbContext = dbContext;
+        _invoicePdfService = invoicePdfService ?? new InvoicePdfService();
     }
 
     public async Task<OrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -460,12 +463,14 @@ public class OrderService : IOrderService
         }
 
         string? customerName = null;
+        string? customerPhone = null;
         if (order.CustomerId.HasValue)
         {
             var customer = await _dbContext.Customers
                 .Include(c => c.User)
                 .FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId.Value, cancellationToken);
             customerName = customer?.User?.FullName;
+            customerPhone = customer?.User?.PhoneNumber;
         }
 
         var detailDtos = order.OrderDetails.Select(od =>
@@ -507,6 +512,7 @@ public class OrderService : IOrderService
             EmployeeName = employeeName,
             CustomerId = order.CustomerId,
             CustomerName = customerName,
+            CustomerPhone = customerPhone,
             BranchId = order.BranchId,
             OrderDate = order.OrderDate,
             TotalAmount = order.TotalAmount,
@@ -519,5 +525,16 @@ public class OrderService : IOrderService
             Payments = paymentDtos,
             AppliedPromotions = promotionDtos
         };
+    }
+
+    public async Task<byte[]> GenerateInvoicePdfAsync(int orderId, CancellationToken cancellationToken = default)
+    {
+        var order = await GetByIdAsync(orderId, cancellationToken);
+        if (order == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy đơn hàng có ID = {orderId}");
+        }
+
+        return _invoicePdfService.GenerateInvoicePdf(order);
     }
 }

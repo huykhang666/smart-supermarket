@@ -168,3 +168,83 @@ export interface Category {
   categoryId: number;
   categoryName: string;
 }
+
+export type OrderStatus = 'Completed' | 'Cancelled' | 'Pending';
+
+export type PaymentMethodType = 'Cash' | 'QRCode' | 'CreditCard' | number;
+
+export interface OrderDetail {
+  orderDetailId: number;
+  orderId: number;
+  productId: number;
+  productName: string;
+  barcode: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  subTotal: number;
+}
+
+export interface OrderPromotion {
+  orderPromotionId: number;
+  promotionId: number;
+  discountAmount: number;
+}
+
+export interface Payment {
+  paymentId: number;
+  paymentMethod: PaymentMethodType;
+  amountPaid: number;
+  paymentDate: string;
+}
+
+export interface Order {
+  orderId: number;
+  employeeId: number;
+  employeeName?: string;
+  customerId?: number;
+  customerName?: string;
+  customerPhone?: string;
+  branchId: number;
+  orderDate: string;
+  totalAmount: number;
+  discountAmount: number;
+  voucherId?: number;
+  finalAmount: number;
+  status: OrderStatus | number;
+  paymentMethod: PaymentMethodType;
+  orderDetails: OrderDetail[];
+  appliedPromotions: OrderPromotion[];
+  payments: Payment[];
+}
+
+export interface CreateOrderDetailRequest {
+  productId: number;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CreatePaymentRequest {
+  paymentMethod: number;
+  amountPaid: number;
+}
+
+export interface CreateOrderRequest {
+  employeeId: number;
+  customerId?: number;
+  branchId: number;
+  voucherId?: number;
+  promotionCode?: string;
+  paymentMethod?: number;
+  payments?: CreatePaymentRequest[];
+  items: CreateOrderDetailRequest[];
+}
+
+export interface OrderPagedResult {
+  items: Order[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+

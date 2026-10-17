@@ -7,6 +7,7 @@ export const Navbar: React.FC = () => {
       <h1>Smart Supermarket</h1>
       <nav>
         <Link to="/">Trang chủ</Link>
+        <Link to="/orders">Đơn hàng & Hóa đơn</Link>
         <Link to="/cart">Giỏ hàng</Link>
         <Link to="/promotions">Khuyến mãi</Link>
         <a href="/profile">Thẻ thành viên</a>
