@@ -1362,7 +1362,7 @@ public class PosScanView : UserControl
             ? $"• Hóa đơn PDF: Đã xuất & mở xem trước tại:\n  {pdfPath}\n\n"
             : "";
 
-        MessageBox.Show(
+        var dialogRes = MessageBox.Show(
             $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ!\n\n" +
             $"• Mã hóa đơn: {orderRecord.OrderCode}\n" +
             $"• Khách hàng: {orderRecord.CustomerName}\n" +
@@ -1370,8 +1370,9 @@ public class PosScanView : UserControl
             $"• Hình thức: {methodStr}\n" +
             $"• Điểm cộng thêm: +{Math.Round(grandTotal / 10000):N0} điểm\n\n" +
             pdfInfo +
-            $"Đã lưu CSDL và cập nhật realtime trên hệ thống.",
-            "Thanh toán thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            $"Đã lưu CSDL và cập nhật realtime trên hệ thống.\n\n" +
+            $"👉 Bạn có muốn chuyển sang màn hình 'Quản Lý Đơn Hàng' để xem chi tiết ngay bây giờ không?",
+            "Thanh toán thành công", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
 
         _cart.Clear();
         _appliedDiscountAmount = 0m;
@@ -1380,6 +1381,14 @@ public class PosScanView : UserControl
         txtVoucherCode.Clear();
         lblVoucherStatus.Text = "";
         RefreshCartGrid();
+
+        if (dialogRes == DialogResult.Yes)
+        {
+            if (this.FindForm() is MainForm mainForm)
+            {
+                mainForm.NavigateToOrders();
+            }
+        }
     }
 
     private class CatalogProduct

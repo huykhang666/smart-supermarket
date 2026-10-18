@@ -138,6 +138,8 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
         btn.Cursor = Cursors.Hand;
+        btn.Padding = new Padding(12, 4, 12, 4);
+        btn.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) => btn.BackColor = PrimaryHover;
@@ -165,6 +167,8 @@ public static class AppTheme
         btn.FlatAppearance.BorderSize = 1;
         btn.FlatAppearance.BorderColor = BorderLight;
         btn.Cursor = Cursors.Hand;
+        btn.Padding = new Padding(12, 4, 12, 4);
+        btn.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) => btn.BackColor = PrimarySubtle;
@@ -202,6 +206,8 @@ public static class AppTheme
         btn.FlatStyle = FlatStyle.Flat;
         btn.FlatAppearance.BorderSize = 0;
         btn.Cursor = Cursors.Hand;
+        btn.Padding = new Padding(12, 4, 12, 4);
+        btn.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(0xA4, 0x26, 0x1C);

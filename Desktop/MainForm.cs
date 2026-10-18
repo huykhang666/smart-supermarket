@@ -523,6 +523,14 @@ public class MainForm : Form
         pnlContent.Controls.Add(view);
     }
 
+    public void NavigateToOrders()
+    {
+        if (btnNavOrders != null)
+        {
+            SelectNavButton(btnNavOrders, _ordersView);
+        }
+    }
+
     private Form? _notificationPopup;
 
     private void ShowNotificationPopup()
