@@ -37,6 +37,9 @@
     <Compile Update="Views\CreateImportReceiptForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\CreateStockAuditForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\CustomersView.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -78,6 +81,9 @@
     </Compile>
     <Compile Update="Views\ReportsView.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\SelectLossReasonForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\SettingsView.cs">
       <SubType>UserControl</SubType>

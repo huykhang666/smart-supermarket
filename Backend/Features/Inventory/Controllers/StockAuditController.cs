@@ -17,6 +17,13 @@ public class StockAuditController : ControllerBase
         _stockAuditService = stockAuditService;
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetAuditList([FromQuery] string? status, [FromQuery] string? zone)
+    {
+        var result = await _stockAuditService.GetAuditListAsync(status, zone);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateAudit([FromBody] CreateStockAuditRequest request)
     {
@@ -27,21 +34,56 @@ public class StockAuditController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetAudit(Guid id)
     {
-        var result = await _stockAuditService.GetAuditAsync(id);
-        return Ok(result);
+        try
+        {
+            var result = await _stockAuditService.GetAuditAsync(id);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPost("{id}/details")]
     public async Task<IActionResult> SaveAuditDetail(Guid id, [FromBody] SaveAuditDetailRequest request)
     {
-        var result = await _stockAuditService.SaveAuditDetailAsync(id, request);
-        return Ok(result);
+        try
+        {
+            var result = await _stockAuditService.SaveAuditDetailAsync(id, request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("{id}/complete")]
     public async Task<IActionResult> CompleteAudit(Guid id)
     {
-        var result = await _stockAuditService.CompleteAuditAsync(id);
-        return Ok(result);
+        try
+        {
+            var result = await _stockAuditService.CompleteAuditAsync(id);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/reconcile")]
+    public async Task<IActionResult> ReconcileAudit(Guid id, [FromBody] ReconcileStockAuditRequest request)
+    {
+        try
+        {
+            var result = await _stockAuditService.ReconcileAuditAsync(id, request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }
