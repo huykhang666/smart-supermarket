@@ -1,7 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using SmartSupermarket.Backend.Domain.Entities;
 using SmartSupermarket.Backend.Domain.Enums;
 
-namespace SmartSupermarket.Backend.Features.Inventory.Services;
+namespace SmartSupermarket.Backend.Features.Inventory.Services.Interfaces;
 
 public interface IInventoryService
 {

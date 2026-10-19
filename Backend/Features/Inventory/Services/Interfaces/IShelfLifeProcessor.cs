@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using SmartSupermarket.Backend.Features.Inventory.DTOs.Requests;
 using SmartSupermarket.Backend.Features.Inventory.DTOs.Responses;
 
-namespace SmartSupermarket.Backend.Features.Inventory.Services;
+namespace SmartSupermarket.Backend.Features.Inventory.Services.Interfaces;
 
 /// <summary>
 /// Giao diện xử lý quét tự động hạn sử dụng & chiến lược giá động (Dynamic Pricing & Shelf-life Engine).

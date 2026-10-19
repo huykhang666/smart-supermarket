@@ -1,22 +1,6 @@
 using System;
 
-namespace SmartSupermarket.Backend.Features.Inventory.DTOs;
-
-public class CreateDiscountRuleRequest
-{
-    public int DaysBeforeExpiry { get; set; }
-    public decimal DiscountPercent { get; set; }
-    public bool IsActive { get; set; } = true;
-    public string? Description { get; set; }
-}
-
-public class UpdateDiscountRuleRequest
-{
-    public int DaysBeforeExpiry { get; set; }
-    public decimal DiscountPercent { get; set; }
-    public bool IsActive { get; set; }
-    public string? Description { get; set; }
-}
+namespace SmartSupermarket.Backend.Features.Inventory.DTOs.Responses;
 
 public class ExpiringProductDto
 {

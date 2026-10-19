@@ -1,4 +1,4 @@
-namespace SmartSupermarket.Backend.Features.Inventory.DTOs;
+namespace SmartSupermarket.Backend.Features.Inventory.DTOs.Requests;
 
 public class StockAdjustRequest
 {

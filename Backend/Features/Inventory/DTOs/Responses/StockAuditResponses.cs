@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SmartSupermarket.Backend.Features.Inventory.DTOs;
+namespace SmartSupermarket.Backend.Features.Inventory.DTOs.Responses;
 
 public class StockAuditDTO
 {
@@ -22,17 +22,4 @@ public class StockAuditDetailDTO
     public int SystemQty { get; set; }
     public int ActualQty { get; set; }
     public int VarianceQty { get; set; }
-}
-
-public class CreateStockAuditRequest
-{
-    public string CreatedBy { get; set; } = string.Empty;
-    public string Zone { get; set; } = string.Empty;
-    public string Notes { get; set; } = string.Empty;
-}
-
-public class SaveAuditDetailRequest
-{
-    public string Barcode { get; set; } = string.Empty;
-    public int ActualQty { get; set; }
 }
