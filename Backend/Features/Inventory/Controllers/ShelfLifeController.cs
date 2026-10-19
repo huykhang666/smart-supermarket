@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using SmartSupermarket.Backend.Common.Results;
 using SmartSupermarket.Backend.Features.Inventory.DTOs.Requests;
 using SmartSupermarket.Backend.Features.Inventory.DTOs.Responses;
-using SmartSupermarket.Backend.Features.Inventory.Services;
+using SmartSupermarket.Backend.Features.Inventory.Services.Interfaces;
 
 namespace SmartSupermarket.Backend.Features.Inventory.Controllers;
 
@@ -20,16 +20,15 @@ public class ShelfLifeController : ControllerBase
         _shelfLifeProcessor = shelfLifeProcessor;
     }
 
-    /// <summary>
-    /// Kích hoạt quét hạn sử dụng & điều chỉnh giá tự động (Manual Trigger dành cho Demo / Quản trị viên).
-    /// </summary>
     [HttpPost("trigger-scan")]
-    [AllowAnonymous] // Phục vụ chạy thử nghiệm và demo kiểm thử
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResult<ShelfLifeScanResponse>>> TriggerScan(
         [FromBody] ShelfLifeScanRequest? request,
         CancellationToken cancellationToken = default)
     {
+        // Gán mặc định nếu client không gửi body
         request ??= new ShelfLifeScanRequest();
+
         var result = await _shelfLifeProcessor.ExecuteShelfLifeAndPricingScanAsync(request, cancellationToken);
         return Ok(ApiResult<ShelfLifeScanResponse>.Success(result, "Kích hoạt quét hạn sử dụng và điều chỉnh giá thành công."));
     }
