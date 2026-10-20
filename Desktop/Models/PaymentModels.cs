@@ -30,8 +30,8 @@ public enum PaymentStatus
 public static class BankConfig
 {
     public const string BankCode = "MB";
-    public const string AccountNumber = "0331000123456";
-    public const string AccountName = "SMART SUPERMARKET";
+    public const string AccountNumber = "0842573858";
+    public const string AccountName = "PHAM TRUNG KIEN";
 }
 
 /// <summary>
