@@ -17,19 +17,22 @@ public class OrderService : IOrderService
     private readonly IPromotionRepository _promotionRepository;
     private readonly ICustomerRepository _customerRepository;
     private readonly AppDbContext _dbContext;
+    private readonly IInvoicePdfService _invoicePdfService;
 
     public OrderService(
         IOrderRepository orderRepository,
         IInventoryRepository inventoryRepository,
         IPromotionRepository promotionRepository,
         ICustomerRepository customerRepository,
-        AppDbContext dbContext)
+        AppDbContext dbContext,
+        IInvoicePdfService? invoicePdfService = null)
     {
         _orderRepository = orderRepository;
         _inventoryRepository = inventoryRepository;
         _promotionRepository = promotionRepository;
         _customerRepository = customerRepository;
         _dbContext = dbContext;
+        _invoicePdfService = invoicePdfService ?? new InvoicePdfService();
     }
 
     public async Task<OrderDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -136,17 +139,86 @@ public class OrderService : IOrderService
                 if (now >= promotion.StartDate && now <= promotion.EndDate
                     && totalAmount >= promotion.MinimumOrderAmount)
                 {
-                    if (promotion.DiscountType.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+                    switch (promotion.DiscountType)
                     {
-                        discountAmount = totalAmount * (promotion.DiscountValue / 100m);
-                        if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
-                        {
-                            discountAmount = promotion.MaximumDiscountAmount.Value;
-                        }
-                    }
-                    else
-                    {
-                        discountAmount = promotion.DiscountValue;
+                        case "Percentage":
+                            discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                            if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                            {
+                                discountAmount = promotion.MaximumDiscountAmount.Value;
+                            }
+                            break;
+
+                        case "FixedAmount":
+                            discountAmount = promotion.DiscountValue;
+                            break;
+
+                        case "BuyXGetY":
+                            int reqQty = promotion.RequiredQuantity.GetValueOrDefault(2);
+                            int giftQty = promotion.GiftQuantity.GetValueOrDefault(1);
+                            var eligibleDetails = promotion.TargetProductId.HasValue
+                                ? orderDetails.Where(od => od.ProductId == promotion.TargetProductId.Value)
+                                : orderDetails;
+                            foreach (var od in eligibleDetails)
+                            {
+                                int bundleSize = reqQty + giftQty;
+                                int freeUnits = (od.Quantity / bundleSize) * giftQty;
+                                if (freeUnits == 0 && od.Quantity >= reqQty)
+                                {
+                                    freeUnits = giftQty;
+                                }
+                                discountAmount += freeUnits * od.UnitPrice;
+                            }
+                            break;
+
+                        case "CategoryDiscount":
+                            if (promotion.TargetCategoryId.HasValue)
+                            {
+                                var catDetails = orderDetails.Where(od => products[od.ProductId].CategoryId == promotion.TargetCategoryId.Value).ToList();
+                                decimal catSubTotal = catDetails.Sum(od => od.SubTotal);
+                                discountAmount = catSubTotal * (promotion.DiscountValue / 100m);
+                                if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                                {
+                                    discountAmount = promotion.MaximumDiscountAmount.Value;
+                                }
+                            }
+                            else
+                            {
+                                discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                            }
+                            break;
+
+                        case "QuantityTier":
+                            int minTier = promotion.RequiredQuantity.GetValueOrDefault(3);
+                            var tierDetails = promotion.TargetProductId.HasValue
+                                ? orderDetails.Where(od => od.ProductId == promotion.TargetProductId.Value && od.Quantity >= minTier)
+                                : orderDetails.Where(od => od.Quantity >= minTier);
+                            foreach (var od in tierDetails)
+                            {
+                                discountAmount += od.SubTotal * (promotion.DiscountValue / 100m);
+                            }
+                            break;
+
+                        case "ComboDiscount":
+                            if (promotion.TriggerProductId.HasValue && promotion.TargetProductId.HasValue)
+                            {
+                                var trig = orderDetails.FirstOrDefault(od => od.ProductId == promotion.TriggerProductId.Value);
+                                var targ = orderDetails.FirstOrDefault(od => od.ProductId == promotion.TargetProductId.Value);
+                                if (trig != null && targ != null)
+                                {
+                                    int sets = Math.Min(trig.Quantity, targ.Quantity);
+                                    discountAmount = (sets * targ.UnitPrice) * (promotion.DiscountValue / 100m);
+                                    if (promotion.MaximumDiscountAmount.HasValue && discountAmount > promotion.MaximumDiscountAmount.Value)
+                                    {
+                                        discountAmount = promotion.MaximumDiscountAmount.Value;
+                                    }
+                                }
+                            }
+                            break;
+
+                        default:
+                            discountAmount = totalAmount * (promotion.DiscountValue / 100m);
+                            break;
                     }
 
                     if (discountAmount > totalAmount)
@@ -392,12 +464,14 @@ public class OrderService : IOrderService
         }
 
         string? customerName = null;
+        string? customerPhone = null;
         if (order.CustomerId.HasValue)
         {
             var customer = await _dbContext.Customers
                 .Include(c => c.User)
                 .FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId.Value, cancellationToken);
             customerName = customer?.User?.FullName;
+            customerPhone = customer?.User?.PhoneNumber;
         }
 
         var detailDtos = order.OrderDetails.Select(od =>
@@ -439,6 +513,7 @@ public class OrderService : IOrderService
             EmployeeName = employeeName,
             CustomerId = order.CustomerId,
             CustomerName = customerName,
+            CustomerPhone = customerPhone,
             BranchId = order.BranchId,
             OrderDate = order.OrderDate,
             TotalAmount = order.TotalAmount,
@@ -451,5 +526,16 @@ public class OrderService : IOrderService
             Payments = paymentDtos,
             AppliedPromotions = promotionDtos
         };
+    }
+
+    public async Task<byte[]> GenerateInvoicePdfAsync(int orderId, CancellationToken cancellationToken = default)
+    {
+        var order = await GetByIdAsync(orderId, cancellationToken);
+        if (order == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy đơn hàng có ID = {orderId}");
+        }
+
+        return _invoicePdfService.GenerateInvoicePdf(order);
     }
 }

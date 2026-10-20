@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Desktop.Services;
+using Serilog;
 
 namespace Desktop.Views;
 
@@ -21,12 +25,26 @@ public class OrdersView : UserControl
     private Button btnExportExcel = null!;
     private Button btnCancel = null!;
     private Label lblStatus = null!;
+    private ProgressBar progressBar = null!;
+    private DateTimePicker dtpFrom = null!;
+    private DateTimePicker dtpTo = null!;
+    private Button btnFilter = null!;
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
+
+    // Store loaded order data for Excel export
+    private readonly List<OrderExportRow> _loadedOrders = new();
 
     public OrdersView()
     {
         InitializeComponent();
+        this.VisibleChanged += (s, e) =>
+        {
+            if (this.Visible)
+            {
+                _ = LoadOrdersAsync();
+            }
+        };
         _ = LoadOrdersAsync();
     }
 
@@ -66,19 +84,19 @@ public class OrdersView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlToolbar);
 
-        btnPos = new Button { Text = "🛒 Bán Hàng (POS)", Size = new Size(150, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnPos = new Button { Text = "🛒 Bán Hàng", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplyPrimaryButton(btnPos);
         btnPos.Click += BtnPos_Click;
 
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(95, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnRefresh = new Button { Text = "🔄 Tải lại", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnRefresh, "Đang tải...", () => LoadOrdersAsync());
 
-        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", Size = new Size(130, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnViewDetail);
         btnViewDetail.Click += BtnViewDetail_Click;
 
-        btnExportPdf = new Button { Text = "🖨️ In / Xuất PDF", Size = new Size(135, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnExportPdf = new Button { Text = "🖨️ In / Xuất PDF", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplyPrimaryButton(btnExportPdf);
         btnExportPdf.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnExportPdf, "Đang tạo PDF...", () => ExportSelectedOrderPdfAsync());
 
@@ -86,7 +104,11 @@ public class OrdersView : UserControl
         AppTheme.ApplySuccessButton(btnExportExcel);
         btnExportExcel.Click += (s, e) => AppTheme.ExecuteWithLoading(btnExportExcel, "Đang xuất...", () => ExcelExportService.ExportDataGridViewToExcel(dgvOrders, "Lịch Sử Đơn Hàng POS", "LichSuDonHang"));
 
-        btnCancel = new Button { Text = "❌ Hủy Đơn", Size = new Size(110, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnExportExcel = new Button { Text = "📊 Xuất Excel", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
+        AppTheme.ApplyPrimaryButton(btnExportExcel);
+        btnExportExcel.Click += BtnExportExcel_Click;
+
+        btnCancel = new Button { Text = "❌ Hủy Đơn", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplyDangerButton(btnCancel);
         btnCancel.Click += BtnCancel_Click;
 
@@ -95,7 +117,7 @@ public class OrdersView : UserControl
             Text = "Sẵn sàng",
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.TextSecondary,
-            Margin = new Padding(8, 6, 0, 4),
+            Margin = new Padding(6, 6, 0, 4),
             AutoSize = true
         };
 
@@ -105,7 +127,34 @@ public class OrdersView : UserControl
         pnlToolbar.Controls.Add(btnExportPdf);
         pnlToolbar.Controls.Add(btnExportExcel);
         pnlToolbar.Controls.Add(btnCancel);
+
+        // Date Filter controls inside Toolbar
+        var lblFrom = new Label { Text = "  📅 Từ:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(12, 8, 4, 0) };
+        dtpFrom = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 130, Value = DateTime.Today.AddMonths(-3), Font = AppTheme.FontBody, Margin = new Padding(0, 3, 4, 0) };
+        var lblTo = new Label { Text = "Đến:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(6, 8, 4, 0) };
+        dtpTo = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 130, Value = DateTime.Today.AddDays(1), Font = AppTheme.FontBody, Margin = new Padding(0, 3, 4, 0) };
+        btnFilter = new Button { Text = "🔍 Lọc", AutoSize = true, Margin = new Padding(4, 0, 8, 4) };
+        AppTheme.ApplySecondaryButton(btnFilter);
+        btnFilter.Click += async (s, e) => await LoadOrdersAsync();
+
+        pnlToolbar.Controls.Add(lblFrom);
+        pnlToolbar.Controls.Add(dtpFrom);
+        pnlToolbar.Controls.Add(lblTo);
+        pnlToolbar.Controls.Add(dtpTo);
+        pnlToolbar.Controls.Add(btnFilter);
         pnlToolbar.Controls.Add(lblStatus);
+
+        // === PROGRESS BAR ===
+        progressBar = new ProgressBar
+        {
+            Dock = DockStyle.Top,
+            Height = 5,
+            Minimum = 0,
+            Maximum = 100,
+            Value = 0,
+            Style = ProgressBarStyle.Continuous,
+            Visible = false
+        };
 
         var pnlGrid = new Panel
         {
@@ -153,8 +202,41 @@ public class OrdersView : UserControl
         pnlGrid.Controls.Add(dgvOrders);
 
         this.Controls.Add(pnlGrid);
+        this.Controls.Add(progressBar);
         this.Controls.Add(pnlToolbar);
         this.Controls.Add(pnlHeader);
+
+        // === KEYBOARD SHORTCUTS ===
+        this.ParentChanged += (s, e) =>
+        {
+            var form = this.FindForm();
+            if (form != null)
+            {
+                form.KeyPreview = true;
+                form.KeyDown += OrdersView_KeyDown;
+            }
+        };
+    }
+
+    private void OrdersView_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!this.Visible) return;
+
+        if (e.KeyCode == Keys.F5)
+        {
+            e.Handled = true;
+            _ = LoadOrdersAsync();
+        }
+        else if (e.Control && e.KeyCode == Keys.E)
+        {
+            e.Handled = true;
+            BtnExportExcel_Click(this, EventArgs.Empty);
+        }
+        else if (e.Control && e.KeyCode == Keys.P)
+        {
+            e.Handled = true;
+            BtnExportPdf_Click(this, EventArgs.Empty);
+        }
     }
 
     private void BtnPos_Click(object? sender, EventArgs e)
@@ -180,10 +262,11 @@ public class OrdersView : UserControl
     {
         lblStatus.Text = "Đang tải...";
         dgvOrders.Rows.Clear();
+        _loadedOrders.Clear();
 
         try
         {
-            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/orders?page=1&pageSize=50");
+            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/orders?page=1&pageSize=100");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -195,6 +278,9 @@ public class OrdersView : UserControl
                     var itemsProp = data.TryGetProperty("items", out var items) ? items : data;
                     if (itemsProp.ValueKind == JsonValueKind.Array)
                     {
+                        var fromDate = dtpFrom?.Value.Date ?? DateTime.MinValue;
+                        var toDate = (dtpTo?.Value.Date ?? DateTime.MaxValue).AddDays(1).AddTicks(-1);
+
                         foreach (var item in itemsProp.EnumerateArray())
                         {
                             int id = item.GetProperty("orderId").GetInt32();
@@ -207,28 +293,198 @@ public class OrdersView : UserControl
                             decimal final_ = item.GetProperty("finalAmount").GetDecimal();
                             int payInt = item.TryGetProperty("paymentMethod", out var pm) ? pm.GetInt32() : 1;
                             string payStr = payInt == 2 ? "📱 VietQR" : payInt == 3 ? "💳 Thẻ POS" : "💵 Tiền Mặt";
-                            string orderDate = item.TryGetProperty("orderDate", out var od)
-                                ? DateTime.Parse(od.GetString() ?? DateTime.UtcNow.ToString()).ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                                : "-";
+                            
+                            DateTime orderDt = DateTime.UtcNow;
+                            if (item.TryGetProperty("orderDate", out var od) && od.GetString() is { } odStr)
+                            {
+                                if (DateTime.TryParse(odStr, out var parsedDt))
+                                    orderDt = parsedDt.ToLocalTime();
+                            }
+
+                            // Filter by date range if pickers are initialized
+                            if (dtpFrom != null && dtpTo != null)
+                            {
+                                if (orderDt < fromDate || orderDt > toDate)
+                                    continue;
+                            }
+
+                            string orderDateStr = orderDt.ToString("dd/MM/yyyy HH:mm");
                             int statusInt = item.TryGetProperty("status", out var st) ? st.GetInt32() : 1;
                             string statusStr = statusInt == 2 ? "❌ Đã Hủy" : "✅ Hoàn Thành";
 
                             dgvOrders.Rows.Add(
                                 $"ORD-{id:D5}", cust, emp,
                                 $"{total:N0} ₫", discount > 0 ? $"-{discount:N0} ₫" : "-",
-                                $"{final_:N0} ₫", payStr, orderDate, statusStr, id
+                                $"{final_:N0} ₫", payStr, orderDateStr, statusStr, id
                             );
+
+                            _loadedOrders.Add(new OrderExportRow
+                            {
+                                OrderId = id,
+                                OrderCode = $"ORD-{id:D5}",
+                                CustomerName = cust,
+                                EmployeeName = emp,
+                                TotalAmount = total,
+                                DiscountAmount = discount,
+                                FinalAmount = final_,
+                                PaymentMethod = payStr,
+                                OrderDate = orderDt,
+                                Status = statusStr
+                            });
                         }
-                        lblStatus.Text = $"Đã tải {dgvOrders.Rows.Count} đơn hàng.";
-                        return;
                     }
                 }
             }
-            lblStatus.Text = "Không có dữ liệu hoặc API offline.";
+
+            // Fallback: If Backend DB has no orders or offline, load orders from POS DataStore
+            if (dgvOrders.Rows.Count == 0 && DataStore.Orders.Count > 0)
+            {
+                var fromDate = dtpFrom?.Value.Date ?? DateTime.MinValue;
+                var toDate = (dtpTo?.Value.Date ?? DateTime.MaxValue).AddDays(1).AddTicks(-1);
+
+                foreach (var o in DataStore.Orders)
+                {
+                    if (o.OrderDate < fromDate || o.OrderDate > toDate)
+                        continue;
+
+                    string code = string.IsNullOrEmpty(o.OrderCode) ? $"ORD-{o.OrderId:D5}" : o.OrderCode;
+                    string dateStr = o.OrderDate.ToString("dd/MM/yyyy HH:mm");
+
+                    dgvOrders.Rows.Add(
+                        code, o.CustomerName, "Thu ngân POS",
+                        $"{o.SubTotal:N0} ₫", o.DiscountTotal > 0 ? $"-{o.DiscountTotal:N0} ₫" : "-",
+                        $"{o.GrandTotal:N0} ₫", o.PaymentMethod, dateStr, "✅ Hoàn Thành", o.OrderId
+                    );
+
+                    _loadedOrders.Add(new OrderExportRow
+                    {
+                        OrderId = o.OrderId,
+                        OrderCode = code,
+                        CustomerName = o.CustomerName,
+                        EmployeeName = "Thu ngân POS",
+                        TotalAmount = o.SubTotal,
+                        DiscountAmount = o.DiscountTotal,
+                        FinalAmount = o.GrandTotal,
+                        PaymentMethod = o.PaymentMethod,
+                        OrderDate = o.OrderDate,
+                        Status = "✅ Hoàn Thành"
+                    });
+                }
+            }
+
+            lblStatus.Text = $"Đã tải {dgvOrders.Rows.Count} đơn hàng.";
         }
         catch (Exception ex)
         {
+            // If API fails, fallback to local DataStore orders
+            if (DataStore.Orders.Count > 0)
+            {
+                var fromDate = dtpFrom?.Value.Date ?? DateTime.MinValue;
+                var toDate = (dtpTo?.Value.Date ?? DateTime.MaxValue).AddDays(1).AddTicks(-1);
+
+                foreach (var o in DataStore.Orders)
+                {
+                    if (o.OrderDate < fromDate || o.OrderDate > toDate) continue;
+
+                    string code = string.IsNullOrEmpty(o.OrderCode) ? $"ORD-{o.OrderId:D5}" : o.OrderCode;
+                    dgvOrders.Rows.Add(
+                        code, o.CustomerName, "Thu ngân POS",
+                        $"{o.SubTotal:N0} ₫", o.DiscountTotal > 0 ? $"-{o.DiscountTotal:N0} ₫" : "-",
+                        $"{o.GrandTotal:N0} ₫", o.PaymentMethod, o.OrderDate.ToString("dd/MM/yyyy HH:mm"), "✅ Hoàn Thành", o.OrderId
+                    );
+
+                    _loadedOrders.Add(new OrderExportRow
+                    {
+                        OrderId = o.OrderId,
+                        OrderCode = code,
+                        CustomerName = o.CustomerName,
+                        EmployeeName = "Thu ngân POS",
+                        TotalAmount = o.SubTotal,
+                        DiscountAmount = o.DiscountTotal,
+                        FinalAmount = o.GrandTotal,
+                        PaymentMethod = o.PaymentMethod,
+                        OrderDate = o.OrderDate,
+                        Status = "✅ Hoàn Thành"
+                    });
+                }
+                lblStatus.Text = $"Đã tải {dgvOrders.Rows.Count} đơn hàng (Chế độ Offline).";
+                return;
+            }
+
             lblStatus.Text = $"Lỗi kết nối: {ex.Message}";
+            Log.Error(ex, "Error loading orders list");
+        }
+    }
+
+    private async void BtnExportExcel_Click(object? sender, EventArgs e)
+    {
+        if (_loadedOrders.Count == 0)
+        {
+            MessageBox.Show("Không có dữ liệu đơn hàng để xuất Excel! Vui lòng tải dữ liệu trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        string exportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
+        if (!Directory.Exists(exportsDir)) Directory.CreateDirectory(exportsDir);
+
+        using var sfd = new SaveFileDialog
+        {
+            Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+            FileName = $"BaoCao_DonHang_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+            InitialDirectory = exportsDir,
+            Title = "Lưu file Báo cáo Đơn hàng Excel"
+        };
+
+        if (sfd.ShowDialog() != DialogResult.OK) return;
+
+        string targetPath = sfd.FileName;
+        btnExportExcel.Enabled = false;
+        progressBar.Visible = true;
+        progressBar.Value = 0;
+        lblStatus.Text = "Đang xuất file Excel...";
+
+        try
+        {
+            var progress = new Progress<int>(percent =>
+            {
+                if (progressBar.IsHandleCreated)
+                {
+                    progressBar.Value = Math.Min(100, Math.Max(0, percent));
+                    lblStatus.Text = $"Đang xuất Excel... {percent}%";
+                }
+            });
+
+            await ExcelExportService.ExportOrdersToExcelAsync(_loadedOrders, targetPath, progress);
+
+            lblStatus.Text = "Xuất Excel thành công!";
+            Log.Information("Exported {Count} orders to Excel: {Path}", _loadedOrders.Count, targetPath);
+
+            var result = MessageBox.Show(
+                $"✅ Đã xuất thành công {_loadedOrders.Count} đơn hàng ra file Excel!\n\nĐường dẫn:\n{targetPath}\n\nBạn có muốn mở file ngay không?",
+                "Xuất Excel thành công",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (result == DialogResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = targetPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = "Lỗi khi xuất Excel.";
+            Log.Error(ex, "Error exporting orders to Excel");
+            MessageBox.Show($"Lỗi xuất Excel: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            btnExportExcel.Enabled = true;
+            progressBar.Visible = false;
+            progressBar.Value = 0;
         }
     }
 

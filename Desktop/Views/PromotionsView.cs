@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ClosedXML.Excel;
+using Desktop.Services;
 
 namespace Desktop.Views;
 
@@ -20,8 +23,11 @@ public class PromotionsView : UserControl
     private DataGridView dgvPromotions = null!;
     private Button btnRefresh = null!;
     private Button btnAdd = null!;
+    private Button btnImportExcel = null!;
+    private Button btnExportExcel = null!;
     private Button btnDelete = null!;
     private Label lblStatus = null!;
+    private ProgressBar progressBar = null!;
 
     // Tab 2: Near-Expiry & Discount Rules
     private DataGridView dgvDiscountRules = null!;
@@ -105,21 +111,29 @@ public class PromotionsView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlToolbar);
 
-        btnRefresh = new Button { Text = "🔄 Tải lại", Size = new Size(100, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnRefresh = new Button { Text = "🔄 Tải lại", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnRefresh);
         btnRefresh.Click += async (s, e) => await LoadPromotionsAsync();
 
-        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", Size = new Size(170, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnAdd = new Button { Text = "➕ Thêm Khuyến Mãi", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyPrimaryButton(btnAdd);
         btnAdd.Click += BtnAdd_Click;
 
-        btnDelete = new Button { Text = "🗑️ Xóa Mã", Size = new Size(110, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnImportExcel = new Button { Text = "📥 Import Excel", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
+        AppTheme.ApplyPrimaryButton(btnImportExcel);
+        btnImportExcel.Click += async (s, e) => await ImportVouchersFromExcelAsync();
+
+        btnExportExcel = new Button { Text = "📊 Xuất Excel", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
+        AppTheme.ApplySecondaryButton(btnExportExcel);
+        btnExportExcel.Click += async (s, e) => await ExportPromotionsToExcelAsync();
+
+        btnDelete = new Button { Text = "🗑️ Xóa Mã", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyDangerButton(btnDelete);
         btnDelete.Click += async (s, e) => await DeleteSelectedAsync();
 
         lblStatus = new Label
         {
-            Text = "Sẵn sàng",
+            Text = "Sẵn sàng | F5: Tải lại",
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.TextSecondary,
             Margin = new Padding(8, 6, 0, 4),
@@ -128,8 +142,21 @@ public class PromotionsView : UserControl
 
         pnlToolbar.Controls.Add(btnRefresh);
         pnlToolbar.Controls.Add(btnAdd);
+        pnlToolbar.Controls.Add(btnImportExcel);
+        pnlToolbar.Controls.Add(btnExportExcel);
         pnlToolbar.Controls.Add(btnDelete);
         pnlToolbar.Controls.Add(lblStatus);
+
+        progressBar = new ProgressBar
+        {
+            Dock = DockStyle.Top,
+            Height = 5,
+            Minimum = 0,
+            Maximum = 100,
+            Value = 0,
+            Style = ProgressBarStyle.Continuous,
+            Visible = false
+        };
 
         var pnlGridContainer = new Panel
         {
@@ -158,6 +185,7 @@ public class PromotionsView : UserControl
         pnlGridContainer.Controls.Add(dgvPromotions);
 
         tabVouchers.Controls.Add(pnlGridContainer);
+        tabVouchers.Controls.Add(progressBar);
         tabVouchers.Controls.Add(pnlToolbar);
     }
 
@@ -182,19 +210,19 @@ public class PromotionsView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlExpiryToolbar);
 
-        btnRefreshExpiry = new Button { Text = "🔄 Tải lại HSD", Size = new Size(115, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnRefreshExpiry = new Button { Text = "🔄 Tải lại HSD", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnRefreshExpiry);
         btnRefreshExpiry.Click += async (s, e) => await LoadExpiryDataAsync();
 
-        btnAddRule = new Button { Text = "➕ Thêm Quy Tắc", Size = new Size(140, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnAddRule = new Button { Text = "➕ Thêm Quy Tắc", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyPrimaryButton(btnAddRule);
         btnAddRule.Click += BtnAddRule_Click;
 
-        btnDeleteRule = new Button { Text = "🗑️ Xóa Quy Tắc", Size = new Size(125, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnDeleteRule = new Button { Text = "🗑️ Xóa Quy Tắc", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplyDangerButton(btnDeleteRule);
         btnDeleteRule.Click += async (s, e) => await DeleteSelectedRuleAsync();
 
-        btnAiAdvice = new Button { Text = "🤖 AI Tư Vấn Xả Hàng", Size = new Size(185, 32), Margin = new Padding(0, 0, 8, 4) };
+        btnAiAdvice = new Button { Text = "🤖 AI Tư Vấn Xả Hàng", AutoSize = true, Margin = new Padding(0, 0, 8, 4) };
         AppTheme.ApplySecondaryButton(btnAiAdvice);
         btnAiAdvice.Click += async (s, e) => await ShowAiAdviceAsync();
 
@@ -329,13 +357,29 @@ public class PromotionsView : UserControl
                             string name = item.GetProperty("promotionName").GetString() ?? "";
                             string discType = item.TryGetProperty("discountType", out var dt) ? (dt.GetString() ?? "Percentage") : "Percentage";
                             decimal discVal = item.GetProperty("discountValue").GetDecimal();
-                            string discStr = discType.Equals("Percentage", StringComparison.OrdinalIgnoreCase)
-                                ? $"{discVal:N0}%" : $"{discVal:N0} ₫";
+                            string discStr = discType switch
+                            {
+                                "Percentage" => $"{discVal:N0}%",
+                                "FixedAmount" => $"{discVal:N0} ₫",
+                                "BuyXGetY" => $"Mua {(item.TryGetProperty("requiredQuantity", out var rq) ? rq.GetInt32() : 2)} Tặng {(item.TryGetProperty("giftQuantity", out var gq) ? gq.GetInt32() : 1)}",
+                                "ComboDiscount" => $"{discVal:N0}%",
+                                "CategoryDiscount" => $"{discVal:N0}%",
+                                "QuantityTier" => $"{discVal:N0}%",
+                                _ => $"{discVal:N0}"
+                            };
                             decimal minOrder = item.TryGetProperty("minimumOrderAmount", out var mo) ? mo.GetDecimal() : 0m;
                             string maxStr = item.TryGetProperty("maximumDiscountAmount", out var mx) && mx.ValueKind != JsonValueKind.Null
                                 ? $"{mx.GetDecimal():N0} ₫" : "Không giới hạn";
-                            string discTypeLbl = discType.Equals("Percentage", StringComparison.OrdinalIgnoreCase)
-                                ? "📊 % Phần Trăm" : "💰 Cố Định";
+                            string discTypeLbl = discType switch
+                            {
+                                "Percentage" => "📊 % Phần Trăm",
+                                "FixedAmount" => "💰 Cố Định",
+                                "BuyXGetY" => "🎁 Mua X Tặng Y",
+                                "ComboDiscount" => "🎁 Mua Kèm / Combo",
+                                "CategoryDiscount" => "🏷️ Ngành Hàng",
+                                "QuantityTier" => "📦 Mua Sỉ / SL",
+                                _ => discType
+                            };
 
                             string startRaw = item.TryGetProperty("startDate", out var sd) ? sd.GetString() ?? "" : "";
                             string endRaw = item.TryGetProperty("endDate", out var ed) ? ed.GetString() ?? "" : "";
@@ -421,9 +465,192 @@ public class PromotionsView : UserControl
         }
     }
 
-    // =========================================================================
-    // DỮ LIỆU & SỰ KIỆN: TAB 2 (Quản lý HSD & Discount Rules)
-    // =========================================================================
+    private async Task ExportPromotionsToExcelAsync()
+    {
+        if (dgvPromotions.Rows.Count == 0)
+        {
+            MessageBox.Show("Không có dữ liệu khuyến mãi để xuất Excel!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        string exportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
+        if (!Directory.Exists(exportsDir)) Directory.CreateDirectory(exportsDir);
+
+        using var sfd = new SaveFileDialog
+        {
+            Filter = "Excel Workbook (*.xlsx)|*.xlsx",
+            FileName = $"DanhSach_KhuyenMai_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+            InitialDirectory = exportsDir,
+            Title = "Lưu file Danh sách Khuyến mãi"
+        };
+
+        if (sfd.ShowDialog() != DialogResult.OK) return;
+
+        string targetPath = sfd.FileName;
+        btnExportExcel.Enabled = false;
+        progressBar.Visible = true;
+        progressBar.Value = 0;
+        lblStatus.Text = "Đang xuất Excel...";
+
+        try
+        {
+            var list = new List<Dictionary<string, object>>();
+            foreach (DataGridViewRow row in dgvPromotions.Rows)
+            {
+                if (row.IsNewRow) continue;
+                list.Add(new Dictionary<string, object>
+                {
+                    ["Code"] = row.Cells["Code"].Value?.ToString() ?? "",
+                    ["Description"] = row.Cells["Name"].Value?.ToString() ?? "",
+                    ["DiscountType"] = row.Cells["DiscountType"].Value?.ToString() ?? "",
+                    ["DiscountValue"] = row.Cells["Discount"].Value?.ToString() ?? "",
+                    ["StartDate"] = row.Cells["Condition"].Value?.ToString() ?? "",
+                    ["EndDate"] = row.Cells["TimeRange"].Value?.ToString() ?? "",
+                    ["Status"] = row.Cells["Status"].Value?.ToString() ?? ""
+                });
+            }
+
+            var progress = new Progress<int>(p =>
+            {
+                if (progressBar.IsHandleCreated)
+                {
+                    progressBar.Value = Math.Min(100, Math.Max(0, p));
+                    lblStatus.Text = $"Đang xuất Excel... {p}%";
+                }
+            });
+
+            await ExcelExportService.ExportPromotionsToExcelAsync(list, targetPath, progress);
+
+            lblStatus.Text = "Xuất Excel thành công!";
+            var res = MessageBox.Show($"✅ Đã xuất {list.Count} khuyến mãi ra file Excel:\n{targetPath}\n\nBạn có muốn mở file ngay?", "Thành công", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (res == DialogResult.Yes)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = targetPath, UseShellExecute = true });
+            }
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = "Lỗi xuất Excel.";
+            MessageBox.Show($"Lỗi xuất Excel: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            btnExportExcel.Enabled = true;
+            progressBar.Visible = false;
+            progressBar.Value = 0;
+        }
+    }
+
+    private async Task ImportVouchersFromExcelAsync()
+    {
+        string exportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
+        if (!Directory.Exists(exportsDir)) Directory.CreateDirectory(exportsDir);
+
+        using var ofd = new OpenFileDialog
+        {
+            Filter = "Excel Files (*.xlsx;*.xls)|*.xlsx;*.xls|CSV Files (*.csv)|*.csv",
+            InitialDirectory = exportsDir,
+            Title = "Chọn file Excel / CSV danh sách Voucher để Import"
+        };
+
+        if (ofd.ShowDialog() != DialogResult.OK) return;
+
+        string filePath = ofd.FileName;
+        btnImportExcel.Enabled = false;
+        progressBar.Visible = true;
+        progressBar.Value = 0;
+        lblStatus.Text = "Đang đọc file Excel...";
+
+        try
+        {
+            var vouchersToImport = await Task.Run(() =>
+            {
+                var list = new List<dynamic>();
+                using var workbook = new XLWorkbook(filePath);
+                var ws = workbook.Worksheet(1);
+                var rows = ws.RangeUsed()?.RowsUsed()?.Skip(1); // skip header row
+
+                if (rows != null)
+                {
+                    foreach (var row in rows)
+                    {
+                        string code = row.Cell(1).GetString().Trim();
+                        string name = row.Cell(2).GetString().Trim();
+                        string typeStr = row.Cell(3).GetString().Trim();
+                        decimal val = 0m;
+                        try { val = row.Cell(4).GetValue<decimal>(); } catch { }
+
+                        decimal minOrder = 0m;
+                        try { minOrder = row.Cell(5).GetValue<decimal>(); } catch { }
+
+                        int days = 30;
+                        try { days = row.Cell(6).GetValue<int>(); } catch { }
+
+                        if (string.IsNullOrWhiteSpace(code)) continue;
+                        if (string.IsNullOrWhiteSpace(name)) name = $"Khuyến mãi {code}";
+                        if (string.IsNullOrWhiteSpace(typeStr)) typeStr = "Percentage";
+
+                        list.Add(new
+                        {
+                            promotionCode = code.ToUpper(),
+                            promotionName = name,
+                            description = $"Import từ file Excel: {Path.GetFileName(filePath)}",
+                            discountType = typeStr,
+                            discountValue = val > 0 ? val : 10m,
+                            minimumOrderAmount = minOrder,
+                            startDate = DateTime.UtcNow,
+                            endDate = DateTime.UtcNow.AddDays(days > 0 ? days : 30),
+                            isActive = true
+                        });
+                    }
+                }
+                return list;
+            });
+
+            if (vouchersToImport.Count == 0)
+            {
+                MessageBox.Show("Không tìm thấy dữ liệu voucher hợp lệ trong file Excel!\n\nĐịnh dạng cột cần có:\nCột 1: Mã voucher\nCột 2: Tên chương trình\nCột 3: Loại giảm (Percentage / FixedAmount)\nCột 4: Mức giảm\nCột 5: Đơn hàng tối thiểu\nCột 6: Số ngày hiệu lực", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            int successCount = 0;
+            int total = vouchersToImport.Count;
+
+            for (int i = 0; i < total; i++)
+            {
+                var item = vouchersToImport[i];
+                try
+                {
+                    var json = JsonSerializer.Serialize(item);
+                    var resp = await _httpClient.PostAsync(
+                        $"{_apiBaseUrl}/api/v1/promotions",
+                        new StringContent(json, Encoding.UTF8, "application/json"));
+
+                    if (resp.IsSuccessStatusCode) successCount++;
+                }
+                catch { }
+
+                int pct = (int)((i + 1) * 100.0 / total);
+                progressBar.Value = Math.Min(100, pct);
+                lblStatus.Text = $"Đang import... {pct}% ({successCount}/{total})";
+            }
+
+            lblStatus.Text = $"Hoàn thành import {successCount}/{total} voucher.";
+            MessageBox.Show($"✅ Đã import thành công {successCount}/{total} mã voucher từ file Excel!", "Import hoàn tất", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            await LoadPromotionsAsync();
+        }
+        catch (Exception ex)
+        {
+            lblStatus.Text = "Lỗi khi import file Excel.";
+            MessageBox.Show($"Lỗi đọc file Excel: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            btnImportExcel.Enabled = true;
+            progressBar.Visible = false;
+            progressBar.Value = 0;
+        }
+    }
     private async Task LoadExpiryDataAsync()
     {
         lblExpiryStatus.Text = "Đang tải...";
@@ -800,7 +1027,7 @@ internal class AiMarkdownAdviceDialog : Form
 }
 
 // =========================================================================
-// FORM POPUP CŨ: THÊM VOUCHER
+// FORM POPUP: THÊM VOUCHER / KHUYẾN MÃI ĐA DẠNG
 // =========================================================================
 internal class AddPromotionForm : Form
 {
@@ -820,6 +1047,15 @@ internal class AddPromotionForm : Form
     private CheckBox chkActive = null!;
     private Button btnSave = null!;
     private Button btnCancel_ = null!;
+    private readonly ErrorProvider _errorProvider = new();
+
+    // Extra fields for Combo / BuyXGetY / Category / Quantity types
+    private Panel pnlComboExtra = null!;
+    private NumericUpDown numTriggerProductId = null!;
+    private NumericUpDown numTargetProductId = null!;
+    private NumericUpDown numTargetCategoryId = null!;
+    private NumericUpDown numRequiredQty = null!;
+    private NumericUpDown numGiftQty = null!;
 
     public AddPromotionForm(string apiBaseUrl, HttpClient httpClient)
     {
@@ -830,8 +1066,8 @@ internal class AddPromotionForm : Form
 
     private void InitForm()
     {
-        this.Text = "➕ Thêm Mã Khuyến Mãi";
-        this.Size = new Size(620, 580);
+        this.Text = "➕ Thêm Mã Khuyến Mãi / Chương Trình";
+        this.Size = new Size(660, 760);
         this.StartPosition = FormStartPosition.CenterParent;
         this.BackColor = ThemeManager.Background;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -839,8 +1075,8 @@ internal class AddPromotionForm : Form
 
         int y = 20;
         int lx = 20;
-        int cx = 225;
-        int cw = 320;
+        int cx = 230;
+        int cw = 360;
 
         Label Lbl(string text) => new Label
         {
@@ -873,24 +1109,25 @@ internal class AddPromotionForm : Form
             Font = ThemeManager.BodyFont,
             DropDownStyle = ComboBoxStyle.DropDownList
         };
-        cboType.Items.Add(new KeyValuePair<string, string>("Percentage", "Giảm theo % (Phần trăm)"));
-        cboType.Items.Add(new KeyValuePair<string, string>("FixedAmount", "Giảm số tiền cố định (VNĐ)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("Percentage", "📊 Giảm theo % (Phần trăm)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("FixedAmount", "💰 Giảm số tiền cố định (VNĐ)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("BuyXGetY", "🎁 Mua X Tặng Y (VD: Mua 2 Tặng 1)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("ComboDiscount", "🎁 Mua kèm / Combo (VD: Mua A giảm 50% B)"));
+        cboType.Items.Add(new KeyValuePair<string, string>("CategoryDiscount", "🏷️ Giảm giá Ngành Hàng"));
+        cboType.Items.Add(new KeyValuePair<string, string>("QuantityTier", "📦 Giảm giá theo Số lượng mua sỉ"));
         cboType.DisplayMember = "Value";
         cboType.ValueMember = "Key";
         cboType.SelectedIndex = 0;
         cboType.SelectedIndexChanged += (s, e) =>
         {
             var selected = (KeyValuePair<string, string>)cboType.SelectedItem!;
-            if (selected.Key == "Percentage")
-            {
-                lblUnitValue.Text = "%";
-                numValue.Maximum = 100;
-            }
-            else
-            {
-                lblUnitValue.Text = "VNĐ";
-                numValue.Maximum = 100000000;
-            }
+            bool isFixed = selected.Key == "FixedAmount";
+            bool isPct = selected.Key is "Percentage" or "ComboDiscount" or "CategoryDiscount" or "QuantityTier";
+            bool isBuyXGetY = selected.Key == "BuyXGetY";
+            lblUnitValue.Text = isFixed ? "VNĐ" : "%";
+            numValue.Maximum = isFixed ? 100000000 : 100;
+            // Show extra combo panel for special types
+            pnlComboExtra.Visible = selected.Key is "ComboDiscount" or "BuyXGetY" or "CategoryDiscount" or "QuantityTier";
         };
         this.Controls.Add(cboType); NextRow();
 
@@ -914,6 +1151,60 @@ internal class AddPromotionForm : Form
         this.Controls.Add(numMaxDiscount);
         this.Controls.Add(lblUnitMax);
         NextRow();
+
+        // --- Extra fields for Combo / BuyXGetY / Category / Quantity ---
+        pnlComboExtra = new Panel
+        {
+            Location = new Point(lx, y),
+            Size = new Size(this.ClientSize.Width - lx * 2, 220),
+            BackColor = Color.FromArgb(245, 248, 255),
+            BorderStyle = BorderStyle.FixedSingle,
+            Visible = false
+        };
+
+        int ey = 10;
+        Label ELbl(string text) => new Label
+        {
+            Text = text,
+            Font = ThemeManager.BodyBold,
+            ForeColor = ThemeManager.TextPrimary,
+            Location = new Point(10, ey + 4),
+            AutoSize = true
+        };
+        void ENext(int h = 40) { ey += h; }
+
+        var lblExtraHint = new Label
+        {
+            Text = "📋 Thông tin bổ sung (cho loại khuyến mãi đặc biệt)",
+            Font = ThemeManager.BodyBold,
+            ForeColor = Color.FromArgb(9, 88, 217),
+            Location = new Point(10, ey),
+            AutoSize = true
+        };
+        pnlComboExtra.Controls.Add(lblExtraHint); ENext(30);
+
+        pnlComboExtra.Controls.Add(ELbl("ID Sản phẩm mua (Trigger):"));
+        numTriggerProductId = new NumericUpDown { Location = new Point(230, ey), Size = new Size(120, 28), Font = ThemeManager.BodyFont, Maximum = 999999, Minimum = 0 };
+        pnlComboExtra.Controls.Add(numTriggerProductId); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("ID Sản phẩm được giảm (Target):"));
+        numTargetProductId = new NumericUpDown { Location = new Point(230, ey), Size = new Size(120, 28), Font = ThemeManager.BodyFont, Maximum = 999999, Minimum = 0 };
+        pnlComboExtra.Controls.Add(numTargetProductId); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("ID Ngành hàng được giảm (CategoryId):"));
+        numTargetCategoryId = new NumericUpDown { Location = new Point(230, ey), Size = new Size(120, 28), Font = ThemeManager.BodyFont, Maximum = 999999, Minimum = 0 };
+        pnlComboExtra.Controls.Add(numTargetCategoryId); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("Số lượng cần mua (RequiredQty):"));
+        numRequiredQty = new NumericUpDown { Location = new Point(230, ey), Size = new Size(80, 28), Font = ThemeManager.BodyFont, Maximum = 100, Minimum = 1, Value = 2 };
+        pnlComboExtra.Controls.Add(numRequiredQty); ENext();
+
+        pnlComboExtra.Controls.Add(ELbl("Số lượng được tặng (GiftQty):"));
+        numGiftQty = new NumericUpDown { Location = new Point(230, ey), Size = new Size(80, 28), Font = ThemeManager.BodyFont, Maximum = 100, Minimum = 0, Value = 1 };
+        pnlComboExtra.Controls.Add(numGiftQty); ENext();
+
+        this.Controls.Add(pnlComboExtra);
+        NextRow(230);
 
         this.Controls.Add(Lbl("Ngày bắt đầu:"));
         dtpStart = new DateTimePicker { Location = new Point(cx, y), Size = new Size(cw, 28), Font = ThemeManager.BodyFont, Value = DateTime.Today };
@@ -940,13 +1231,46 @@ internal class AddPromotionForm : Form
 
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(txtCode.Text) || string.IsNullOrWhiteSpace(txtName.Text))
+        _errorProvider.Clear();
+        bool hasError = false;
+
+        if (string.IsNullOrWhiteSpace(txtCode.Text))
         {
-            MessageBox.Show("Mã voucher và tên chương trình là bắt buộc.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
+            _errorProvider.SetError(txtCode, "Mã voucher không được để trống!");
+            hasError = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(txtName.Text))
+        {
+            _errorProvider.SetError(txtName, "Tên chương trình không được để trống!");
+            hasError = true;
         }
 
         var selectedType = (KeyValuePair<string, string>)cboType.SelectedItem!;
+        if (selectedType.Key == "Percentage" && (numValue.Value <= 0 || numValue.Value > 100))
+        {
+            _errorProvider.SetError(numValue, "Phần trăm giảm giá phải từ 1% đến 100%!");
+            hasError = true;
+        }
+        else if (selectedType.Key == "FixedAmount" && numValue.Value <= 0)
+        {
+            _errorProvider.SetError(numValue, "Số tiền giảm cố định phải lớn hơn 0!");
+            hasError = true;
+        }
+
+        if (dtpEnd.Value < dtpStart.Value)
+        {
+            _errorProvider.SetError(dtpEnd, "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu!");
+            hasError = true;
+        }
+
+        if (hasError)
+        {
+            MessageBox.Show("Vui lòng kiểm tra lại các trường báo lỗi đỏ (ErrorProvider) trước khi lưu!", "Dữ liệu không hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        bool hasExtra = pnlComboExtra.Visible;
 
         var payload = new
         {
@@ -957,6 +1281,11 @@ internal class AddPromotionForm : Form
             discountValue = numValue.Value,
             minimumOrderAmount = numMinOrder.Value,
             maximumDiscountAmount = numMaxDiscount.Value > 0 ? (decimal?)numMaxDiscount.Value : null,
+            triggerProductId = hasExtra && numTriggerProductId.Value > 0 ? (int?)numTriggerProductId.Value : null,
+            targetProductId = hasExtra && numTargetProductId.Value > 0 ? (int?)numTargetProductId.Value : null,
+            targetCategoryId = hasExtra && numTargetCategoryId.Value > 0 ? (int?)numTargetCategoryId.Value : null,
+            requiredQuantity = hasExtra && numRequiredQty.Value > 0 ? (int?)numRequiredQty.Value : null,
+            giftQuantity = hasExtra && numGiftQty.Value > 0 ? (int?)numGiftQty.Value : null,
             startDate = dtpStart.Value.ToUniversalTime(),
             endDate = dtpEnd.Value.ToUniversalTime(),
             isActive = chkActive.Checked

@@ -313,6 +313,7 @@ public class MainForm : Form
         pnlSidebar.Controls.Add(btnNavPromotions);
         pnlSidebar.Controls.Add(btnNavCustomers);
         pnlSidebar.Controls.Add(btnNavOrders);
+        pnlSidebar.Controls.Add(btnNavPosScan);
         pnlSidebar.Controls.Add(btnNavStockAudit);
         pnlSidebar.Controls.Add(btnNavInventory);
         pnlSidebar.Controls.Add(btnNavImport);
@@ -525,6 +526,14 @@ public class MainForm : Form
         pnlContent.Controls.Clear();
         view.Dock = DockStyle.Fill;
         pnlContent.Controls.Add(view);
+    }
+
+    public void NavigateToOrders()
+    {
+        if (btnNavOrders != null)
+        {
+            SelectNavButton(btnNavOrders, _ordersView);
+        }
     }
 
     private Form? _notificationPopup;

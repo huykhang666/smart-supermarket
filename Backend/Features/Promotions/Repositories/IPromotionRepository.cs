@@ -12,6 +12,7 @@ public interface IPromotionRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+    Task<List<Promotion>> GetActivePromotionsAsync(CancellationToken cancellationToken = default);
     Task AddAsync(Promotion promotion, CancellationToken cancellationToken = default);
     void Update(Promotion promotion);
     void Delete(Promotion promotion);

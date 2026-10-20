@@ -140,6 +140,8 @@ public static class AppTheme
         btn.FlatAppearance.MouseDownBackColor = PrimaryPressed;
         btn.FlatAppearance.MouseOverBackColor = PrimaryHover;
         btn.Cursor = Cursors.Hand;
+        btn.Padding = new Padding(12, 4, 12, 4);
+        btn.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) =>
@@ -205,6 +207,8 @@ public static class AppTheme
         btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(0xD4, 0xEB, 0xFA);
         btn.FlatAppearance.MouseOverBackColor = PrimarySubtle;
         btn.Cursor = Cursors.Hand;
+        btn.Padding = new Padding(12, 4, 12, 4);
+        btn.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) =>
@@ -254,6 +258,8 @@ public static class AppTheme
         btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(0x8B, 0x1F, 0x14);
         btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(0xA4, 0x26, 0x1C);
         btn.Cursor = Cursors.Hand;
+        btn.Padding = new Padding(12, 4, 12, 4);
+        btn.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         if (btn.Height < 34) btn.Height = 34;
 
         btn.MouseEnter += (s, e) =>

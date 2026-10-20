@@ -28,6 +28,13 @@ public class PromotionController : ControllerBase
         return Ok(ApiResult<PromotionPagedResult>.Success(result, "Lấy danh sách khuyến mãi thành công"));
     }
 
+    [HttpGet("active")]
+    public async Task<ActionResult<ApiResult<List<PromotionDto>>>> GetActive(CancellationToken cancellationToken = default)
+    {
+        var result = await _promotionService.GetActiveAsync(cancellationToken);
+        return Ok(ApiResult<List<PromotionDto>>.Success(result, "Lấy danh sách khuyến mãi đang diễn ra thành công"));
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResult<PromotionDto>>> GetById(int id, CancellationToken cancellationToken = default)
     {
