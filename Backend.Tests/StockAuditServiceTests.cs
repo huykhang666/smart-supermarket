@@ -392,7 +392,7 @@ public class StockAuditServiceTests
         await service.ReconcileAuditAsync(audit.Id, new ReconcileStockAuditRequest { ReconciledBy = "Manager" });
 
         // Act & Assert: Cân bằng lần 2 phải quăng ngoại lệ
-        await Assert.ThrowsAsync<Exception>(() =>
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.ReconcileAuditAsync(audit.Id, new ReconcileStockAuditRequest { ReconciledBy = "Manager" }));
     }
 
@@ -413,4 +413,167 @@ public class StockAuditServiceTests
         Assert.NotNull(list);
         Assert.True(list.Count >= 2);
     }
+
+    [Fact]
+    public async Task SaveAuditDetailAsync_ProductWithSales_UsesQuantityOnHandInsteadOfBatchQuantity()
+    {
+        // Arrange: Coca có 240 lon trong lô nhưng đã bán 4 lon (QuantityOnHand = 236)
+        using var context = CreateInMemoryDbContext();
+        var service = new StockAuditService(context);
+
+        context.Products.Add(new Product
+        {
+            ProductId = 1,
+            Barcode = "8934588012015",
+            ProductName = "Nước ngọt Coca-Cola 320ml",
+            Price = 11000m,
+            Unit = "lon",
+            CategoryId = 1,
+            Status = ProductStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        context.InventoryBatches.Add(new InventoryBatch
+        {
+            BatchId = 1,
+            ProductId = 1,
+            BatchCode = "LOT-COCA-01",
+            Quantity = 240, // Số nhập ban đầu
+            ManufacturingDate = DateTime.UtcNow.AddMonths(-1),
+            ExpiryDate = DateTime.UtcNow.AddMonths(11),
+            StorageLocation = "Kệ A1",
+            Status = "Good"
+        });
+
+        context.Inventories.Add(new Domain.Entities.Inventory
+        {
+            ProductId = 1,
+            BranchId = 1,
+            QuantityOnHand = 236, // Đã bán 4 lon, còn 236
+            MinStockLevel = 10,
+            LastUpdated = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var audit = await service.CreateAuditAsync(new CreateStockAuditRequest { Zone = "Kệ A1" });
+
+        // Act: Đếm đúng 236 lon thực tế
+        var result = await service.SaveAuditDetailAsync(audit.Id, new SaveAuditDetailRequest
+        {
+            Barcode = "8934588012015",
+            ActualQty = 236
+        });
+
+        // Assert: SystemQty phải là 236 (từ QuantityOnHand) chứ KHÔNG phải 240 (từ Batch), chênh lệch phải là 0
+        var detail = result.Details.First();
+        Assert.Equal(236, detail.SystemQty);
+        Assert.Equal(236, detail.ActualQty);
+        Assert.Equal(0, detail.VarianceQty);
+    }
+
+    [Fact]
+    public async Task CompleteAuditAsync_BalancesStock_AndUpdatesInventoryOnHand()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var service = new StockAuditService(context);
+
+        context.Products.Add(new Product
+        {
+            ProductId = 1,
+            Barcode = "8934588012015",
+            ProductName = "Nước ngọt Coca-Cola 320ml",
+            Price = 11000m,
+            Unit = "lon",
+            CategoryId = 1,
+            Status = ProductStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        context.Inventories.Add(new Domain.Entities.Inventory
+        {
+            ProductId = 1,
+            BranchId = 1,
+            QuantityOnHand = 236,
+            MinStockLevel = 10,
+            LastUpdated = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var audit = await service.CreateAuditAsync(new CreateStockAuditRequest { Zone = "Kệ A1" });
+        await service.SaveAuditDetailAsync(audit.Id, new SaveAuditDetailRequest
+        {
+            Barcode = "8934588012015",
+            ActualQty = 230 // Kiểm thực tế thiếu 6 lon
+        });
+
+        // Act: CompleteAuditAsync
+        var completedAudit = await service.CompleteAuditAsync(audit.Id);
+
+        // Assert
+        Assert.Equal("Completed", completedAudit.Status);
+
+        var inventory = await context.Inventories.FirstAsync(i => i.ProductId == 1 && i.BranchId == 1);
+        Assert.Equal(230, inventory.QuantityOnHand); // Tồn kho được đồng bộ chính xác về 230
+
+        var history = await context.StockHistories.FirstOrDefaultAsync(h => h.ProductId == 1);
+        Assert.NotNull(history);
+        Assert.Equal(236, history.QuantityBefore);
+        Assert.Equal(-6, history.QuantityChange);
+        Assert.Equal(230, history.QuantityAfter);
+    }
+
+    [Fact]
+    public async Task CompleteAuditAsync_SecondCall_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var service = new StockAuditService(context);
+
+        context.Products.Add(new Product
+        {
+            ProductId = 1,
+            Barcode = "8934588012015",
+            ProductName = "Nước ngọt Coca-Cola 320ml",
+            Price = 11000m,
+            Unit = "lon",
+            CategoryId = 1,
+            Status = ProductStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
+
+        var audit = await service.CreateAuditAsync(new CreateStockAuditRequest { Zone = "Kệ A1" });
+        await service.SaveAuditDetailAsync(audit.Id, new SaveAuditDetailRequest
+        {
+            Barcode = "8934588012015",
+            ActualQty = 230
+        });
+
+        await service.CompleteAuditAsync(audit.Id);
+
+        // Act & Assert: Chốt lần 2 phải quăng InvalidOperationException
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CompleteAuditAsync(audit.Id));
+    }
+
+    [Fact]
+    public async Task SaveAuditDetailAsync_NotFoundBarcode_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        using var context = CreateInMemoryDbContext();
+        var service = new StockAuditService(context);
+
+        var audit = await service.CreateAuditAsync(new CreateStockAuditRequest { Zone = "Kệ A1" });
+
+        // Act & Assert: Quét barcode "000" không có trong hệ thống phải ném KeyNotFoundException (trả HTTP 404)
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => service.SaveAuditDetailAsync(audit.Id, new SaveAuditDetailRequest
+        {
+            Barcode = "000",
+            ActualQty = 10
+        }));
+    }
 }
+

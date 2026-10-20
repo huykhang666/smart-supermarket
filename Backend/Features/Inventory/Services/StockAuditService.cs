@@ -42,16 +42,18 @@ public class StockAuditService : IStockAuditService
             .Include(a => a.Details)
             .FirstOrDefaultAsync(a => a.Id == auditId);
             
-        if (audit == null) throw new Exception("Không tìm thấy biên bản kiểm kê.");
-        if (audit.Status == "Reconciled") throw new Exception("Biên bản kiểm kê đã được cân bằng kho, không thể chỉnh sửa.");
+        if (audit == null) throw new KeyNotFoundException("Không tìm thấy biên bản kiểm kê.");
+        if (audit.Status == "Completed" || audit.Status == "Reconciled") 
+            throw new InvalidOperationException($"Biên bản kiểm kê đang ở trạng thái '{audit.Status}', không thể chỉnh sửa.");
 
         var product = await _context.Products.FirstOrDefaultAsync(p => p.Barcode == request.Barcode);
-        if (product == null) throw new Exception($"Không tìm thấy sản phẩm có mã barcode '{request.Barcode}'.");
+        if (product == null) throw new KeyNotFoundException($"Không tìm thấy sản phẩm có mã barcode '{request.Barcode}'.");
 
-        // Lấy số tồn hệ thống hiện tại từ các lô hàng (hoặc bảng Inventory)
-        var systemQty = await _context.InventoryBatches
-            .Where(b => b.ProductId == product.ProductId)
-            .SumAsync(b => (int?)b.Quantity) ?? 0;
+        // Lấy số tồn hệ thống hiện tại từ bảng Inventory (chi nhánh 1), fallback sang InventoryBatches nếu chưa có
+        var inv = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductId == product.ProductId && i.BranchId == 1);
+        int systemQty = inv != null 
+            ? inv.QuantityOnHand 
+            : (await _context.InventoryBatches.Where(b => b.ProductId == product.ProductId).SumAsync(b => (int?)b.Quantity) ?? 0);
 
         decimal unitPrice = product.CostPrice ?? product.Price;
         var existingDetail = audit.Details.FirstOrDefault(d => d.Barcode == request.Barcode);
@@ -83,22 +85,48 @@ public class StockAuditService : IStockAuditService
         return await GetAuditAsync(auditId);
     }
 
+
     public async Task<StockAuditDTO> CompleteAuditAsync(Guid auditId)
     {
-        var audit = await _context.StockAudits.FindAsync(auditId);
-        if (audit == null) throw new Exception("Không tìm thấy biên bản kiểm kê.");
-        if (audit.Status == "Reconciled") throw new Exception("Biên bản đã được cân bằng kho từ trước.");
-        
-        audit.Status = "Completed";
-        
-        _context.AuditLogs.Add(new AuditLog
+        var audit = await _context.StockAudits
+            .Include(a => a.Details)
+            .FirstOrDefaultAsync(a => a.Id == auditId);
+            
+        if (audit == null) throw new KeyNotFoundException("Không tìm thấy biên bản kiểm kê.");
+        if (audit.Status == "Completed" || audit.Status == "Reconciled") 
+            throw new InvalidOperationException("Biên bản kiểm kê đã được chốt hoặc cân bằng kho từ trước.");
+
+        if (audit.Details.Count > 0)
         {
-            Action = "COMPLETE_STOCK_AUDIT",
-            Details = $"Hoàn tất kiểm đếm biên bản kiểm kê kho. ID: {auditId}",
-            Username = audit.CreatedBy,
-            EntityName = "StockAudit",
-            Timestamp = DateTime.UtcNow
-        });
+            // Tự động gán lý do mặc định cho các dòng thiếu nếu chưa chọn
+            foreach (var detail in audit.Details)
+            {
+                if (string.IsNullOrWhiteSpace(detail.LossReason) || detail.LossReason == "⚠️ Chưa chọn")
+                {
+                    detail.LossReason = detail.VarianceQty < 0 
+                        ? "Thất thoát chưa rõ nguyên nhân" 
+                        : (detail.VarianceQty > 0 ? "Thừa hàng" : "Khớp");
+                }
+            }
+
+            // Cân bằng kho thực tế
+            await ReconcileStockInternalAsync(audit, audit.CreatedBy, "COMPLETE_STOCK_AUDIT");
+        }
+        else
+        {
+            _context.AuditLogs.Add(new AuditLog
+            {
+                Action = "COMPLETE_STOCK_AUDIT",
+                Details = $"Hoàn tất kiểm đếm biên bản kiểm kê kho. ID: {audit.Id}",
+                Username = audit.CreatedBy,
+                EntityName = "StockAudit",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        audit.Status = "Completed";
+        audit.ReconciledAt = DateTime.UtcNow;
+        audit.ReconciledBy = audit.CreatedBy;
 
         await _context.SaveChangesAsync();
         return await GetAuditAsync(auditId);
@@ -114,8 +142,8 @@ public class StockAuditService : IStockAuditService
             .Include(a => a.Details)
             .FirstOrDefaultAsync(a => a.Id == auditId);
 
-        if (audit == null) throw new Exception("Không tìm thấy biên bản kiểm kê.");
-        if (audit.Status == "Reconciled") throw new Exception("Biên bản kiểm kê này đã được cân bằng kho trước đó.");
+        if (audit == null) throw new KeyNotFoundException("Không tìm thấy biên bản kiểm kê.");
+        if (audit.Status == "Reconciled") throw new InvalidOperationException("Biên bản kiểm kê này đã được cân bằng kho trước đó.");
         if (audit.Details.Count == 0) throw new InvalidOperationException("Biên bản kiểm kê chưa có sản phẩm nào được kiểm đếm.");
 
         // Ràng buộc nghiệp vụ: Bắt buộc phân loại nguyên nhân cho tất cả các mặt hàng bị thiếu
@@ -127,6 +155,25 @@ public class StockAuditService : IStockAuditService
             throw new InvalidOperationException($"Còn {unclassified.Count} mặt hàng bị thiếu chưa được phân loại nguyên nhân hao hụt. Vui lòng phân loại trước khi cân bằng kho.");
         }
 
+        string reconciler = string.IsNullOrWhiteSpace(request.ReconciledBy) ? audit.CreatedBy : request.ReconciledBy;
+        await ReconcileStockInternalAsync(audit, reconciler, "RECONCILE_STOCK_AUDIT");
+
+        audit.Status = "Reconciled";
+        audit.ReconciledAt = DateTime.UtcNow;
+        audit.ReconciledBy = reconciler;
+        if (!string.IsNullOrWhiteSpace(request.Notes))
+        {
+            audit.Notes = string.IsNullOrWhiteSpace(audit.Notes) 
+                ? request.Notes 
+                : $"{audit.Notes} | [Cân bằng]: {request.Notes}";
+        }
+
+        await _context.SaveChangesAsync();
+        return await GetAuditAsync(auditId);
+    }
+
+    private async Task ReconcileStockInternalAsync(StockAudit audit, string actor, string actionName)
+    {
         var isInMemory = _context.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory";
         var transaction = isInMemory ? null : await _context.Database.BeginTransactionAsync();
         try
@@ -202,6 +249,9 @@ public class StockAuditService : IStockAuditService
                 }
 
                 // 3. Ghi vết biến động kho StockHistory (BR-INV-21, BR-INV-26, BR-INV-27)
+                bool isExpired = (detail.LossReason?.Contains("Expired", StringComparison.OrdinalIgnoreCase) == true)
+                    || (detail.LossReason?.Contains("Hết hạn", StringComparison.OrdinalIgnoreCase) == true);
+
                 string reason = string.IsNullOrWhiteSpace(detail.LossReason) ? "Điều chỉnh kiểm kê kho" : detail.LossReason;
                 string historyNote = $"[Cân bằng kho đợt {audit.AuditDate:dd/MM/yyyy}] {reason}. Lệch: {(qtyChange > 0 ? "+" : "")}{qtyChange}. Ghi chú: {detail.Notes}".Trim();
 
@@ -209,7 +259,7 @@ public class StockAuditService : IStockAuditService
                 {
                     ProductId = product.ProductId,
                     BranchId = 1,
-                    ChangeType = StockChangeType.Adjustment,
+                    ChangeType = isExpired ? StockChangeType.Expired : StockChangeType.Adjustment,
                     QuantityBefore = qtyBefore,
                     QuantityChange = qtyChange,
                     QuantityAfter = qtyAfter,
@@ -218,21 +268,11 @@ public class StockAuditService : IStockAuditService
                 });
             }
 
-            audit.Status = "Reconciled";
-            audit.ReconciledAt = DateTime.UtcNow;
-            audit.ReconciledBy = string.IsNullOrWhiteSpace(request.ReconciledBy) ? audit.CreatedBy : request.ReconciledBy;
-            if (!string.IsNullOrWhiteSpace(request.Notes))
-            {
-                audit.Notes = string.IsNullOrWhiteSpace(audit.Notes) 
-                    ? request.Notes 
-                    : $"{audit.Notes} | [Cân bằng]: {request.Notes}";
-            }
-
             _context.AuditLogs.Add(new AuditLog
             {
-                Action = "RECONCILE_STOCK_AUDIT",
+                Action = actionName,
                 Details = $"Cân bằng kho thành công cho biên bản {audit.Id}. Tổng mặt hàng lệch: {audit.Details.Count(d => d.VarianceQty != 0)}",
-                Username = audit.ReconciledBy,
+                Username = actor,
                 EntityName = "StockAudit",
                 Timestamp = DateTime.UtcNow
             });
@@ -258,8 +298,6 @@ public class StockAuditService : IStockAuditService
                 await transaction.DisposeAsync();
             }
         }
-
-        return await GetAuditAsync(auditId);
     }
 
     public async Task<StockAuditDTO> GetAuditAsync(Guid auditId)
@@ -268,7 +306,7 @@ public class StockAuditService : IStockAuditService
             .Include(a => a.Details)
             .FirstOrDefaultAsync(a => a.Id == auditId);
             
-        if (audit == null) throw new Exception("Không tìm thấy biên bản kiểm kê.");
+        if (audit == null) throw new KeyNotFoundException("Không tìm thấy biên bản kiểm kê.");
 
         var barcodes = audit.Details.Select(d => d.Barcode).Distinct().ToList();
         var products = await _context.Products

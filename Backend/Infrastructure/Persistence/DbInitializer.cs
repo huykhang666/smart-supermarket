@@ -1011,6 +1011,28 @@ public static class DbInitializer
                     ""Details"" TEXT NULL,
                     ""Timestamp"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
+
+                CREATE TABLE IF NOT EXISTS ""StockAudits"" (
+                    ""Id"" UUID PRIMARY KEY,
+                    ""AuditDate"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""CreatedBy"" VARCHAR(100) NOT NULL,
+                    ""Zone"" VARCHAR(100) NOT NULL DEFAULT 'Tất cả kệ',
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Draft',
+                    ""Notes"" TEXT NULL,
+                    ""ReconciledAt"" TIMESTAMPTZ NULL,
+                    ""ReconciledBy"" VARCHAR(100) NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""StockAuditDetails"" (
+                    ""Id"" UUID PRIMARY KEY,
+                    ""StockAuditId"" UUID NOT NULL REFERENCES ""StockAudits""(""Id"") ON DELETE CASCADE,
+                    ""Barcode"" VARCHAR(100) NOT NULL,
+                    ""SystemQty"" INT NOT NULL DEFAULT 0,
+                    ""ActualQty"" INT NOT NULL DEFAULT 0,
+                    ""UnitPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""LossReason"" VARCHAR(100) NULL,
+                    ""Notes"" TEXT NULL
+                );
             ";
 
             await dbContext.Database.ExecuteSqlRawAsync(sql);

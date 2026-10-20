@@ -483,6 +483,14 @@ public class StockAuditView : UserControl
     // 6. BUSINESS LOGIC & API INTEGRATION
     // ==============================================================
 
+    private void EnsureAuthHeader()
+    {
+        if (!string.IsNullOrWhiteSpace(CurrentSession.Token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", CurrentSession.Token);
+        }
+    }
+
     /// <summary>
     /// Tải phiên kiểm kê gần nhất hoặc tạo phiên mới nếu chưa có
     /// </summary>
@@ -490,6 +498,7 @@ public class StockAuditView : UserControl
     {
         try
         {
+            EnsureAuthHeader();
             var resp = await _httpClient.GetAsync($"{AppTheme.ApiBaseUrl}/api/stock-audit");
             if (resp.IsSuccessStatusCode)
             {
@@ -514,6 +523,7 @@ public class StockAuditView : UserControl
     {
         try
         {
+            EnsureAuthHeader();
             var resp = await _httpClient.GetAsync($"{AppTheme.ApiBaseUrl}/api/stock-audit/{auditId}");
             if (resp.IsSuccessStatusCode)
             {
@@ -691,6 +701,7 @@ public class StockAuditView : UserControl
 
         try
         {
+            EnsureAuthHeader();
             var req = new SaveAuditDetailRequest
             {
                 Barcode = barcode,
@@ -715,7 +726,18 @@ public class StockAuditView : UserControl
             }
             else
             {
-                AntdUI.Message.error(this.FindForm() ?? new Form(), $"Mã barcode '{barcode}' không tồn tại trong danh mục sản phẩm!");
+                string errMsg = $"Mã barcode '{barcode}' không thể lưu.";
+                try
+                {
+                    var errContent = await resp.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(errContent);
+                    if (doc.RootElement.TryGetProperty("message", out var msgEl))
+                    {
+                        errMsg = msgEl.GetString() ?? errMsg;
+                    }
+                }
+                catch { }
+                AntdUI.Message.error(this.FindForm() ?? new Form(), errMsg);
             }
         }
         catch (Exception ex)
@@ -755,6 +777,7 @@ public class StockAuditView : UserControl
             // Lưu lên API
             try
             {
+                EnsureAuthHeader();
                 var req = new SaveAuditDetailRequest
                 {
                     Barcode = barcode,
@@ -879,6 +902,7 @@ public class StockAuditView : UserControl
 
         try
         {
+            EnsureAuthHeader();
             var req = new ReconcileStockAuditRequest
             {
                 ReconciledBy = CurrentSession.FullName,
@@ -934,6 +958,7 @@ public class StockAuditView : UserControl
     {
         try
         {
+            EnsureAuthHeader();
             var req = new CreateStockAuditRequest
             {
                 CreatedBy = createdBy,

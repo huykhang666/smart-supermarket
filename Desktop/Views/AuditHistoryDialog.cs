@@ -247,6 +247,10 @@ public class AuditHistoryDialog : Form
         try
         {
             lblSummary.Text = "Đang tải danh sách đợt kiểm kê...";
+            if (!string.IsNullOrWhiteSpace(CurrentSession.Token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", CurrentSession.Token);
+            }
             var resp = await _httpClient.GetAsync($"{AppTheme.ApiBaseUrl}/api/stock-audit");
             if (resp.IsSuccessStatusCode)
             {
