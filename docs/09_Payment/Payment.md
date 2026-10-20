@@ -1,161 +1,48 @@
-# Payment
+Markdown
+# Payment Models & Enums - Smart SuperMarket
 
-## 1. Tổng quan
+## 1. Enum Phương Thức Thanh Toán (PaymentMethod)
+```csharp
+namespace SmartSuperMarket.Payment
+{
+    public enum PaymentMethod
+    {
+        Cash = 1,        // Tiền mặt
+        VietQR = 2,      // Mã QR Ngân hàng (VietQR - Miễn phí)
+        CreditCard = 3   // Thẻ ATM / VISA (Quẹt máy POS)
+    }
+}
+2. Enum Trạng Thái Giao Dịch (PaymentStatus)
+C#
+namespace SmartSuperMarket.Payment
+{
+    public enum PaymentStatus
+    {
+        Pending = 0,     // Đang chờ thanh toán
+        Success = 1,     // Thanh toán thành công
+        Failed = 2,      // Giao dịch thất bại
+        Cancelled = 3,   // Khách hủy giao dịch
+        Refunded = 4     // Đã hoàn tiền
+    }
+}
+3. DTO Dữ Liệu Thanh Toán (PaymentDTO)
+C#
+namespace SmartSuperMarket.Payment
+{
+    public class PaymentRequestDto
+    {
+        public string InvoiceId { get; set; }       // Mã hóa đơn (Ví dụ: SSM10293)
+        public decimal Amount { get; set; }         // Số tiền cần thanh toán
+        public PaymentMethod Method { get; set; }   // Phương thức thanh toán
+        public string CashierId { get; set; }       // Mã thu ngân
+        public string CustomerPhone { get; set; }  // SĐT khách hàng tích điểm
+    }
 
-`Payment` đại diện cho khoản tiền thực tế được ghi nhận cho một Order.
-
-Payment được tạo sau khi hệ thống xác nhận giao dịch thanh toán thành công.
-
-Payment thuộc về một Order và có thể có nhiều Payment trong cùng một Order.
-
-Điều này cho phép hệ thống hỗ trợ thanh toán bằng nhiều phương thức trong cùng một đơn hàng.
-
----
-
-## 2. Entity
-
-### Payment
-
-| Field         | Type          | Required | Mô tả                  |
-| ------------- | ------------- | -------- | ---------------------- |
-| PaymentId     | INT IDENTITY  | YES      | Khóa chính             |
-| OrderId       | INT           | YES      | ID đơn hàng            |
-| PaymentMethod | TINYINT       | YES      | Phương thức thanh toán |
-| AmountPaid    | DECIMAL(18,2) | YES      | Số tiền thanh toán     |
-| PaymentDate   | DATETIME      | YES      | Thời gian thanh toán   |
-
----
-
-## 3. PaymentMethod
-
-```text
-1 = Cash
-2 = QR Code
-3 = Card
-```
-
-Trong đó:
-
-```text
-PaymentMethod = 2
-```
-
-được sử dụng cho ZaloPay QR.
-
----
-
-## 4. Relationship
-
-```text
-Order
-  │
-  └──< Payment
-```
-
-Một Order có thể có nhiều Payment.
-
-Ví dụ:
-
-```text
-Order #1001
-    ├── Cash       100,000
-    └── QR Code    200,000
-```
-
-Tổng:
-
-```text
-300,000
-```
-
-Nếu:
-
-```text
-FinalAmount = 300,000
-```
-
-thì thanh toán hợp lệ.
-
----
-
-## 5. Business Constraints
-
-### PaymentMethod
-
-Chỉ chấp nhận:
-
-```text
-1
-2
-3
-```
-
-Giá trị khác bị từ chối.
-
-### AmountPaid
-
-```text
-AmountPaid >= 0
-```
-
-### Tổng thanh toán
-
-```text
-SUM(Payment.AmountPaid) >= Order.FinalAmount
-```
-
-Nếu nhỏ hơn:
-
-```text
-400 Bad Request
-```
-
----
-
-## 6. ZaloPay
-
-Đối với ZaloPay:
-
-```text
-PaymentMethod = 2
-```
-
-Thông tin giao dịch chi tiết không lưu trực tiếp vào Payment.
-
-Thông tin như:
-
-* Transaction ID
-* Gateway transaction ID
-* App transaction ID
-* QR URL
-* Payment URL
-* Gateway status
-* Callback status
-
-được lưu trong `PaymentTransaction`.
-
----
-
-## 7. Quy tắc ghi Payment
-
-Payment chỉ được ghi nhận khi:
-
-```text
-PaymentTransaction.Status = SUCCESS
-```
-
-hoặc đối với thanh toán tiền mặt/thẻ:
-
-```text
-Payment được xác nhận trực tiếp tại POS.
-```
-
-Không tạo Payment thành công khi giao dịch ZaloPay vẫn:
-
-```text
-PENDING
-PROCESSING
-FAILED
-EXPIRED
-CANCELLED
-```
+    public class PaymentResponseDto
+    {
+        public bool IsSuccess { get; set; }
+        public string TransactionCode { get; set; }
+        public string QrCodeUrl { get; set; }
+        public string Message { get; set; }
+    }
+}
