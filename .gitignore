@@ -18,3 +18,4 @@ appsettings.*.json
 *.p12
 *.cert
 secrets.json
+*.bak
