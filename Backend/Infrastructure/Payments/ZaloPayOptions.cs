@@ -11,3 +11,4 @@ public class ZaloPayOptions
     public string QueryEndpoint { get; set; } = "https://sb-openapi.zalopay.vn/v2/query";
     public string CallbackUrl { get; set; } = "https://localhost:7198/api/v1/payments/zalo-pay/callback";
 }
+

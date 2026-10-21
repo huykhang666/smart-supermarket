@@ -59,13 +59,20 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddSingleton<GeminiService>();
         services.AddScoped<IAiService, AiService>();
+        services.AddHttpClient<GroqClient>();
+        services.AddScoped<ILlmClient, GroqClient>();
+        services.AddScoped<IAiRetailService, AiRetailService>();
+        services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.Interfaces.IShelfLifeProcessor, SmartSupermarket.Backend.Features.Inventory.Services.ShelfLifeProcessor>();
+        services.AddHostedService<SmartSupermarket.Backend.Features.Inventory.BackgroundServices.ShelfLifeBackgroundService>();
 
         // Module 05_Inventory
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IInventoryRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.InventoryRepository>();
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IDiscountRuleRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.DiscountRuleRepository>();
-        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IInventoryService, SmartSupermarket.Backend.Features.Inventory.Services.InventoryService>();
-        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IDiscountRuleService, SmartSupermarket.Backend.Features.Inventory.Services.DiscountRuleService>();
-        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.IStockAuditService, SmartSupermarket.Backend.Features.Inventory.Services.StockAuditService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Repositories.IShelfLifeRepository, SmartSupermarket.Backend.Features.Inventory.Repositories.ShelfLifeRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.Interfaces.IInventoryService, SmartSupermarket.Backend.Features.Inventory.Services.InventoryService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.Interfaces.IDiscountRuleService, SmartSupermarket.Backend.Features.Inventory.Services.DiscountRuleService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.Interfaces.IStockAuditService, SmartSupermarket.Backend.Features.Inventory.Services.StockAuditService>();
 
         // Module 06_Import
         services.AddScoped<SmartSupermarket.Backend.Features.Import.Repositories.IImportReceiptRepository, SmartSupermarket.Backend.Features.Import.Repositories.ImportReceiptRepository>();

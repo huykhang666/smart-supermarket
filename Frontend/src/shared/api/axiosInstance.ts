@@ -1,6 +1,5 @@
 import { API_CONFIG } from '../../config/api.config';
 
-// Placeholder for API Client (Fetch or Axios wrapper)
 export const fetchApi = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
   const token = localStorage.getItem('access_token');
   const headers = {
@@ -20,3 +19,20 @@ export const fetchApi = async <T>(endpoint: string, options?: RequestInit): Prom
 
   return response.json();
 };
+
+export const axiosInstance = {
+  get: <T = any>(endpoint: string) => fetchApi<{ data: T }>(endpoint, { method: 'GET' }),
+  post: <T = any>(endpoint: string, body?: any) =>
+    fetchApi<{ data: T }>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  put: <T = any>(endpoint: string, body?: any) =>
+    fetchApi<{ data: T }>(endpoint, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    }),
+  delete: <T = any>(endpoint: string) => fetchApi<{ data: T }>(endpoint, { method: 'DELETE' }),
+};
+
+export default axiosInstance;

@@ -285,7 +285,7 @@ public class MainForm : Form
         btnNavOrders = CreateNavButton("Quản Lý Đơn Hàng", IconChar.Receipt);
         btnNavCustomers = CreateNavButton("Khách Hàng Loyalty", IconChar.UserGroup);
         btnNavPromotions = CreateNavButton("Chương Trình Khuyến Mãi", IconChar.Tags);
-        btnNavAiCopilot = CreateNavButton("Trợ Lý AI Assistant", IconChar.Robot);
+        btnNavAiCopilot = CreateNavButton("Trợ Lý AI Bán Lẻ", IconChar.Robot);
         btnNavReports = CreateNavButton("Báo Cáo Enterprise", IconChar.ChartPie);
         btnNavEmployees = CreateNavButton("Nhân Viên & Ca Trực", IconChar.UsersCog);
         btnNavSettings = CreateNavButton("Cấu Hình System", IconChar.Sliders);

@@ -101,7 +101,7 @@ public class StockAuditService : IStockAuditService
             // Tự động gán lý do mặc định cho các dòng thiếu nếu chưa chọn
             foreach (var detail in audit.Details)
             {
-                if (string.IsNullOrWhiteSpace(detail.LossReason) || detail.LossReason == "⚠️ Chưa chọn")
+                if (string.IsNullOrWhiteSpace(detail.LossReason) || detail.LossReason == "⚠️ Chưa chọn" || detail.LossReason == "Chưa chọn")
                 {
                     detail.LossReason = detail.VarianceQty < 0 
                         ? "Thất thoát chưa rõ nguyên nhân" 
