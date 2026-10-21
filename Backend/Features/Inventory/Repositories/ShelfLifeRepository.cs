@@ -19,6 +19,7 @@ public class ShelfLifeRepository : IShelfLifeRepository
         _dbContext = dbContext;
     }
 
+    /// Lấy danh sách các lô hàng cận hạn (Quantity > 0 và ExpiryDate <= thresholdDate)
     public async Task<List<InventoryBatch>> GetBatchesNearExpiryAsync(DateTime thresholdDate, CancellationToken cancellationToken = default)
     {
         return await _dbContext.InventoryBatches
@@ -28,6 +29,7 @@ public class ShelfLifeRepository : IShelfLifeRepository
             .ToListAsync(cancellationToken);
     }
 
+    /// Kiểm tra xem sản phẩm có còn lô nào khác hợp lệ (còn hàng và chưa hết hạn) hay không
     public async Task<bool> HasOtherValidBatchesAsync(int productId, int currentBatchId, DateTime today, CancellationToken cancellationToken = default)
     {
         return await _dbContext.InventoryBatches
@@ -36,6 +38,7 @@ public class ShelfLifeRepository : IShelfLifeRepository
                            b.Quantity > 0 &&
                            b.ExpiryDate > today, cancellationToken);
     }
+    ///Lấy danh sách sản phẩm tươi sống (Rau, Thịt, Bánh) đang Active phục vụ Flash Sale
 
     public async Task<List<Product>> GetFreshProductsForFlashSaleAsync(CancellationToken cancellationToken = default)
     {
@@ -49,6 +52,7 @@ public class ShelfLifeRepository : IShelfLifeRepository
             .ToListAsync(cancellationToken);
     }
 
+    /// Ghi nhật ký biến động kho (Xuất hủy hàng hết hạn)
     public async Task AddStockHistoryAsync(StockHistory stockHistory, CancellationToken cancellationToken = default)
     {
         await _dbContext.StockHistories.AddAsync(stockHistory, cancellationToken);

@@ -11,4 +11,12 @@ public class SaveAuditDetailRequest
 {
     public string Barcode { get; set; } = string.Empty;
     public int ActualQty { get; set; }
+    public string? LossReason { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class ReconcileStockAuditRequest
+{
+    public string ReconciledBy { get; set; } = string.Empty;
+    public string? Notes { get; set; }
 }

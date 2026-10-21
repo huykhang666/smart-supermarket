@@ -26,6 +26,16 @@ public class ShelfLifeBackgroundService : BackgroundService
     {
         _logger.LogInformation("ShelfLifeBackgroundService đã khởi động.");
 
+        // Quét khởi động lần đầu khi server bật
+        try
+        {
+            await RunScanAsync(new ShelfLifeScanRequest { IsEveningFlashSale = false, DryRun = false }, stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi quét khởi động ban đầu.");
+        }
+
         // Kiểm tra định kỳ mỗi 30 phút một lần
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(30));
         int lastScannedHour = -1;

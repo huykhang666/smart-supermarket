@@ -482,7 +482,170 @@ public static class DbInitializer
             await dbContext.DiscountRules.AddRangeAsync(defaultRules);
             await dbContext.SaveChangesAsync();
         }
+
+        // 8. Seed Sample Order History & Near-Expiry Batches (for realistic Reports & Dashboard)
+        if (!await dbContext.Orders.AnyAsync())
+        {
+            await SeedSampleOrdersAndBatchesAsync(dbContext);
+        }
     }
+
+    private static async Task SeedSampleOrdersAndBatchesAsync(AppDbContext dbContext)
+    {
+        var products = await dbContext.Products.Take(15).ToListAsync();
+        if (!products.Any()) return;
+
+        var staffUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == "staff");
+        var adminUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+        int staffId = staffUser?.UserId ?? 2;
+        int adminId = adminUser?.UserId ?? 1;
+
+        var vnNow = DateTime.UtcNow.AddHours(7);
+        var rng = new Random(42);
+
+        var ordersToAdd = new List<Order>();
+
+        // 45 days of orders
+        for (int dayOffset = 44; dayOffset >= 0; dayOffset--)
+        {
+            var targetDay = vnNow.AddDays(-dayOffset).Date;
+            int ordersToday = (targetDay.DayOfWeek == DayOfWeek.Saturday || targetDay.DayOfWeek == DayOfWeek.Sunday) ? 3 : 2;
+
+            for (int oIdx = 0; oIdx < ordersToday; oIdx++)
+            {
+                int hour = oIdx switch
+                {
+                    0 => rng.Next(8, 12),  // Ca Sang
+                    1 => rng.Next(14, 18), // Ca Chieu
+                    _ => rng.Next(18, 22)  // Ca Toi
+                };
+                int minute = rng.Next(5, 55);
+                var orderTimeVn = targetDay.AddHours(hour).AddMinutes(minute);
+                var orderTimeUtc = orderTimeVn.AddHours(-7);
+
+                int cashierId = (oIdx % 2 == 0) ? staffId : adminId;
+
+                // Pick 2 - 4 products
+                int itemCount = rng.Next(2, 5);
+                var selectedProducts = products.OrderBy(_ => rng.Next()).Take(itemCount).ToList();
+
+                var order = new Order
+                {
+                    EmployeeId = cashierId,
+                    BranchId = 1,
+                    OrderDate = orderTimeUtc,
+                    CreatedAt = orderTimeUtc,
+                    Status = OrderStatus.Completed
+                };
+
+                decimal total = 0;
+                var details = new List<OrderDetail>();
+                foreach (var p in selectedProducts)
+                {
+                    int qty = rng.Next(1, 4);
+                    decimal subtotal = p.Price * qty;
+                    total += subtotal;
+                    details.Add(new OrderDetail
+                    {
+                        Order = order,
+                        ProductId = p.ProductId,
+                        Quantity = qty,
+                        UnitPrice = p.Price,
+                        SubTotal = subtotal
+                    });
+                }
+
+                order.OrderDetails = details;
+                order.TotalAmount = total;
+
+                // Promotion discount
+                decimal discount = (total >= 150000 && rng.Next(10) > 4) ? 10000m : 0m;
+                order.DiscountAmount = discount;
+                order.FinalAmount = total - discount;
+
+                // Payment method
+                var pMethod = (rng.Next(10)) switch
+                {
+                    < 6 => PaymentMethod.Cash,
+                    < 9 => PaymentMethod.QRCode,
+                    _ => PaymentMethod.CreditCard
+                };
+
+                order.Payments = new List<Payment>
+                {
+                    new Payment
+                    {
+                        Order = order,
+                        PaymentMethod = pMethod,
+                        AmountPaid = order.FinalAmount,
+                        PaymentDate = orderTimeUtc
+                    }
+                };
+
+                ordersToAdd.Add(order);
+            }
+        }
+
+        await dbContext.Orders.AddRangeAsync(ordersToAdd);
+
+        // Seed sample batches for near-expiry report
+        if (products.Count >= 4)
+        {
+            var p0 = products[0];
+            var p1 = products[1];
+            var p2 = products[2];
+            var p3 = products[3];
+
+            var sampleBatches = new List<InventoryBatch>
+            {
+                new InventoryBatch
+                {
+                    ProductId = p0.ProductId,
+                    BatchCode = "LOT-EXP-01",
+                    Quantity = 6,
+                    ManufacturingDate = DateTime.UtcNow.AddMonths(-3),
+                    ExpiryDate = DateTime.UtcNow.AddDays(-2), // Het han 2 ngay truoc
+                    Status = "Expired",
+                    StorageLocation = "Ke Can Date A1"
+                },
+                new InventoryBatch
+                {
+                    ProductId = p1.ProductId,
+                    BatchCode = "LOT-EXP-02",
+                    Quantity = 14,
+                    ManufacturingDate = DateTime.UtcNow.AddMonths(-2),
+                    ExpiryDate = DateTime.UtcNow.AddDays(3), // Can han 3 ngay
+                    Status = "Warning",
+                    StorageLocation = "Ke Khuyen Mai B2"
+                },
+                new InventoryBatch
+                {
+                    ProductId = p2.ProductId,
+                    BatchCode = "LOT-EXP-03",
+                    Quantity = 9,
+                    ManufacturingDate = DateTime.UtcNow.AddMonths(-2),
+                    ExpiryDate = DateTime.UtcNow.AddDays(5), // Can han 5 ngay
+                    Status = "Warning",
+                    StorageLocation = "Ke Dau Day C1"
+                },
+                new InventoryBatch
+                {
+                    ProductId = p3.ProductId,
+                    BatchCode = "LOT-EXP-04",
+                    Quantity = 22,
+                    ManufacturingDate = DateTime.UtcNow.AddMonths(-1),
+                    ExpiryDate = DateTime.UtcNow.AddDays(15), // 15 ngay
+                    Status = "Good",
+                    StorageLocation = "Ke Tieu Chuan D3"
+                }
+            };
+
+            await dbContext.InventoryBatches.AddRangeAsync(sampleBatches);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
 
     public static async Task ResetFullDatabaseAsync(AppDbContext dbContext)
     {
@@ -847,6 +1010,28 @@ public static class DbInitializer
                     ""EntityName"" VARCHAR(100) NOT NULL,
                     ""Details"" TEXT NULL,
                     ""Timestamp"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS ""StockAudits"" (
+                    ""Id"" UUID PRIMARY KEY,
+                    ""AuditDate"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""CreatedBy"" VARCHAR(100) NOT NULL,
+                    ""Zone"" VARCHAR(100) NOT NULL DEFAULT 'Tất cả kệ',
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Draft',
+                    ""Notes"" TEXT NULL,
+                    ""ReconciledAt"" TIMESTAMPTZ NULL,
+                    ""ReconciledBy"" VARCHAR(100) NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""StockAuditDetails"" (
+                    ""Id"" UUID PRIMARY KEY,
+                    ""StockAuditId"" UUID NOT NULL REFERENCES ""StockAudits""(""Id"") ON DELETE CASCADE,
+                    ""Barcode"" VARCHAR(100) NOT NULL,
+                    ""SystemQty"" INT NOT NULL DEFAULT 0,
+                    ""ActualQty"" INT NOT NULL DEFAULT 0,
+                    ""UnitPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""LossReason"" VARCHAR(100) NULL,
+                    ""Notes"" TEXT NULL
                 );
             ";
 

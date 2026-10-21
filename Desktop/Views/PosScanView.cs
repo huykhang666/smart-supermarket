@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -8,6 +8,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FontAwesome.Sharp;
+using Desktop.Forms;
+using Desktop.Models;
 using Desktop.Services;
 
 namespace Desktop.Views;
@@ -50,6 +52,9 @@ public class PosScanView : UserControl
     private Button btnApplyVoucher = null!;
     private Label lblVoucherStatus = null!;
     private Button btnPickPromotion = null!;
+    private Label lblCashP = null!;
+    private TableLayoutPanel pnlChangeRow = null!;
+    private readonly PaymentService _paymentService = new();
 
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
@@ -516,7 +521,7 @@ public class PosScanView : UserControl
         pnlPayMethods.Controls.Add(btnPayQr, 1, 0);
         pnlPayMethods.Controls.Add(btnPayCard, 2, 0);
 
-        var lblCashP = new Label { Text = "Tiền khách đưa (VNĐ):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 436), AutoSize = true };
+        lblCashP = new Label { Text = "Tiền khách đưa (VNĐ):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 436), AutoSize = true };
         numCashPaid = new NumericUpDown
         {
             Location = new Point(14, 460),
@@ -528,7 +533,7 @@ public class PosScanView : UserControl
         };
         numCashPaid.ValueChanged += (s, e) => CalculateChange();
 
-        var pnlChangeRow = new TableLayoutPanel
+        pnlChangeRow = new TableLayoutPanel
         {
             Location = new Point(14, 502),
             Size = new Size(pnlCol3.Width - 28, 30),
@@ -911,8 +916,28 @@ public class PosScanView : UserControl
         btnPayCash.Invalidate();
         btnPayQr.Invalidate();
         btnPayCard.Invalidate();
-    }
 
+        if (numCashPaid != null && lblCashP != null && pnlChangeRow != null)
+        {
+            if (method == 1)
+            {
+                lblCashP.Visible = true;
+                numCashPaid.Visible = true;
+                numCashPaid.Enabled = true;
+                pnlChangeRow.Visible = true;
+                CalculateChange();
+            }
+            else
+            {
+                lblCashP.Visible = false;
+                numCashPaid.Visible = false;
+                numCashPaid.Enabled = false;
+                pnlChangeRow.Visible = false;
+                lblChangeVal.Text = "0 VNĐ";
+                lblChangeVal.ForeColor = AppTheme.Success;
+            }
+        }
+    }
     private void ChangeSelectedQty(int delta)
     {
         if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
@@ -1251,38 +1276,125 @@ public class PosScanView : UserControl
         }
     }
 
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == Keys.F9)
+        {
+            if (btnCheckout != null && btnCheckout.Enabled)
+            {
+                _ = CheckoutAsync();
+                return true;
+            }
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
     private async Task CheckoutAsync()
     {
-        if (_cart.Count == 0)
+        try
         {
-            MessageBox.Show("Giỏ hàng đang trống!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
+            // Bước 1: Kiểm tra giỏ hàng (TỔNG TIỀN PHẢI THU > 0, có ít nhất 1 sản phẩm)
+            if (_cart.Count == 0)
+            {
+                MessageBox.Show("Giỏ hàng đang trống! Vui lòng thêm sản phẩm.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            decimal grossSubTotal = _cart.Sum(i => i.Price * i.Quantity);
+            decimal grandTotal = Math.Max(0, grossSubTotal - _appliedDiscountAmount);
+
+            if (grandTotal <= 0)
+            {
+                MessageBox.Show("Tổng tiền phải thu không hợp lệ (phải lớn hơn 0 VNĐ).", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            decimal netSubTotal = Math.Round(grandTotal / 1.08m, 0);
+            decimal vatTotal = grandTotal - netSubTotal;
+            string cashierId = "NV01";
+            string maHoaDon = $"SSM{Random.Shared.Next(10000, 99999)}";
+
+            // Bước 2A: Nếu phương thức là TIỀN MẶT
+            if (_selectedPaymentMethod == 1)
+            {
+                if (numCashPaid.Value == 0)
+                {
+                    numCashPaid.Value = grandTotal;
+                }
+
+                if (numCashPaid.Value < grandTotal)
+                {
+                    decimal cashDiff = grandTotal - numCashPaid.Value;
+                    MessageBox.Show($"Số tiền khách đưa ({numCashPaid.Value:N0} đ) chưa đủ để thanh toán ({grandTotal:N0} đ). Còn thiếu: {cashDiff:N0} đ.", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Lưu PaymentTransaction (PaymentMethod=1, Status=1 Success)
+                decimal changeAmount = Math.Max(0, numCashPaid.Value - grandTotal);
+                string cashTransCode = PaymentService.GenerateTransactionCode();
+                var cashTransaction = new PaymentTransactionModel
+                {
+                    TransactionCode = cashTransCode,
+                    InvoiceId = maHoaDon,
+                    PaymentMethod = PaymentMethod.Cash,
+                    Amount = grandTotal,
+                    GivenAmount = numCashPaid.Value,
+                    ChangeAmount = changeAmount,
+                    TransferContent = $"Thanh toan tien mat {maHoaDon}",
+                    BankCode = null,
+                    Status = PaymentStatus.Success,
+                    CreatedDate = DateTime.Now,
+                    CompletedDate = DateTime.Now,
+                    CashierId = cashierId
+                };
+
+                try
+                {
+                    _paymentService.CreateTransaction(cashTransaction);
+                }
+                catch (Exception dbEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PosScanView] Error saving cash transaction: {dbEx.Message}");
+                }
+
+                // Tiến hành Lưu Hóa đơn -> Trừ kho -> In Bill -> Xóa giỏ hàng
+                await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "Tiền mặt", numCashPaid.Value, changeAmount);
+            }
+            // Bước 2B: Nếu phương thức là VIETQR / CHUYỂN KHOẢN (hoặc hình thức khác)
+            else
+            {
+                DialogResult qrResult;
+                using (var formQr = new FormThanhToanVietQR(maHoaDon, grandTotal, cashierId))
+                {
+                    qrResult = formQr.ShowDialog(this.FindForm());
+                }
+
+                if (qrResult == DialogResult.OK)
+                {
+                    // Tiến hành Lưu Hóa đơn -> Trừ kho -> In Bill -> Clear giỏ hàng
+                    await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "VietQR", grandTotal, 0);
+                }
+                else
+                {
+                    // Báo "Thanh toán chưa hoàn tất", KHÔNG xóa giỏ hàng
+                    MessageBox.Show("Thanh toán chưa hoàn tất! Quý khách có thể chọn lại phương thức thanh toán khác.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
         }
-
-        decimal grossSubTotal = _cart.Sum(i => i.Price * i.Quantity);
-        decimal grandTotal = Math.Max(0, grossSubTotal - _appliedDiscountAmount);
-        decimal netSubTotal = Math.Round(grandTotal / 1.08m, 0);
-        decimal vatTotal = grandTotal - netSubTotal;
-
-        if (numCashPaid.Value == 0 && _selectedPaymentMethod == 1)
+        catch (Exception ex)
         {
-            numCashPaid.Value = grandTotal;
+            MessageBox.Show($"Lỗi trong quá trình thanh toán: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
 
-        decimal cashDiff = grandTotal - numCashPaid.Value;
-        if (_selectedPaymentMethod == 1 && numCashPaid.Value > 0 && cashDiff > 1000m)
-        {
-            MessageBox.Show($"Số tiền khách đưa ({numCashPaid.Value:N0} đ) còn thiếu {cashDiff:N0} đ để hoàn tất!", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        string methodStr = _selectedPaymentMethod == 1 ? "Tiền mặt" : (_selectedPaymentMethod == 2 ? "VietQR" : "Thẻ POS");
-
-        // 1. Record POS Order in DataStore for Realtime Local Dashboards & Shift Tracking
+    private async Task CompleteOrderAsync(string maHoaDon, decimal grandTotal, decimal netSubTotal, decimal vatTotal, string methodStr, decimal cashGiven, decimal changeDue)
+    {
+        // 1. Record POS Order in DataStore (Lưu Hóa đơn & Quản lý đơn hàng)
         var orderRecord = new PosOrderRecord
         {
             OrderId = Random.Shared.Next(1000, 9999),
-            OrderCode = $"HD-{DateTime.Now:yyMMdd}-{Random.Shared.Next(100, 999)}",
+            OrderCode = maHoaDon,
             OrderDate = DateTime.Now,
             CustomerName = lblCustName.Text.Replace("Khách hàng: ", "").Trim(),
             SubTotal = netSubTotal,
@@ -1301,14 +1413,14 @@ public class PosScanView : UserControl
         };
         DataStore.AddOrder(orderRecord);
 
-        // 2. Post Order to Backend Server API (/api/v1/orders)
+        // 2. Post Order to Backend Server API (/api/v1/orders) - Tự động Lưu Hóa đơn & Trừ kho (OrderService)
         try
         {
             var reqObj = new
             {
-                EmployeeId = 1,
+                EmployeeId = CurrentSession.UserId,
                 BranchId = 1,
-                PaymentMethod = _selectedPaymentMethod, // 1: Cash, 2: VietQR, 3: Card
+                PaymentMethod = _selectedPaymentMethod,
                 PromotionCode = _appliedVoucherCode,
                 Items = _cart.Select(c => new
                 {
@@ -1323,9 +1435,10 @@ public class PosScanView : UserControl
         }
         catch
         {
-            // Fallback: Offline mode handled cleanly via DataStore
+            // Offline mode handled cleanly via DataStore
         }
 
+        // 3. In Bill / Xuất hóa đơn PDF
         string pdfPath = "";
         try
         {
@@ -1341,8 +1454,8 @@ public class PosScanView : UserControl
                 DiscountTotal = _appliedDiscountAmount,
                 GrandTotal = grandTotal,
                 PaymentMethod = methodStr,
-                CashGiven = numCashPaid.Value > 0 ? numCashPaid.Value : grandTotal,
-                ChangeDue = Math.Max(0, (numCashPaid.Value > 0 ? numCashPaid.Value : grandTotal) - grandTotal),
+                CashGiven = cashGiven,
+                ChangeDue = changeDue,
                 Items = _cart.Select(c => new InvoicePrintItem
                 {
                     ProductName = c.Name,
@@ -1362,17 +1475,21 @@ public class PosScanView : UserControl
             ? $"• Hóa đơn PDF: Đã xuất & mở xem trước tại:\n  {pdfPath}\n\n"
             : "";
 
-        MessageBox.Show(
+        var dialogRes = MessageBox.Show(
             $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ!\n\n" +
             $"• Mã hóa đơn: {orderRecord.OrderCode}\n" +
             $"• Khách hàng: {orderRecord.CustomerName}\n" +
             $"• Tổng thanh toán: {grandTotal:N0} VNĐ\n" +
             $"• Hình thức: {methodStr}\n" +
+            $"• Tiền khách đưa: {cashGiven:N0} VNĐ\n" +
+            $"• Tiền thừa trả khách: {changeDue:N0} VNĐ\n" +
             $"• Điểm cộng thêm: +{Math.Round(grandTotal / 10000):N0} điểm\n\n" +
             pdfInfo +
-            $"Đã lưu CSDL và cập nhật realtime trên hệ thống.",
-            "Thanh toán thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            $"Đã lưu CSDL và cập nhật realtime trên hệ thống.\n\n" +
+            $"👉 Bạn có muốn chuyển sang màn hình 'Quản Lý Đơn Hàng' để xem chi tiết ngay bây giờ không?",
+            "Thanh toán thành công", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
 
+        // 4. Xóa giỏ hàng về 0 VNĐ
         _cart.Clear();
         _appliedDiscountAmount = 0m;
         _appliedVoucherCode = null;
@@ -1380,8 +1497,15 @@ public class PosScanView : UserControl
         txtVoucherCode.Clear();
         lblVoucherStatus.Text = "";
         RefreshCartGrid();
-    }
 
+        if (dialogRes == DialogResult.Yes)
+        {
+            if (this.FindForm() is MainForm mainForm)
+            {
+                mainForm.NavigateToOrders();
+            }
+        }
+    }
     private class CatalogProduct
     {
         public int Id { get; set; }

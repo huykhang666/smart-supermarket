@@ -1,6 +1,10 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using FontAwesome.Sharp;
 
@@ -428,7 +432,7 @@ public class LoginForm : Form
         this.AcceptButton = btnLogin;
     }
 
-    private void BtnLogin_Click(object? sender, EventArgs e)
+    private async void BtnLogin_Click(object? sender, EventArgs e)
     {
         string username = txtUsername.Text.Trim();
         string password = txtPassword.Text.Trim();
@@ -443,6 +447,12 @@ public class LoginForm : Form
         if ((username.Equals("admin", StringComparison.OrdinalIgnoreCase) && password == "admin123") ||
             (username.Equals("quanly", StringComparison.OrdinalIgnoreCase)))
         {
+            CurrentSession.UserId = 1;
+            CurrentSession.Username = "admin";
+            CurrentSession.FullName = "Quản trị viên Hệ thống";
+            CurrentSession.Role = "Admin";
+            CurrentSession.Token = await TryAuthenticateWithBackendAsync("admin", "AdminPassword123!");
+
             AntdUI.Message.success(this, "Đăng nhập thành công! Đang chuyển đến Trung Tâm Điều Hành Admin...");
 
             var timer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -458,6 +468,12 @@ public class LoginForm : Form
         }
         else if (username.Equals("nhanvien", StringComparison.OrdinalIgnoreCase) && password == "nhanvien123")
         {
+            CurrentSession.UserId = 2;
+            CurrentSession.Username = "staff";
+            CurrentSession.FullName = "Nhân viên Thu ngân";
+            CurrentSession.Role = "Staff";
+            CurrentSession.Token = await TryAuthenticateWithBackendAsync("staff", "StaffPassword123!");
+
             AntdUI.Message.success(this, "Đăng nhập thành công! Mở ca làm việc Thu Ngân...");
 
             var timer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -473,8 +489,54 @@ public class LoginForm : Form
         }
         else
         {
+            // Thử xác thực trực tiếp qua Backend API cho các tài khoản cơ sở dữ liệu
+            var token = await TryAuthenticateWithBackendAsync(username, password);
+            if (!string.IsNullOrEmpty(token))
+            {
+                CurrentSession.UserId = 1;
+                CurrentSession.Username = username;
+                CurrentSession.FullName = username;
+                CurrentSession.Role = "Admin";
+                CurrentSession.Token = token;
+
+                AntdUI.Message.success(this, "Đăng nhập thành công!");
+                var timer = new System.Windows.Forms.Timer { Interval = 500 };
+                timer.Tick += (s, ev) =>
+                {
+                    timer.Stop();
+                    this.Hide();
+                    var mainForm = new MainForm();
+                    mainForm.FormClosed += (s2, ev2) => this.Close();
+                    mainForm.Show();
+                };
+                timer.Start();
+                return;
+            }
+
             AntdUI.Message.error(this, "Tài khoản không chính xác! (Gợi ý: admin/admin123 hoặc nhanvien/nhanvien123)");
         }
+    }
+
+    private static async Task<string?> TryAuthenticateWithBackendAsync(string username, string password)
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+            var payload = new { username, password };
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var res = await client.PostAsync($"{AppTheme.ApiBaseUrl}/api/Auth/login", content);
+            if (res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("data", out var dataEl) && dataEl.TryGetProperty("accessToken", out var tokenEl))
+                {
+                    return tokenEl.GetString();
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     private GraphicsPath GetRoundedPath(Rectangle rect, int radius)

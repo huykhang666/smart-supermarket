@@ -1,180 +1,30 @@
-# PaymentTransaction
+### 3. `09_Payment/PaymentTransaction.md`
 
-## 1. Tổng quan
+```markdown
+# Database Schema - PaymentTransaction (Smart SuperMarket)
 
-`PaymentTransaction` lưu thông tin của một giao dịch thanh toán với Payment Gateway.
+Bảng `PaymentTransaction` lưu lịch sử chi tiết tất cả các lượt thanh toán phát sinh tại quầy POS.
 
-Entity này được sử dụng đặc biệt cho các phương thức thanh toán bất đồng bộ như ZaloPay.
+## 1. SQL Script Khởi Tạo Bảng (SQL Server)
 
-Không sử dụng `PaymentTransaction` để thay thế `Payment`.
+```sql
+CREATE TABLE PaymentTransaction (
+    TransactionId INT IDENTITY(1,1) PRIMARY KEY,
+    TransactionCode VARCHAR(100) NOT NULL UNIQUE, -- Mã GD nội bộ (VD: PAY-20261020-001)
+    InvoiceId VARCHAR(20) NOT NULL,                -- Mã hóa đơn (VD: SSM10293)
+    PaymentMethod TINYINT NOT NULL,               -- 1: Cash, 2: VietQR, 3: Card
+    Amount DECIMAL(18,2) NOT NULL,                -- Số tiền hóa đơn
+    GivenAmount DECIMAL(18,2) NULL,               -- Số tiền khách đưa (Dành cho Tiền mặt)
+    ChangeAmount DECIMAL(18,2) NULL,              -- Số tiền thừa trả lại khách
+    TransferContent VARCHAR(100) NULL,            -- Nội dung CK (Ví dụ: SSM10293)
+    BankCode VARCHAR(20) NULL,                    -- Mã ngân hàng nhận (MB, VCB, ICB...)
+    Status INT DEFAULT 0,                         -- 0: Pending, 1: Success, 2: Failed, 3: Cancelled
+    CreatedDate DATETIME DEFAULT GETDATE(),
+    CompletedDate DATETIME NULL,
+    CashierId VARCHAR(20) NOT NULL,
+    CONSTRAINT FK_Payment_Invoice FOREIGN KEY (InvoiceId) REFERENCES Invoice(InvoiceId)
+);
 
-Phân biệt:
-
-```text
-Payment
-    = khoản tiền đã được ghi nhận cho Order
-
-PaymentTransaction
-    = quá trình giao dịch với Payment Gateway
-```
-
----
-
-## 2. Entity
-
-### PaymentTransaction
-
-| Field                | Type          | Required | Mô tả                   |
-| -------------------- | ------------- | -------- | ----------------------- |
-| PaymentTransactionId | INT IDENTITY  | YES      | Khóa chính              |
-| TransactionCode      | VARCHAR(100)  | YES      | Mã giao dịch nội bộ     |
-| OrderId              | INT           | YES      | ID Order                |
-| PaymentMethod        | TINYINT       | YES      | Phương thức thanh toán  |
-| Amount               | DECIMAL(18,2) | YES      | Số tiền                 |
-| Gateway              | VARCHAR(50)   | YES      | Payment Gateway         |
-| GatewayTransactionId | VARCHAR(150)  | NO       | ID giao dịch từ gateway |
-| Status               | VARCHAR(30)   | YES      | Trạng thái              |
-| PaymentUrl           | VARCHAR(500)  | NO       | URL thanh toán          |
-| QrCode               | VARCHAR(MAX)  | NO       | Thông tin QR            |
-| CreatedAt            | DATETIME      | YES      | Thời gian tạo           |
-| PaidAt               | DATETIME      | NO       | Thời gian thanh toán    |
-| ExpiredAt            | DATETIME      | NO       | Thời gian hết hạn       |
-
----
-
-## 3. Gateway
-
-Hiện tại:
-
-```text
-Gateway = ZALOPAY
-```
-
-Thiết kế có thể mở rộng:
-
-```text
-ZALOPAY
-MOMO
-VNPAY
-BANK_QR
-```
-
----
-
-## 4. Status
-
-### PENDING
-
-Giao dịch được tạo nhưng chưa bắt đầu xử lý.
-
-### PROCESSING
-
-Giao dịch đang được xử lý.
-
-### SUCCESS
-
-Thanh toán thành công.
-
-### FAILED
-
-Thanh toán thất bại.
-
-### EXPIRED
-
-Giao dịch hết thời gian thanh toán.
-
-### CANCELLED
-
-Giao dịch bị hủy.
-
----
-
-## 5. State Transition
-
-```text
-PENDING
-   │
-   ▼
-PROCESSING
-   │
-   ├──────────► SUCCESS
-   │
-   ├──────────► FAILED
-   │
-   ├──────────► EXPIRED
-   │
-   └──────────► CANCELLED
-```
-
-Sau khi:
-
-```text
-SUCCESS
-```
-
-không được chuyển ngược về:
-
-```text
-PENDING
-PROCESSING
-FAILED
-```
-
----
-
-## 6. Relationship
-
-```text
-Order
-  │
-  ├──< Payment
-  │
-  └──< PaymentTransaction
-```
-
-Một Order có thể có nhiều PaymentTransaction trong trường hợp giao dịch thất bại và khách hàng thử lại.
-
-Tuy nhiên chỉ giao dịch thành công hợp lệ mới được ghi nhận thành Payment.
-
----
-
-## 7. Ví dụ
-
-```text
-OrderId = 1001
-Amount = 250000
-Gateway = ZALOPAY
-Status = SUCCESS
-```
-
-Sau khi callback thành công:
-
-```text
-PaymentTransaction
-        │
-        ▼
-Create Payment
-        │
-        ▼
-Order payment completed
-```
-
----
-
-## 8. Duplicate Protection
-
-`TransactionCode` phải là duy nhất.
-
-Ví dụ:
-
-```text
-PAY-20260926-000001
-```
-
-Không cho phép tạo hai transaction có cùng:
-
-```text
-TransactionCode
-```
-
-Ngoài ra, `GatewayTransactionId` nếu được gateway cung cấp cũng phải được kiểm tra trùng trước khi cập nhật giao dịch.
+-- Tạo Index để tối ưu tốc độ tra cứu
+CREATE INDEX IX_PaymentTransaction_InvoiceId ON PaymentTransaction(InvoiceId);
+CREATE INDEX IX_PaymentTransaction_CreatedDate ON PaymentTransaction(CreatedDate);

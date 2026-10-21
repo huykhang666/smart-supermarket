@@ -1,142 +1,18 @@
-# Payment Module
+# 09_Payment Module - Hệ Thống Thanh Toán Smart SuperMarket
 
-## 1. Tổng quan
+## 1. Tổng Quan Module
+Module `09_Payment` chịu trách nhiệm xử lý toàn bộ quy trình thanh toán tại quầy POS (WinForms) cho hệ thống Quản lý Siêu thị **Smart SuperMarket**, lưu lịch sử giao dịch và phục vụ đối soát doanh thu.
 
-Payment Module chịu trách nhiệm xử lý các giao dịch thanh toán trong hệ thống Smart SuperMarket.
+## 2. Các Phương Thức Thanh Toán Hỗ Trợ (100% Miễn Phí)
+1. **Tiền mặt (Cash)**: Thu ngân nhận tiền mặt, hệ thống tự động tính tiền thừa trả khách.
+2. **VietQR / QR Ngân hàng (Free)**: Tự động sinh mã QR động chứa sẵn Số tài khoản, Số tiền và Nội dung chuyển khoản. Khách quét chuyển tiền $\rightarrow$ Thu ngân nhìn màn hình/nghe loa báo $\rightarrow$ Bấm xác nhận hoàn tất.
+3. **Thẻ Ngân hàng (POS)**: Thanh toán quẹt thẻ ATM / VISA qua máy POS quầy.
 
-Module hỗ trợ thanh toán thông qua:
-
-* Tiền mặt.
-* QR Code.
-* Thẻ ngân hàng.
-* Cổng thanh toán trực tuyến ZaloPay thông qua QR Code.
-
-Trong phiên bản hiện tại, hệ thống lựa chọn **ZaloPay QR** làm phương thức thanh toán trực tuyến chính.
-
-Payment Module kết nối với `Order Module` để đảm bảo đơn hàng chỉ được hoàn tất khi thanh toán hợp lệ.
-
----
-
-## 2. Mục tiêu
-
-Payment Module có các mục tiêu:
-
-* Tạo giao dịch thanh toán.
-* Theo dõi trạng thái thanh toán.
-* Tích hợp ZaloPay.
-* Sinh thông tin QR Code/payment URL.
-* Nhận callback từ ZaloPay.
-* Xác thực callback.
-* Cập nhật trạng thái giao dịch.
-* Liên kết giao dịch thanh toán với Order.
-* Ngăn chặn thanh toán trùng.
-* Hỗ trợ kiểm tra và tra cứu giao dịch.
-
----
-
-## 3. Actor
-
-### Staff
-
-* Chọn phương thức thanh toán.
-* Tạo giao dịch thanh toán.
-* Hiển thị QR Code cho khách hàng.
-* Kiểm tra trạng thái thanh toán.
-
-### Customer
-
-* Quét QR Code.
-* Thanh toán thông qua ZaloPay.
-* Nhận kết quả thanh toán.
-
-### Admin / Manager
-
-* Xem giao dịch thanh toán.
-* Kiểm tra trạng thái giao dịch.
-* Hỗ trợ xử lý giao dịch lỗi.
-
-### ZaloPay
-
-* Tiếp nhận yêu cầu thanh toán.
-* Xử lý giao dịch.
-* Gửi callback về hệ thống.
-
----
-
-## 4. Quan hệ với Order Module
-
-Order Module hiện có bảng:
-
-`Payment`
-
-với:
-
-| Field         | Mô tả                  |
-| ------------- | ---------------------- |
-| PaymentId     | ID thanh toán          |
-| OrderId       | ID đơn hàng            |
-| PaymentMethod | Phương thức thanh toán |
-| AmountPaid    | Số tiền                |
-| PaymentDate   | Thời gian thanh toán   |
-
-Payment Module sử dụng bảng này để lưu kết quả thanh toán cuối cùng.
-
-Ngoài ra, Payment Module có bảng:
-
-`PaymentTransaction`
-
-để lưu thông tin kỹ thuật của giao dịch ZaloPay.
-
----
-
-## 5. Payment Method
-
-Hệ thống hiện quy định:
-
-| Code | Phương thức |
-| ---: | ----------- |
-|    1 | Cash        |
-|    2 | QR Code     |
-|    3 | Card        |
-
-ZaloPay QR được ánh xạ vào:
-
-```text
-PaymentMethod = 2
-```
-
----
-
-## 6. Trạng thái PaymentTransaction
-
-```text
-PENDING
-    ↓
-PROCESSING
-    ↓
-SUCCESS
-
-PENDING / PROCESSING
-    ↓
-FAILED
-
-PENDING / PROCESSING
-    ↓
-EXPIRED
-
-PENDING / PROCESSING
-    ↓
-CANCELLED
-```
-
----
-
-## 7. Tài liệu
-
-* `Payment.md`: Thiết kế Payment.
-* `ZaloPay.md`: Thiết kế tích hợp ZaloPay (hỗ trợ ZaloPay Sandbox & Polling/Query).
-* `PaymentTransaction.md`: Thiết kế giao dịch thanh toán.
-* `BusinessRules.md`: Quy tắc nghiệp vụ (BR-01 đến BR-14).
-* `PaymentFlow.md`: Luồng xử lý thanh toán (bao gồm Callback & Active Query Fallback Flow).
-* `API.md`: API của Payment Module (kèm Endpoint đồng bộ trạng thái Gateway).
-
+## 3. Cấu Trúc Thư Mục Tài Liệu
+* `README.md`: Tài liệu tổng quan module.
+* `Payment.md`: Định nghĩa các Cấu trúc dữ liệu, DTO và Enum thanh toán.
+* `PaymentTransaction.md`: Thiết kế Bảng CSDL SQL Server lưu vết giao dịch.
+* `PaymentFlow.md`: Sơ đồ luồng nghiệp vụ thanh toán VietQR thủ công và Tiền mặt.
+* `BusinessRules.md`: Các quy tắc nghiệp vụ bắt buộc (BR-01 đến BR-08).
+* `API.md`: Chi tiết API tạo VietQR Dynamic Quick Link miễn phí.
+* `VietQR.md`: Code C# WinForms mẫu hiển thị mã QR và nút xác nhận thanh toán.

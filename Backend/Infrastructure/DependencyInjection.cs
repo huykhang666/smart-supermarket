@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<SupplierSvc.ISupplierService, SupplierSvc.SupplierService>();
         services.AddScoped<IBarcodeService, BarcodeService>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IInvoicePdfService, InvoicePdfService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IPromotionService, PromotionService>();

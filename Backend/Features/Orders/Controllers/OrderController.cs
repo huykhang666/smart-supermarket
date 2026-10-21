@@ -85,4 +85,30 @@ public class OrderController : ControllerBase
             return BadRequest(ApiResult<bool>.Failure(ex.Message));
         }
     }
+
+    [HttpGet("{id:int}/invoice-pdf")]
+    [HttpGet("{id:int}/pdf")]
+    public async Task<IActionResult> GetInvoicePdf(
+        int id,
+        [FromQuery] bool download = false,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var pdfBytes = await _orderService.GenerateInvoicePdfAsync(id, cancellationToken);
+            string fileName = $"HoaDon_HD{id:D6}_{DateTime.UtcNow:yyyyMMdd}.pdf";
+
+            if (download)
+            {
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+
+            Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+            return File(pdfBytes, "application/pdf");
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResult<string>.Failure(ex.Message));
+        }
+    }
 }

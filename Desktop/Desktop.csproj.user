@@ -4,6 +4,12 @@
     <Compile Update="AddProductForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="AddSupplierForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="EmployeeMainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -11,6 +17,12 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="MainForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\AddCustomerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\AddEmployeeForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\AdminUsersView.cs">
@@ -23,6 +35,9 @@
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Views\CreateImportReceiptForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\CreateStockAuditForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\CustomersView.cs">
@@ -49,6 +64,9 @@
     <Compile Update="Views\OrdersView.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Views\PosOrderForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\PosScanView.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -58,13 +76,34 @@
     <Compile Update="Views\PromotionsView.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Views\QrPaymentForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\ReportsView.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\SelectLossReasonForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\SettingsView.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="Views\StaffDashboardView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\StaffNotificationsView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\StaffShiftView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\StockAuditView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Views\SuppliersView.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\WorkspaceView.cs">
       <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>

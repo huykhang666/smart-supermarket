@@ -11,6 +11,11 @@ public class StockAuditDTO
     public string Zone { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public DateTime? ReconciledAt { get; set; }
+    public string? ReconciledBy { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalDiscrepancyQty { get; set; }
+    public decimal TotalLossAmount { get; set; }
     public List<StockAuditDetailDTO> Details { get; set; } = new();
 }
 
@@ -22,4 +27,8 @@ public class StockAuditDetailDTO
     public int SystemQty { get; set; }
     public int ActualQty { get; set; }
     public int VarianceQty { get; set; }
+    public string? LossReason { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal VarianceAmount { get; set; }
+    public string Notes { get; set; } = string.Empty;
 }

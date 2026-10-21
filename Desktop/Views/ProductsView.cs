@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Desktop.Services;
 using SmartSupermarket.Backend.Features.Products.DTOs;
 
 namespace Desktop.Views;
@@ -25,6 +26,7 @@ public class ProductsView : UserControl
     private Button btnSearch = null!;
     private Button btnAddProduct = null!;
     private Button btnScanBarcode = null!;
+    private Button btnExportExcel = null!;
 
     private Button btnViewTable = null!;
     private Button btnViewCard = null!;
@@ -234,15 +236,25 @@ public class ProductsView : UserControl
         {
             Text = "📷 Quét Barcode",
             Size = new Size(125, 32),
-            Margin = new Padding(0)
+            Margin = new Padding(0, 0, 4, 0)
         };
         AppTheme.ApplySecondaryButton(btnScanBarcode);
         btnScanBarcode.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Vui lòng quét barcode sản phẩm...");
+
+        btnExportExcel = new Button
+        {
+            Text = "📥 Xuất Excel",
+            Size = new Size(115, 32),
+            Margin = new Padding(0)
+        };
+        AppTheme.ApplySuccessButton(btnExportExcel);
+        btnExportExcel.Click += (s, e) => AppTheme.ExecuteWithLoading(btnExportExcel, "Đang xuất...", () => ExcelExportService.ExportDataGridViewToExcel(dgvProducts, "Danh Sách Sản Phẩm Siêu Thị", "DanhSachSanPham"));
 
         pnlActionsRight.Controls.Add(btnViewTable);
         pnlActionsRight.Controls.Add(btnViewCard);
         pnlActionsRight.Controls.Add(btnAddProduct);
         pnlActionsRight.Controls.Add(btnScanBarcode);
+        pnlActionsRight.Controls.Add(btnExportExcel);
 
         pnlTopBar.Controls.Add(pnlActionsRight);
         pnlTopBar.Controls.Add(pnlFiltersLeft);
