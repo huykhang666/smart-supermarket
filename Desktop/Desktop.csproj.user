@@ -13,6 +13,9 @@
     <Compile Update="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\FormThanhToanVietQR.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="LoginForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -30,6 +33,9 @@
     </Compile>
     <Compile Update="Views\AiCopilotView.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Views\AuditHistoryDialog.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\CategoriesView.cs">
       <SubType>UserControl</SubType>

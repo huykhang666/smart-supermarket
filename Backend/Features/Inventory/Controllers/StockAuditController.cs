@@ -83,6 +83,29 @@ public class StockAuditController : ControllerBase
         }
     }
 
+    [HttpDelete("{id}/details/{barcode}")]
+    [Authorize(Roles = "Admin,Manager,Staff")]
+    public async Task<IActionResult> DeleteAuditDetail(Guid id, string barcode)
+    {
+        try
+        {
+            var result = await _stockAuditService.DeleteAuditDetailAsync(id, barcode);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("{id}/complete")]
     [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CompleteAudit(Guid id)

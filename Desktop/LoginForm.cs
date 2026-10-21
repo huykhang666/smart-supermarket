@@ -517,21 +517,24 @@ public class LoginForm : Form
         }
     }
 
-    private static async Task<string?> TryAuthenticateWithBackendAsync(string username, string password)
+    public static async Task<string?> TryAuthenticateWithBackendAsync(string username, string password)
     {
         try
         {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
-            var payload = new { username, password };
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var payload = new { identifier = username, password = password };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             var res = await client.PostAsync($"{AppTheme.ApiBaseUrl}/api/Auth/login", content);
             if (res.IsSuccessStatusCode)
             {
                 var body = await res.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("data", out var dataEl) && dataEl.TryGetProperty("accessToken", out var tokenEl))
+                if (doc.RootElement.TryGetProperty("data", out var dataEl))
                 {
-                    return tokenEl.GetString();
+                    if (dataEl.TryGetProperty("token", out var tokenEl))
+                        return tokenEl.GetString();
+                    if (dataEl.TryGetProperty("accessToken", out var accEl))
+                        return accEl.GetString();
                 }
             }
         }

@@ -11,11 +11,13 @@ namespace Desktop.Views;
 /// </summary>
 public class SelectLossReasonForm : Form
 {
+    private NumericUpDown numActualQty = null!;
     private ComboBox cboReason = null!;
     private TextBox txtNotes = null!;
     private Button btnConfirm = null!;
     private Button btnCancel = null!;
 
+    public int ActualQty => (int)numActualQty.Value;
     public string SelectedReason { get; private set; } = string.Empty;
     public string Notes { get; private set; } = string.Empty;
 
@@ -27,7 +29,7 @@ public class SelectLossReasonForm : Form
     private void InitializeComponent(string barcode, string productName, int systemQty, int actualQty, int varianceQty, string currentReason, string currentNotes)
     {
         this.Text = "Phân Loại Nguyên Nhân Hao Hụt (Shrinkage Reason)";
-        this.Size = new Size(520, 440);
+        this.Size = new Size(520, 500);
         this.StartPosition = FormStartPosition.CenterParent;
         this.FormBorderStyle = FormBorderStyle.FixedDialog;
         this.MaximizeBox = false;
@@ -89,8 +91,38 @@ public class SelectLossReasonForm : Form
         var pnlBody = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 18, 24, 18),
+            Padding = new Padding(24, 14, 24, 14),
             BackColor = AppTheme.SurfaceWhite
+        };
+
+        var lblQtyTitle = new Label
+        {
+            Text = "Số lượng thực tế kiểm đếm được (*):",
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(20, 8),
+            AutoSize = true
+        };
+
+        numActualQty = new NumericUpDown
+        {
+            Location = new Point(20, 32),
+            Size = new Size(130, 32),
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            Minimum = 0,
+            Maximum = 99999,
+            Value = Math.Max(0, actualQty),
+            BackColor = Color.White,
+            ForeColor = AppTheme.TextPrimary
+        };
+        numActualQty.ValueChanged += (s, e) =>
+        {
+            int newAct = (int)numActualQty.Value;
+            int newVar = newAct - systemQty;
+            string newDiffText = newVar < 0 ? $"❌ Thiếu: {Math.Abs(newVar)} sản phẩm" : (newVar > 0 ? $"⚠️ Thừa: +{newVar} sản phẩm" : "✅ Khớp tồn");
+            Color newDiffColor = newVar < 0 ? AppTheme.Danger : (newVar > 0 ? AppTheme.Warning : AppTheme.Success);
+            lblDiff.Text = $"Sổ sách: {systemQty}  |  Thực tế: {newAct}  ➔  {newDiffText}";
+            lblDiff.ForeColor = newDiffColor;
         };
 
         var lblReasonTitle = new Label
@@ -98,14 +130,14 @@ public class SelectLossReasonForm : Form
             Text = "Nguyên nhân hao hụt / chênh lệch (*):",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(20, 10),
+            Location = new Point(20, 72),
             AutoSize = true
         };
 
         cboReason = new ComboBox
         {
-            Location = new Point(20, 36),
-            Size = new Size(460, 36),
+            Location = new Point(20, 96),
+            Size = new Size(460, 34),
             Font = new Font("Segoe UI", 10.5f, FontStyle.Regular),
             DropDownStyle = ComboBoxStyle.DropDownList,
             BackColor = Color.White,
@@ -148,14 +180,14 @@ public class SelectLossReasonForm : Form
             Text = "Ghi chú chi tiết:",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(20, 84),
+            Location = new Point(20, 138),
             AutoSize = true
         };
 
         txtNotes = new TextBox
         {
-            Location = new Point(20, 110),
-            Size = new Size(460, 75),
+            Location = new Point(20, 162),
+            Size = new Size(460, 65),
             Multiline = true,
             ScrollBars = ScrollBars.Vertical,
             Font = AppTheme.FontBody,
@@ -165,6 +197,8 @@ public class SelectLossReasonForm : Form
             PlaceholderText = "Nhập vị trí cụ thể, tình trạng bao bì, người phát hiện..."
         };
 
+        pnlBody.Controls.Add(lblQtyTitle);
+        pnlBody.Controls.Add(numActualQty);
         pnlBody.Controls.Add(lblReasonTitle);
         pnlBody.Controls.Add(cboReason);
         pnlBody.Controls.Add(lblNotesTitle);
