@@ -86,6 +86,32 @@ public class OrderController : ControllerBase
         }
     }
 
+    [HttpPost("{id:int}/refund")]
+    public async Task<ActionResult<ApiResult<OrderDto>>> Refund(
+        int id,
+        [FromBody] RefundOrderRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            request.OrderId = id;
+            var updatedOrder = await _orderService.RefundOrderAsync(request, cancellationToken);
+            return Ok(ApiResult<OrderDto>.Success(updatedOrder, "Hoàn trả đơn hàng & nhập kho thành công"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResult<OrderDto>.Failure(ex.Message));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResult<OrderDto>.Failure(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResult<OrderDto>.Failure(ex.Message));
+        }
+    }
+
     [HttpGet("{id:int}/invoice-pdf")]
     [HttpGet("{id:int}/pdf")]
     public async Task<IActionResult> GetInvoicePdf(

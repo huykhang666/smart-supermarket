@@ -3,5 +3,7 @@ namespace SmartSupermarket.Backend.Domain.Enums;
 public enum OrderStatus
 {
     Completed = 1,
-    Cancelled = 2
+    Cancelled = 2,
+    PartiallyRefunded = 3,
+    Refunded = 4
 }
