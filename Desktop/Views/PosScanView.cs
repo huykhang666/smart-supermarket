@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -7,7 +7,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using FontAwesome.Sharp;
 using Desktop.Forms;
 using Desktop.Models;
 using Desktop.Services;
@@ -16,11 +15,11 @@ namespace Desktop.Views;
 
 public class PosScanView : UserControl
 {
-    // Cột 1: Tìm kiếm & Thẻ sản phẩm chọn bằng chuột/màn hình cảm ứng
+    // Cột 1: Danh mục & Thẻ sản phẩm
     private TextBox txtSearchProd = null!;
     private FlowLayoutPanel pnlProductCards = null!;
 
-    // Cột 2: Barcode & Bảng giỏ hàng chi tiết
+    // Cột 2: Barcode & Bảng giỏ hàng & Toolbar
     private TextBox txtBarcode = null!;
     private Button btnScan = null!;
     private DataGridView dgvCart = null!;
@@ -28,8 +27,14 @@ public class PosScanView : UserControl
     private Button btnQtyMinus = null!;
     private Button btnRemoveItem = null!;
     private Button btnClearCart = null!;
+    private Button btnParkOrder = null!;
+    private Button btnResumeParked = null!;
+    private Button btnReturnOrder = null!;
+    private Button btnPrintThermal = null!;
 
-    // Cột 3: Khách hàng Loyalty & Đổi Voucher & Tính tiền
+    // Cột 3: Khách hàng Loyalty & Voucher & Tính tiền
+    private Panel pnlCol3 = null!;
+    private Label lblCustTitle = null!;
     private TextBox txtCustomerPhone = null!;
     private Label lblCustName = null!;
     private Label lblCustPoints = null!;
@@ -37,25 +42,30 @@ public class PosScanView : UserControl
     private Panel pnlVoucherSuggestion = null!;
     private Label lblVoucherSuggestText = null!;
     private Button btnApplySuggestedVoucher = null!;
-
+    private Panel lblDividerA = null!;
+    private TableLayoutPanel pnlBillingTable = null!;
     private Label lblSubTotalVal = null!;
     private Label lblVatVal = null!;
     private Label lblDiscountVal = null!;
-    private Label lblGrandTotal = null!;
-    private NumericUpDown numCashPaid = null!;
-    private Label lblChangeVal = null!;
-    private Button btnCheckout = null!;
-    private Button btnPayCash = null!;
-    private Button btnPayCard = null!;
-    private Button btnPayQr = null!;
+    private TableLayoutPanel pnlVoucherRow = null!;
     private TextBox txtVoucherCode = null!;
     private Button btnApplyVoucher = null!;
     private Label lblVoucherStatus = null!;
     private Button btnPickPromotion = null!;
+    private Panel lblDividerB = null!;
+    private Label lblTotalTitle = null!;
+    private Label lblGrandTotal = null!;
+    private TableLayoutPanel pnlPayMethods = null!;
+    private Button btnPayCash = null!;
+    private Button btnPayCard = null!;
+    private Button btnPayQr = null!;
     private Label lblCashP = null!;
+    private NumericUpDown numCashPaid = null!;
     private TableLayoutPanel pnlChangeRow = null!;
-    private readonly PaymentService _paymentService = new();
+    private Label lblChangeVal = null!;
+    private Button btnCheckout = null!;
 
+    private readonly PaymentService _paymentService = new();
     private readonly HttpClient _httpClient = new();
     private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
     private int _selectedPaymentMethod = 1; // 1 = Cash, 2 = QR, 3 = Card
@@ -64,6 +74,8 @@ public class PosScanView : UserControl
 
     private readonly List<CartItem> _cart = new();
     private readonly List<CatalogProduct> _catalog = new();
+    private readonly List<ParkedOrder> _parkedOrders = new();
+    private InvoicePrintModel? _lastInvoiceModel = null;
 
     public PosScanView()
     {
@@ -89,8 +101,7 @@ public class PosScanView : UserControl
                 Barcode = p.Barcode,
                 Name = p.ProductName,
                 Price = p.Price,
-                Stock = 10,
-                Icon = "📦"
+                Stock = 10
             });
             if (txtSearchProd != null)
             {
@@ -103,9 +114,9 @@ public class PosScanView : UserControl
     {
         this.Dock = DockStyle.Fill;
         this.BackColor = AppTheme.BackgroundGray;
-        this.Padding = new Padding(16);
+        this.Padding = new Padding(10);
 
-        // 3-Column Split: Col 1 (250px CỐ ĐỊNH - Danh mục sản phẩm), Col 2 (DÃN RỘNG TOÀN BỘ PHẦN CÒN LẠI), Col 3 (400px CỐ ĐỊNH - Khách & Hóa Đơn)
+        // 3-Column Split: Col 1 (300px - Danh mục SP), Col 2 (DÃN RỘNG TOÀN BỘ), Col 3 (390px - Hóa đơn)
         var pnlMainContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -113,19 +124,19 @@ public class PosScanView : UserControl
             RowCount = 1,
             BackColor = Color.Transparent
         };
-        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250f));
+        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300f));
         pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400f));
+        pnlMainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 390f));
         pnlMainContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 
         // ==========================================
-        // CỘT 1 (BÊN TRÁI): CHỌN SẢN PHẨM BẰNG CHUỘT / DANH MỤC
+        // CỘT 1 (BÊN TRÁI): CHỌN SẢN PHẨM / DANH MỤC
         // ==========================================
         var pnlCol1 = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(12),
+            Padding = new Padding(8),
             Margin = new Padding(0, 0, 6, 0)
         };
         AppTheme.ApplyCardPanel(pnlCol1);
@@ -133,18 +144,18 @@ public class PosScanView : UserControl
         var pnlCol1Header = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 72,
+            Height = 68,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 0, 0, 8)
+            Padding = new Padding(2, 0, 2, 6)
         };
 
         var lblCol1Title = new Label
         {
-            Text = "🛍️ DANH MỤC SẢN PHẨM",
-            Font = AppTheme.FontBodyBold,
+            Text = "DANH MỤC SẢN PHẨM",
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
             ForeColor = AppTheme.TextPrimary,
             Dock = DockStyle.Top,
-            Height = 26,
+            Height = 24,
             TextAlign = ContentAlignment.MiddleLeft
         };
 
@@ -153,7 +164,7 @@ public class PosScanView : UserControl
             Dock = DockStyle.Bottom,
             Height = 32,
             Font = AppTheme.FontBody,
-            PlaceholderText = "🔍 Tìm nhanh tên hoặc mã SP..."
+            PlaceholderText = "Tìm tên hoặc mã barcode..."
         };
         txtSearchProd.TextChanged += (s, e) => FilterProducts(txtSearchProd.Text.Trim());
 
@@ -167,14 +178,15 @@ public class PosScanView : UserControl
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 8, 0, 0)
+            Padding = new Padding(0, 4, 0, 0)
         };
+        pnlProductCards.Resize += (s, e) => FilterProducts(txtSearchProd?.Text.Trim() ?? "");
 
         pnlCol1.Controls.Add(pnlProductCards);
         pnlCol1.Controls.Add(pnlCol1Header);
 
         // ==========================================
-        // CỘT 2 (Ở GIỮA): QUÉT BARCODE & BẢNG GIỎ HÀNG CHI TIẾT
+        // CỘT 2 (Ở GIỮA): QUÉT BARCODE & GIỎ HÀNG & TOOLBAR
         // ==========================================
         var pnlCol2 = new Panel
         {
@@ -182,41 +194,40 @@ public class PosScanView : UserControl
             Margin = new Padding(4, 0, 4, 0)
         };
 
-        // Barcode input card with responsive layout
         var pnlBarcodeCard = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 78,
+            Height = 72,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(14, 10, 14, 10),
+            Padding = new Padding(12, 6, 12, 6),
             Margin = new Padding(0, 0, 0, 8)
         };
         AppTheme.ApplyCardPanel(pnlBarcodeCard);
 
         var lblScanPrompt = new Label
         {
-            Text = "📷 Quét Barcode Mã Vạch:",
+            Text = "Quét Barcode Mã Vạch:",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(12, 8),
+            Location = new Point(12, 6),
             AutoSize = true
         };
 
         var pnlBarcodeRow = new TableLayoutPanel
         {
-            Location = new Point(12, 32),
-            Size = new Size(pnlBarcodeCard.Width - 24, 36),
+            Location = new Point(12, 28),
+            Size = new Size(pnlBarcodeCard.Width - 24, 34),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             ColumnCount = 2,
             RowCount = 1,
             BackColor = Color.Transparent
         };
         pnlBarcodeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        pnlBarcodeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
+        pnlBarcodeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110f));
 
         txtBarcode = new TextBox
         {
-            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 11.5f, FontStyle.Bold),
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.FixedSingle,
             PlaceholderText = "Quét máy bắn mã vạch hoặc gõ mã rồi ấn Enter..."
@@ -225,13 +236,14 @@ public class PosScanView : UserControl
 
         btnScan = new Button
         {
-            Text = "➕ THÊM",
+            Text = "THÊM",
             Font = AppTheme.FontBodyBold,
             Dock = DockStyle.Fill,
-            Margin = new Padding(8, 0, 0, 0),
+            Margin = new Padding(6, 0, 0, 0),
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnScan, radius: 6);
+        AppTheme.ApplyPrimaryButton(btnScan, radius: 5);
+        btnScan.Padding = new Padding(0);
         btnScan.Click += BtnScan_Click;
 
         pnlBarcodeRow.Controls.Add(txtBarcode, 0, 0);
@@ -240,7 +252,6 @@ public class PosScanView : UserControl
         pnlBarcodeCard.Controls.Add(lblScanPrompt);
         pnlBarcodeCard.Controls.Add(pnlBarcodeRow);
 
-        // Cart DataGrid container
         var pnlCartContainer = new Panel
         {
             Dock = DockStyle.Fill,
@@ -249,47 +260,86 @@ public class PosScanView : UserControl
         };
         AppTheme.ApplyCardPanel(pnlCartContainer);
 
-        // Toolbar above Grid (+ / - / Delete / Clear)
+        // Toolbar 2 hàng (Row 0: Thao tác giỏ, Row 1: Nghiệp vụ POS)
         var pnlCartToolbar = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 44,
+            Height = 74,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(8, 5, 8, 5),
-            ColumnCount = 5,
-            RowCount = 1
+            Padding = new Padding(4, 3, 4, 3),
+            ColumnCount = 4,
+            RowCount = 2
         };
-        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115f));
-        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115f));
-        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
-        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120f));
-        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f)); // Empty flexible space
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlCartToolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
+        pnlCartToolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+        pnlCartToolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
 
-        btnQtyPlus = new Button { Text = "➕ Tăng (+1)", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 6, 0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
-        AppTheme.ApplyPrimaryButton(btnQtyPlus, radius: 6);
+        // Row 0: Thao tác giỏ
+        btnQtyPlus = new Button { Text = "+ Tăng (+1)", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplyPrimaryButton(btnQtyPlus, radius: 4);
+        btnQtyPlus.Padding = new Padding(0);
+        btnQtyPlus.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
         btnQtyPlus.Click += (s, e) => ChangeSelectedQty(1);
 
-        btnQtyMinus = new Button { Text = "➖ Giảm (-1)", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 6, 0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
-        AppTheme.ApplySecondaryButton(btnQtyMinus, radius: 6);
+        btnQtyMinus = new Button { Text = "- Giảm (-1)", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplySecondaryButton(btnQtyMinus, radius: 4);
+        btnQtyMinus.Padding = new Padding(0);
+        btnQtyMinus.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
         btnQtyMinus.Click += (s, e) => ChangeSelectedQty(-1);
 
-        btnRemoveItem = new Button { Text = "🗑️ Xóa dòng", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 6, 0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
-        AppTheme.ApplyDangerButton(btnRemoveItem, radius: 6);
+        btnRemoveItem = new Button { Text = "Xóa dòng", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplyDangerButton(btnRemoveItem, radius: 4);
+        btnRemoveItem.Padding = new Padding(0);
+        btnRemoveItem.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
         btnRemoveItem.Click += (s, e) => RemoveSelectedItem();
 
-        btnClearCart = new Button { Text = "🔄 Hủy cả giỏ", Dock = DockStyle.Fill, Margin = new Padding(0), Font = AppTheme.FontBodyBold, Cursor = Cursors.Hand };
-        AppTheme.ApplySecondaryButton(btnClearCart, radius: 6);
+        btnClearCart = new Button { Text = "Hủy cả giỏ", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplySecondaryButton(btnClearCart, radius: 4);
+        btnClearCart.Padding = new Padding(0);
+        btnClearCart.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
         btnClearCart.Click += (s, e) => { _cart.Clear(); RefreshCartGrid(); };
+
+        // Row 1: Nghiệp vụ POS F6, F7, K80
+        btnParkOrder = new Button { Text = "Tạm giữ (F6)", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplySecondaryButton(btnParkOrder, radius: 4);
+        btnParkOrder.Padding = new Padding(0);
+        btnParkOrder.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        btnParkOrder.Click += (s, e) => ParkCurrentOrder();
+
+        btnResumeParked = new Button { Text = "Đơn treo (0)", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplySecondaryButton(btnResumeParked, radius: 4);
+        btnResumeParked.Padding = new Padding(0);
+        btnResumeParked.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        btnResumeParked.Click += (s, e) => OpenParkedOrdersDialog();
+
+        btnReturnOrder = new Button { Text = "Đổi/Trả (F7)", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplySecondaryButton(btnReturnOrder, radius: 4);
+        btnReturnOrder.Padding = new Padding(0);
+        btnReturnOrder.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        btnReturnOrder.Click += (s, e) => OpenReturnRefundDialog();
+
+        btnPrintThermal = new Button { Text = "In Bill K80", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+        AppTheme.ApplySecondaryButton(btnPrintThermal, radius: 4);
+        btnPrintThermal.Padding = new Padding(0);
+        btnPrintThermal.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+        btnPrintThermal.Click += (s, e) => PrintThermalBillDirect();
 
         pnlCartToolbar.Controls.Add(btnQtyPlus, 0, 0);
         pnlCartToolbar.Controls.Add(btnQtyMinus, 1, 0);
         pnlCartToolbar.Controls.Add(btnRemoveItem, 2, 0);
         pnlCartToolbar.Controls.Add(btnClearCart, 3, 0);
 
+        pnlCartToolbar.Controls.Add(btnParkOrder, 0, 1);
+        pnlCartToolbar.Controls.Add(btnResumeParked, 1, 1);
+        pnlCartToolbar.Controls.Add(btnReturnOrder, 2, 1);
+        pnlCartToolbar.Controls.Add(btnPrintThermal, 3, 1);
+
         dgvCart = new DataGridView();
         AppTheme.ApplyGridStyle(dgvCart);
         dgvCart.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        dgvCart.Columns.Add("Icon", "Ảnh");
         dgvCart.Columns.Add("Name", "Tên Sản Phẩm");
         dgvCart.Columns.Add("Barcode", "Mã Barcode");
         dgvCart.Columns.Add("Price", "Đơn Giá");
@@ -298,23 +348,20 @@ public class PosScanView : UserControl
         dgvCart.Columns.Add("Discount", "KM");
         dgvCart.Columns.Add("Total", "Thành Tiền");
 
-        // Giảm tỷ trọng cột Tên Sản Phẩm để nhường chỗ cho các cột số liệu hiển thị đầy đủ, không bị rớt dòng hay mất chữ
-        dgvCart.Columns["Icon"].FillWeight = 5;
-        dgvCart.Columns["Icon"].MinimumWidth = 35;
-        dgvCart.Columns["Name"].FillWeight = 22;
-        dgvCart.Columns["Name"].MinimumWidth = 90;
-        dgvCart.Columns["Barcode"].FillWeight = 15;
+        dgvCart.Columns["Name"].FillWeight = 30;
+        dgvCart.Columns["Name"].MinimumWidth = 120;
+        dgvCart.Columns["Barcode"].FillWeight = 16;
         dgvCart.Columns["Barcode"].MinimumWidth = 85;
-        dgvCart.Columns["Price"].FillWeight = 16;
-        dgvCart.Columns["Price"].MinimumWidth = 75;
-        dgvCart.Columns["Quantity"].FillWeight = 7;
-        dgvCart.Columns["Quantity"].MinimumWidth = 40;
-        dgvCart.Columns["Vat"].FillWeight = 7;
-        dgvCart.Columns["Vat"].MinimumWidth = 40;
+        dgvCart.Columns["Price"].FillWeight = 15;
+        dgvCart.Columns["Price"].MinimumWidth = 80;
+        dgvCart.Columns["Quantity"].FillWeight = 8;
+        dgvCart.Columns["Quantity"].MinimumWidth = 45;
+        dgvCart.Columns["Vat"].FillWeight = 8;
+        dgvCart.Columns["Vat"].MinimumWidth = 45;
         dgvCart.Columns["Discount"].FillWeight = 8;
         dgvCart.Columns["Discount"].MinimumWidth = 45;
-        dgvCart.Columns["Total"].FillWeight = 20;
-        dgvCart.Columns["Total"].MinimumWidth = 85;
+        dgvCart.Columns["Total"].FillWeight = 18;
+        dgvCart.Columns["Total"].MinimumWidth = 90;
 
         pnlCartContainer.Controls.Add(dgvCart);
         pnlCartContainer.Controls.Add(pnlCartToolbar);
@@ -323,41 +370,34 @@ public class PosScanView : UserControl
         pnlCol2.Controls.Add(pnlBarcodeCard);
 
         // ==========================================
-        // CỘT 3 (BÊN PHẢI): KHÁCH LOYALTY & GỢI Ý VOUCHER & HÓA ĐƠN
+        // CỘT 3 (BÊN PHẢI): KHÁCH HÀNG & BẢNG TÍNH TIỀN (Stacked Layout)
         // ==========================================
-        var pnlCol3 = new Panel
+        pnlCol3 = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(16),
-            Margin = new Padding(8, 0, 0, 0),
+            Padding = new Padding(14),
+            Margin = new Padding(6, 0, 0, 0),
             AutoScroll = true
         };
         AppTheme.ApplyCardPanel(pnlCol3);
 
-        // Khối 1: Thông tin khách hàng
-        var lblCustTitle = new Label { Text = "👤 KHÁCH HÀNG & TÍCH ĐIỂM", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 12), AutoSize = true };
+        lblCustTitle = new Label { Text = "KHÁCH HÀNG & TÍCH ĐIỂM", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true };
         txtCustomerPhone = new TextBox
         {
-            Location = new Point(14, 36),
-            Size = new Size(pnlCol3.Width - 28, 30),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Height = 32,
             Font = AppTheme.FontBody,
-            Text = "",
             PlaceholderText = "Nhập SĐT hoặc Mã khách hàng..."
         };
         txtCustomerPhone.TextChanged += async (s, e) => await ApplyCustomerPhoneAsync();
 
-        lblCustName = new Label { Text = "Khách Lẻ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Primary, Location = new Point(14, 72), AutoSize = true };
-        lblCustPoints = new Label { Text = "Điểm tích lũy: 0 điểm", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(14, 94), AutoSize = true };
-        lblCustTier = new Label { Text = "Hạng thành viên: Thành viên mới", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(14, 116), AutoSize = true };
+        lblCustName = new Label { Text = "Khách Lẻ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.Primary, AutoSize = true };
+        lblCustPoints = new Label { Text = "Điểm tích lũy: 0 điểm", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, AutoSize = true };
+        lblCustTier = new Label { Text = "Hạng thành viên: Thành viên mới", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, AutoSize = true };
 
-        // Khối 2: Gợi ý đổi Voucher thông minh
         pnlVoucherSuggestion = new Panel
         {
-            Location = new Point(14, 142),
-            Size = new Size(pnlCol3.Width - 28, 64),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Height = 58,
             BackColor = Color.FromArgb(240, 248, 255),
             Padding = new Padding(8),
             Visible = false
@@ -370,21 +410,22 @@ public class PosScanView : UserControl
 
         lblVoucherSuggestText = new Label
         {
-            Text = "💡 Khách đủ 1,000 điểm đổi Voucher 50.000đ",
+            Text = "Khách đủ điểm đổi Voucher giảm giá!",
             Font = AppTheme.FontCaption,
             ForeColor = AppTheme.Primary,
-            Location = new Point(8, 8),
+            Location = new Point(8, 6),
             AutoSize = true
         };
         btnApplySuggestedVoucher = new Button
         {
-            Text = "🎁 [ÁP DỤNG NGAY]",
-            Font = AppTheme.FontCaption,
-            Size = new Size(140, 26),
-            Location = new Point(8, 30),
+            Text = "Áp Dụng Ngay",
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Size = new Size(130, 24),
+            Location = new Point(8, 26),
             Cursor = Cursors.Hand
         };
         AppTheme.ApplyPrimaryButton(btnApplySuggestedVoucher, radius: 4);
+        btnApplySuggestedVoucher.Padding = new Padding(0);
         btnApplySuggestedVoucher.Click += (s, e) =>
         {
             _appliedDiscountAmount = 50000m;
@@ -393,28 +434,26 @@ public class PosScanView : UserControl
             lblVoucherStatus.Text = "✓ Đã áp dụng Voucher 50k!";
             lblVoucherStatus.ForeColor = AppTheme.Success;
             CalculateSummary();
+            RelayoutCol3();
             AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã áp dụng voucher đổi điểm thành công!");
         };
         pnlVoucherSuggestion.Controls.Add(lblVoucherSuggestText);
         pnlVoucherSuggestion.Controls.Add(btnApplySuggestedVoucher);
 
-        // Khối 3: Hóa đơn & Bảng tính tiền
-        var lblDividerA = new Panel { Location = new Point(14, 148), Size = new Size(pnlCol3.Width - 28, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        lblDividerA = new Panel { Height = 1, BackColor = AppTheme.BorderLight };
 
-        var pnlBillingTable = new TableLayoutPanel
+        pnlBillingTable = new TableLayoutPanel
         {
-            Location = new Point(14, 160),
-            Size = new Size(pnlCol3.Width - 28, 85),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Height = 78,
             ColumnCount = 2,
             RowCount = 3,
             BackColor = Color.Transparent
         };
         pnlBillingTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55f));
         pnlBillingTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45f));
-        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
-        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
-        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 28f));
+        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 26f));
+        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 26f));
+        pnlBillingTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 26f));
 
         var lblSubTot = new Label { Text = "Tạm tính hàng:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
         lblSubTotalVal = new Label { Text = "0 đ", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight };
@@ -432,12 +471,9 @@ public class PosScanView : UserControl
         pnlBillingTable.Controls.Add(lblDisc, 0, 2);
         pnlBillingTable.Controls.Add(lblDiscountVal, 1, 2);
 
-        // Voucher input hàng ngang dùng TableLayoutPanel chống tràn/lệch
-        var pnlVoucherRow = new TableLayoutPanel
+        pnlVoucherRow = new TableLayoutPanel
         {
-            Location = new Point(14, 252),
-            Size = new Size(pnlCol3.Width - 28, 34),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Height = 34,
             ColumnCount = 2,
             RowCount = 1,
             BackColor = Color.Transparent
@@ -449,7 +485,7 @@ public class PosScanView : UserControl
         {
             Dock = DockStyle.Fill,
             Font = AppTheme.FontBody,
-            PlaceholderText = "Nhập mã voucher giảm giá..."
+            PlaceholderText = "Nhập mã voucher..."
         };
 
         btnApplyVoucher = new Button
@@ -460,43 +496,40 @@ public class PosScanView : UserControl
             Margin = new Padding(6, 0, 0, 0),
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnApplyVoucher, radius: 6);
+        AppTheme.ApplyPrimaryButton(btnApplyVoucher, radius: 5);
+        btnApplyVoucher.Padding = new Padding(0);
         btnApplyVoucher.Click += async (s, e) => await ApplyVoucherAsync();
 
         pnlVoucherRow.Controls.Add(txtVoucherCode, 0, 0);
         pnlVoucherRow.Controls.Add(btnApplyVoucher, 1, 0);
 
-        lblVoucherStatus = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.Success, Location = new Point(14, 290), AutoSize = true };
+        lblVoucherStatus = new Label { Text = "", Font = AppTheme.FontCaption, ForeColor = AppTheme.Success, AutoSize = true, Visible = false };
 
-        // Button: Xem & chọn khuyến mãi / combo đang áp dụng
         btnPickPromotion = new Button
         {
-            Text = "🎁 Xem & Áp Dụng Khuyến Mãi / Combo",
-            Font = AppTheme.FontBody,
-            Size = new Size(pnlCol3.Width - 28, 30),
-            Location = new Point(14, 306),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Text = "Xem Khuyến Mãi / Combo",
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Height = 32,
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplySecondaryButton(btnPickPromotion, radius: 6);
+        AppTheme.ApplySecondaryButton(btnPickPromotion, radius: 5);
+        btnPickPromotion.Padding = new Padding(0);
         btnPickPromotion.Click += async (s, e) => await ShowActivePromotionsPickerAsync();
 
-        var lblTotalTitle = new Label { Text = "TỔNG TIỀN PHẢI THU", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, Location = new Point(14, 346), AutoSize = true };
+        lblDividerB = new Panel { Height = 1, BackColor = AppTheme.BorderLight };
+
+        lblTotalTitle = new Label { Text = "TỔNG TIỀN PHẢI THU", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextSecondary, AutoSize = true };
         lblGrandTotal = new Label
         {
             Text = "0 VNĐ",
             Font = new Font("Segoe UI", 20f, FontStyle.Bold),
             ForeColor = AppTheme.Primary,
-            Location = new Point(12, 366),
             AutoSize = true
         };
 
-        // Payment Method Select (Tiền mặt / QR / Thẻ) - 3 Equal Columns
-        var pnlPayMethods = new TableLayoutPanel
+        pnlPayMethods = new TableLayoutPanel
         {
-            Location = new Point(14, 388),
-            Size = new Size(pnlCol3.Width - 28, 38),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Height = 36,
             ColumnCount = 3,
             RowCount = 1,
             BackColor = Color.Transparent
@@ -505,29 +538,29 @@ public class PosScanView : UserControl
         pnlPayMethods.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
         pnlPayMethods.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34f));
 
-        btnPayCash = new Button { Text = "💵 Tiền mặt", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 3, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
-        btnPayQr = new Button { Text = "📱 VietQR", Dock = DockStyle.Fill, Margin = new Padding(3, 0, 3, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
-        btnPayCard = new Button { Text = "💳 Thẻ POS", Dock = DockStyle.Fill, Margin = new Padding(3, 0, 0, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
-        AppTheme.ApplySecondaryButton(btnPayCash, radius: 6);
-        AppTheme.ApplySecondaryButton(btnPayQr, radius: 6);
-        AppTheme.ApplySecondaryButton(btnPayCard, radius: 6);
+        btnPayCash = new Button { Text = "Tiền mặt", Dock = DockStyle.Fill, Margin = new Padding(0, 0, 3, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+        btnPayQr = new Button { Text = "VietQR", Dock = DockStyle.Fill, Margin = new Padding(3, 0, 3, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+        btnPayCard = new Button { Text = "Thẻ POS", Dock = DockStyle.Fill, Margin = new Padding(3, 0, 0, 0), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+        AppTheme.ApplySecondaryButton(btnPayCash, radius: 5);
+        AppTheme.ApplySecondaryButton(btnPayQr, radius: 5);
+        AppTheme.ApplySecondaryButton(btnPayCard, radius: 5);
+        btnPayCash.Padding = new Padding(0);
+        btnPayQr.Padding = new Padding(0);
+        btnPayCard.Padding = new Padding(0);
 
         btnPayCash.Click += (s, e) => SetPaymentMethod(1);
         btnPayQr.Click += (s, e) => SetPaymentMethod(2);
         btnPayCard.Click += (s, e) => SetPaymentMethod(3);
-        SetPaymentMethod(1);
 
         pnlPayMethods.Controls.Add(btnPayCash, 0, 0);
         pnlPayMethods.Controls.Add(btnPayQr, 1, 0);
         pnlPayMethods.Controls.Add(btnPayCard, 2, 0);
 
-        lblCashP = new Label { Text = "Tiền khách đưa (VNĐ):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 436), AutoSize = true };
+        lblCashP = new Label { Text = "Tiền khách đưa (VNĐ):", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, AutoSize = true };
         numCashPaid = new NumericUpDown
         {
-            Location = new Point(14, 460),
-            Size = new Size(pnlCol3.Width - 28, 34),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+            Height = 32,
+            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
             Maximum = 100000000,
             ThousandsSeparator = true
         };
@@ -535,9 +568,7 @@ public class PosScanView : UserControl
 
         pnlChangeRow = new TableLayoutPanel
         {
-            Location = new Point(14, 502),
-            Size = new Size(pnlCol3.Width - 28, 30),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Height = 28,
             ColumnCount = 2,
             RowCount = 1,
             BackColor = Color.Transparent
@@ -552,14 +583,13 @@ public class PosScanView : UserControl
 
         btnCheckout = new Button
         {
-            Text = "⚡ HOÀN TẤT THANH TOÁN (F9)",
-            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            Size = new Size(pnlCol3.Width - 28, 50),
-            Location = new Point(14, 542),
-            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Text = "HOÀN TẤT THANH TOÁN (F9)",
+            Font = new Font("Segoe UI", 11.5f, FontStyle.Bold),
+            Height = 46,
             Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnCheckout, radius: 8);
+        AppTheme.ApplyPrimaryButton(btnCheckout, radius: 6);
+        btnCheckout.Padding = new Padding(0);
         btnCheckout.Click += async (s, e) => await CheckoutAsync();
 
         pnlCol3.Controls.Add(lblCustTitle);
@@ -573,6 +603,7 @@ public class PosScanView : UserControl
         pnlCol3.Controls.Add(pnlVoucherRow);
         pnlCol3.Controls.Add(lblVoucherStatus);
         pnlCol3.Controls.Add(btnPickPromotion);
+        pnlCol3.Controls.Add(lblDividerB);
         pnlCol3.Controls.Add(lblTotalTitle);
         pnlCol3.Controls.Add(lblGrandTotal);
         pnlCol3.Controls.Add(pnlPayMethods);
@@ -581,32 +612,129 @@ public class PosScanView : UserControl
         pnlCol3.Controls.Add(pnlChangeRow);
         pnlCol3.Controls.Add(btnCheckout);
 
-        // Đảm bảo toàn bộ control bên trong pnlCol3 co giãn vừa khít 100% bề ngang card
-        void AdjustCol3Layout()
-        {
-            int targetWidth = pnlCol3.ClientSize.Width - 32;
-            if (targetWidth < 280) targetWidth = 280;
-            txtCustomerPhone.Width = targetWidth;
-            pnlVoucherSuggestion.Width = targetWidth;
-            lblDividerA.Width = targetWidth;
-            pnlBillingTable.Width = targetWidth;
-            pnlVoucherRow.Width = targetWidth;
-            btnPickPromotion.Width = targetWidth;
-            pnlPayMethods.Width = targetWidth;
-            numCashPaid.Width = targetWidth;
-            pnlChangeRow.Width = targetWidth;
-            btnCheckout.Width = targetWidth;
-        }
+        pnlCol3.Resize += (s, e) => RelayoutCol3();
+        pnlCol3.HandleCreated += (s, e) => RelayoutCol3();
 
-        pnlCol3.Resize += (s, e) => AdjustCol3Layout();
-        pnlCol3.HandleCreated += (s, e) => AdjustCol3Layout();
-        pnlCol3.SizeChanged += (s, e) => AdjustCol3Layout();
+        SetPaymentMethod(1);
 
         pnlMainContainer.Controls.Add(pnlCol1, 0, 0);
         pnlMainContainer.Controls.Add(pnlCol2, 1, 0);
         pnlMainContainer.Controls.Add(pnlCol3, 2, 0);
 
         this.Controls.Add(pnlMainContainer);
+    }
+
+    private void RelayoutCol3()
+    {
+        if (pnlCol3 == null || !pnlCol3.IsHandleCreated) return;
+        pnlCol3.SuspendLayout();
+
+        int padX = 14;
+        int scrollbarPad = pnlCol3.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0;
+        int targetW = pnlCol3.ClientSize.Width - (padX * 2) - scrollbarPad;
+        if (targetW < 260) targetW = 260;
+
+        int currentY = 12;
+
+        lblCustTitle.Location = new Point(padX, currentY);
+        currentY += lblCustTitle.Height + 6;
+
+        txtCustomerPhone.Location = new Point(padX, currentY);
+        txtCustomerPhone.Width = targetW;
+        currentY += txtCustomerPhone.Height + 6;
+
+        lblCustName.Location = new Point(padX, currentY);
+        lblCustName.Width = targetW;
+        currentY += lblCustName.Height + 2;
+
+        lblCustPoints.Location = new Point(padX, currentY);
+        lblCustPoints.Width = targetW;
+        currentY += lblCustPoints.Height + 2;
+
+        lblCustTier.Location = new Point(padX, currentY);
+        lblCustTier.Width = targetW;
+        currentY += lblCustTier.Height + 8;
+
+        if (pnlVoucherSuggestion.Visible)
+        {
+            pnlVoucherSuggestion.Location = new Point(padX, currentY);
+            pnlVoucherSuggestion.Width = targetW;
+            pnlVoucherSuggestion.Height = 58;
+            currentY += pnlVoucherSuggestion.Height + 8;
+        }
+
+        lblDividerA.Location = new Point(padX, currentY);
+        lblDividerA.Width = targetW;
+        currentY += lblDividerA.Height + 8;
+
+        pnlBillingTable.Location = new Point(padX, currentY);
+        pnlBillingTable.Width = targetW;
+        currentY += pnlBillingTable.Height + 8;
+
+        pnlVoucherRow.Location = new Point(padX, currentY);
+        pnlVoucherRow.Width = targetW;
+        currentY += pnlVoucherRow.Height + 4;
+
+        if (!string.IsNullOrWhiteSpace(lblVoucherStatus.Text))
+        {
+            lblVoucherStatus.Visible = true;
+            lblVoucherStatus.Location = new Point(padX, currentY);
+            lblVoucherStatus.Width = targetW;
+            currentY += lblVoucherStatus.Height + 4;
+        }
+        else
+        {
+            lblVoucherStatus.Visible = false;
+        }
+
+        btnPickPromotion.Location = new Point(padX, currentY);
+        btnPickPromotion.Width = targetW;
+        currentY += btnPickPromotion.Height + 8;
+
+        lblDividerB.Location = new Point(padX, currentY);
+        lblDividerB.Width = targetW;
+        currentY += lblDividerB.Height + 8;
+
+        lblTotalTitle.Location = new Point(padX, currentY);
+        currentY += lblTotalTitle.Height + 2;
+
+        lblGrandTotal.Location = new Point(padX - 2, currentY);
+        currentY += lblGrandTotal.Height + 8;
+
+        pnlPayMethods.Location = new Point(padX, currentY);
+        pnlPayMethods.Width = targetW;
+        currentY += pnlPayMethods.Height + 8;
+
+        if (_selectedPaymentMethod == 1)
+        {
+            lblCashP.Visible = true;
+            numCashPaid.Visible = true;
+            pnlChangeRow.Visible = true;
+
+            lblCashP.Location = new Point(padX, currentY);
+            currentY += lblCashP.Height + 4;
+
+            numCashPaid.Location = new Point(padX, currentY);
+            numCashPaid.Width = targetW;
+            currentY += numCashPaid.Height + 6;
+
+            pnlChangeRow.Location = new Point(padX, currentY);
+            pnlChangeRow.Width = targetW;
+            currentY += pnlChangeRow.Height + 10;
+        }
+        else
+        {
+            lblCashP.Visible = false;
+            numCashPaid.Visible = false;
+            pnlChangeRow.Visible = false;
+        }
+
+        btnCheckout.Location = new Point(padX, currentY);
+        btnCheckout.Width = targetW;
+        currentY += btnCheckout.Height + 16;
+
+        pnlCol3.AutoScrollMinSize = new Size(0, currentY);
+        pnlCol3.ResumeLayout(true);
     }
 
     private async void LoadCatalogProducts()
@@ -647,8 +775,7 @@ public class PosScanView : UserControl
                                 Name = name,
                                 Price = price,
                                 CategoryId = catId,
-                                Stock = 100,
-                                Icon = "📦"
+                                Stock = 100
                             });
                         }
                     }
@@ -657,7 +784,6 @@ public class PosScanView : UserControl
         }
         catch { }
 
-        // Merge stored products from DataStore (ensures products like Nước Yến Nha Đam - 8938535231014 always show up)
         foreach (var dsProd in DataStore.Products)
         {
             if (!string.IsNullOrEmpty(dsProd.Barcode) && !_catalog.Any(c => c.Barcode == dsProd.Barcode))
@@ -669,13 +795,11 @@ public class PosScanView : UserControl
                     Name = dsProd.ProductName,
                     Price = dsProd.Price,
                     CategoryId = dsProd.CategoryId,
-                    Stock = 100,
-                    Icon = "📦"
+                    Stock = 100
                 });
             }
         }
 
-        // 3. Quét các sản phẩm cận date từ DiscountRule để cập nhật giá xả hàng
         try
         {
             var expResp = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/discount-rules/expiring-products");
@@ -715,6 +839,7 @@ public class PosScanView : UserControl
 
     private void FilterProducts(string keyword)
     {
+        pnlProductCards.SuspendLayout();
         pnlProductCards.Controls.Clear();
         if (_catalog.Count == 0)
         {
@@ -728,6 +853,7 @@ public class PosScanView : UserControl
                 Location = new Point(10, 20)
             };
             pnlProductCards.Controls.Add(lblEmpty);
+            pnlProductCards.ResumeLayout();
             return;
         }
 
@@ -735,14 +861,20 @@ public class PosScanView : UserControl
             ? _catalog
             : _catalog.Where(p => p.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase) || p.Barcode.Contains(keyword)).ToList();
 
+        // 2 cột thẻ sản phẩm vừa vặn: tính dựa trên ClientSize.Width
+        int scrollWidth = pnlProductCards.VerticalScroll.Visible ? SystemInformation.VerticalScrollBarWidth : 0;
+        int availWidth = pnlProductCards.ClientSize.Width - scrollWidth - 12;
+        int cardWidth = Math.Max(124, availWidth / 2);
+        int cardHeight = 120;
+
         foreach (var prod in list)
         {
             var card = new Panel
             {
-                Size = new Size(130, 130),
+                Size = new Size(cardWidth, cardHeight),
                 BackColor = prod.IsNearExpiry ? Color.FromArgb(255, 245, 245) : AppTheme.SurfaceWhite,
-                Margin = new Padding(0, 0, 10, 10),
-                Padding = new Padding(8),
+                Margin = new Padding(0, 0, 6, 8),
+                Padding = new Padding(6),
                 Cursor = Cursors.Hand
             };
 
@@ -759,12 +891,35 @@ public class PosScanView : UserControl
                 e.Graphics.DrawPath(p, path);
             };
 
-            var lblIcon = new Label { Text = prod.Icon, Font = new Font("Segoe UI", 18f), Location = new Point(6, 6), AutoSize = true, BackColor = Color.Transparent };
-            var lblName = new Label { Text = prod.Name, Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = AppTheme.TextPrimary, Location = new Point(6, 40), Size = new Size(118, 34), BackColor = Color.Transparent };
-            var lblPrice = new Label { Text = $"{prod.Price:N0} đ", Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), ForeColor = prod.IsNearExpiry ? Color.FromArgb(220, 38, 38) : AppTheme.Primary, Location = new Point(6, 78), AutoSize = true, BackColor = Color.Transparent };
-            var lblStock = new Label { Text = $"Tồn kho: {prod.Stock}", Font = new Font("Segoe UI", 8.5f), ForeColor = AppTheme.TextSecondary, Location = new Point(6, 104), AutoSize = true, BackColor = Color.Transparent };
+            var lblName = new Label
+            {
+                Text = prod.Name,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                ForeColor = AppTheme.TextPrimary,
+                Location = new Point(8, 6),
+                Size = new Size(card.Width - 16, 46),
+                BackColor = Color.Transparent,
+                AutoEllipsis = false
+            };
+            var lblPrice = new Label
+            {
+                Text = $"{prod.Price:N0} đ",
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                ForeColor = prod.IsNearExpiry ? Color.FromArgb(220, 38, 38) : AppTheme.Primary,
+                Location = new Point(8, 62),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            var lblStock = new Label
+            {
+                Text = $"Kho: {prod.Stock}",
+                Font = new Font("Segoe UI", 8.5f),
+                ForeColor = AppTheme.TextSecondary,
+                Location = new Point(8, 88),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
 
-            card.Controls.Add(lblIcon);
             card.Controls.Add(lblName);
             card.Controls.Add(lblPrice);
             card.Controls.Add(lblStock);
@@ -777,17 +932,17 @@ public class PosScanView : UserControl
                     Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
                     ForeColor = Color.White,
                     BackColor = Color.FromArgb(220, 38, 38),
-                    Location = new Point(78, 6),
-                    AutoSize = true,
-                    Padding = new Padding(3, 1, 3, 1)
+                    Location = new Point(card.Width - 46, 62),
+                    Size = new Size(38, 18),
+                    TextAlign = ContentAlignment.MiddleCenter
                 };
                 card.Controls.Add(lblBadge);
+                lblBadge.BringToFront();
             }
 
-            // Click or Double-click to add to cart
-            Action attachEvents = () =>
+            void AttachEvents(Control parent)
             {
-                foreach (Control ctrl in card.Controls)
+                foreach (Control ctrl in parent.Controls)
                 {
                     ctrl.Cursor = Cursors.Hand;
                     ctrl.MouseEnter += (s, e) => { isHovered = true; card.BackColor = prod.IsNearExpiry ? Color.FromArgb(254, 235, 235) : AppTheme.PrimarySubtle; card.Invalidate(); };
@@ -795,13 +950,14 @@ public class PosScanView : UserControl
                     ctrl.Click += (s, e) => AddCatalogItemToCart(prod);
                     ctrl.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
                 }
-                card.Click += (s, e) => AddCatalogItemToCart(prod);
-                card.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
-            };
-            attachEvents();
+                parent.Click += (s, e) => AddCatalogItemToCart(prod);
+                parent.DoubleClick += (s, e) => AddCatalogItemToCart(prod);
+            }
+            AttachEvents(card);
 
             pnlProductCards.Controls.Add(card);
         }
+        pnlProductCards.ResumeLayout();
     }
 
     private void AddCatalogItemToCart(CatalogProduct prod)
@@ -825,14 +981,13 @@ public class PosScanView : UserControl
                 IsNearExpiry = prod.IsNearExpiry,
                 ExpiryNote = prod.ExpiryNote,
                 Quantity = 1,
-                VatPercent = 8,
-                Icon = prod.Icon
+                VatPercent = 8
             });
         }
         RefreshCartGrid();
 
         string msg = prod.IsNearExpiry
-            ? $"Đã thêm {prod.Name} (🏷️ Xả hàng cận date -{prod.DiscountPercent:N0}%: {prod.Price:N0} đ) vào giỏ!"
+            ? $"Đã thêm {prod.Name} (Xả hàng cận date -{prod.DiscountPercent:N0}%: {prod.Price:N0} đ) vào giỏ!"
             : $"Đã thêm {prod.Name} vào giỏ!";
         AntdUI.Message.success(this.FindForm() ?? new Form(), msg);
     }
@@ -843,11 +998,10 @@ public class PosScanView : UserControl
         foreach (var item in _cart)
         {
             decimal itemSubTotal = item.Price * item.Quantity;
-            string displayName = item.IsNearExpiry ? $"{item.Name} 🏷️[-{item.DiscountPercent:N0}% Cận date]" : item.Name;
+            string displayName = item.IsNearExpiry ? $"{item.Name} [-{item.DiscountPercent:N0}% Cận date]" : item.Name;
             string discountNote = item.IsNearExpiry ? $"-{(item.OriginalPrice - item.Price) * item.Quantity:N0} đ" : "0 đ";
 
             dgvCart.Rows.Add(
-                item.Icon,
                 displayName,
                 item.Barcode,
                 $"{item.Price:N0} đ",
@@ -865,7 +1019,6 @@ public class PosScanView : UserControl
         decimal grossSubTotal = _cart.Sum(i => i.Price * i.Quantity);
         decimal grandTotal = Math.Max(0, grossSubTotal - _appliedDiscountAmount);
 
-        // VAT 8% included inside the retail price (Chuẩn siêu thị WinMart / Bách Hóa Xanh)
         decimal netSubTotal = Math.Round(grandTotal / 1.08m, 0);
         decimal vatTotal = grandTotal - netSubTotal;
 
@@ -891,8 +1044,7 @@ public class PosScanView : UserControl
         }
         else if (Math.Abs(change) <= 1000m)
         {
-            // Small change rounding tolerance (bớt lẻ dưới 1.000đ khi thanh toán tiền mặt)
-            lblChangeVal.Text = $"0 VNĐ (Làm tròn bớt {Math.Abs(change):N0} đ lẻ)";
+            lblChangeVal.Text = $"0 VNĐ (Làm tròn {Math.Abs(change):N0} đ lẻ)";
             lblChangeVal.ForeColor = AppTheme.Success;
         }
         else
@@ -917,27 +1069,14 @@ public class PosScanView : UserControl
         btnPayQr.Invalidate();
         btnPayCard.Invalidate();
 
-        if (numCashPaid != null && lblCashP != null && pnlChangeRow != null)
+        RelayoutCol3();
+
+        if (method == 1)
         {
-            if (method == 1)
-            {
-                lblCashP.Visible = true;
-                numCashPaid.Visible = true;
-                numCashPaid.Enabled = true;
-                pnlChangeRow.Visible = true;
-                CalculateChange();
-            }
-            else
-            {
-                lblCashP.Visible = false;
-                numCashPaid.Visible = false;
-                numCashPaid.Enabled = false;
-                pnlChangeRow.Visible = false;
-                lblChangeVal.Text = "0 VNĐ";
-                lblChangeVal.ForeColor = AppTheme.Success;
-            }
+            CalculateChange();
         }
     }
+
     private void ChangeSelectedQty(int delta)
     {
         if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
@@ -978,8 +1117,7 @@ public class PosScanView : UserControl
                     Barcode = dsProd.Barcode,
                     Name = dsProd.ProductName,
                     Price = dsProd.Price,
-                    Stock = 10,
-                    Icon = "📦"
+                    Stock = 10
                 };
                 _catalog.Add(prod);
             }
@@ -992,7 +1130,7 @@ public class PosScanView : UserControl
         else
         {
             var confirm = MessageBox.Show(
-                $"Mã vạch '{code}' chưa có trong danh mục hệ thống!\n\nBạn có muốn mở form tạo sản phẩm mới (nhập tên, nhà cung cấp, giá bán, ảnh) ngay bây giờ không?",
+                $"Mã vạch '{code}' chưa có trong danh mục hệ thống!\n\nBạn có muốn mở form tạo sản phẩm mới ngay bây giờ không?",
                 "Sản phẩm mới",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -1009,8 +1147,7 @@ public class PosScanView : UserControl
                         Barcode = newProd.Barcode,
                         Name = newProd.ProductName,
                         Price = newProd.Price,
-                        Stock = 10,
-                        Icon = "📦"
+                        Stock = 10
                     };
                     _catalog.Add(catalogItem);
                     FilterProducts(txtSearchProd.Text.Trim());
@@ -1026,7 +1163,15 @@ public class PosScanView : UserControl
     private async Task ApplyCustomerPhoneAsync()
     {
         string phone = txtCustomerPhone.Text.Trim();
-        if (string.IsNullOrEmpty(phone)) return;
+        if (string.IsNullOrEmpty(phone))
+        {
+            lblCustName.Text = "Khách Lẻ";
+            lblCustPoints.Text = "Điểm tích lũy: 0 điểm";
+            lblCustTier.Text = "Hạng thành viên: Thành viên mới";
+            pnlVoucherSuggestion.Visible = false;
+            RelayoutCol3();
+            return;
+        }
 
         try
         {
@@ -1049,20 +1194,25 @@ public class PosScanView : UserControl
                     if (points >= 100)
                     {
                         pnlVoucherSuggestion.Visible = true;
-                        lblVoucherSuggestText.Text = $"💡 Khách có {points} điểm. Đổi 100 điểm lấy Voucher -20k?";
+                        lblVoucherSuggestText.Text = $"Khách có {points} điểm. Đổi 100 điểm lấy Voucher -20k?";
                     }
+                    else
+                    {
+                        pnlVoucherSuggestion.Visible = false;
+                    }
+                    RelayoutCol3();
                     return;
                 }
             }
         }
         catch { }
 
-        // Fallback demo local customer lookup
         lblCustName.Text = "Khách hàng: Nguyễn Văn A (VIP)";
         lblCustPoints.Text = "Điểm tích lũy: 150 điểm";
         lblCustTier.Text = "Hạng thành viên: Kim Cương";
         pnlVoucherSuggestion.Visible = true;
-        lblVoucherSuggestText.Text = "💡 Khách có 150 điểm. Đổi 100 điểm lấy Voucher -20k?";
+        lblVoucherSuggestText.Text = "Khách có 150 điểm. Đổi 100 điểm lấy Voucher -20k?";
+        RelayoutCol3();
     }
 
     private async Task ApplyVoucherAsync()
@@ -1078,7 +1228,6 @@ public class PosScanView : UserControl
 
         decimal grossSubTotal = _cart.Sum(i => i.Price * i.Quantity);
 
-        // Build cart items list for combo/BuyXGetY check
         var cartItems = _cart.Select(c => new
         {
             productId = c.ProductId,
@@ -1093,8 +1242,10 @@ public class PosScanView : UserControl
         {
             btnApplyVoucher.Enabled = false;
             lblVoucherStatus.Text = "Đang kiểm tra...";
+            lblVoucherStatus.Visible = true;
+            RelayoutCol3();
 
-            var payload = System.Text.Json.JsonSerializer.Serialize(new
+            var payload = JsonSerializer.Serialize(new
             {
                 promotionCode = code,
                 orderTotalAmount = grossSubTotal,
@@ -1132,7 +1283,6 @@ public class PosScanView : UserControl
         }
         catch
         {
-            // Fallback: API offline — apply small fixed discount so POS still works
             _appliedDiscountAmount = 20000m;
             _appliedVoucherCode = code;
             lblVoucherStatus.Text = $"✓ {code}: -20,000 đ (offline)";
@@ -1142,13 +1292,10 @@ public class PosScanView : UserControl
         finally
         {
             btnApplyVoucher.Enabled = true;
+            RelayoutCol3();
         }
     }
 
-    /// <summary>
-    /// Show a list of active promotions. Let cashier pick one to apply automatically.
-    /// Calls GET /api/v1/promotions/active
-    /// </summary>
     private async Task ShowActivePromotionsPickerAsync()
     {
         try
@@ -1165,7 +1312,6 @@ public class PosScanView : UserControl
             var root = doc.RootElement;
             var dataEl = root.TryGetProperty("data", out var d) ? d : root;
 
-            // Collect promotion list
             var items = new List<(string Code, string Label)>();
             var arr = dataEl.ValueKind == JsonValueKind.Array ? dataEl
                 : (dataEl.TryGetProperty("items", out var sub) ? sub : default);
@@ -1179,18 +1325,18 @@ public class PosScanView : UserControl
                     string dtype = item.TryGetProperty("discountType", out var dt) ? (dt.GetString() ?? "") : "";
                     decimal dval = item.TryGetProperty("discountValue", out var dv) ? dv.GetDecimal() : 0m;
 
-                    string typeIcon = dtype switch
+                    string typeTag = dtype switch
                     {
-                        "ComboDiscount" => "🎁 Mua kèm",
-                        "BuyXGetY" => "🎁 Mua X Tặng Y",
-                        "CategoryDiscount" => "🏷️ Ngành hàng",
-                        "QuantityTier" => "📦 Mua sỉ",
-                        "Percentage" => $"📊 -{dval:N0}%",
-                        "FixedAmount" => $"💰 -{dval:N0}₫",
-                        _ => "🎟️"
+                        "ComboDiscount" => "[Combo]",
+                        "BuyXGetY" => "[Mua X Tặng Y]",
+                        "CategoryDiscount" => "[Ngành Hàng]",
+                        "QuantityTier" => "[Mua Sỉ]",
+                        "Percentage" => $"[-{dval:N0}%]",
+                        "FixedAmount" => $"[-{dval:N0}₫]",
+                        _ => "[Voucher]"
                     };
 
-                    string label = $"{typeIcon}  [{pCode}]  {pName}";
+                    string label = $"{typeTag}  [{pCode}]  {pName}";
                     items.Add((pCode, label));
                 }
             }
@@ -1201,10 +1347,9 @@ public class PosScanView : UserControl
                 return;
             }
 
-            // Show simple selection dialog
             using var picker = new Form
             {
-                Text = "🎁 Chọn Khuyến Mãi / Combo Áp Dụng",
+                Text = "Chọn Khuyến Mãi / Combo Áp Dụng",
                 Size = new Size(560, 440),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
@@ -1233,12 +1378,12 @@ public class PosScanView : UserControl
 
             var btnApply = new Button
             {
-                Text = "✅ Áp Dụng",
+                Text = "Áp Dụng",
                 Size = new Size(130, 36),
                 Location = new Point(16, 358),
                 Cursor = Cursors.Hand
             };
-            AppTheme.ApplyPrimaryButton(btnApply, radius: 6);
+            AppTheme.ApplyPrimaryButton(btnApply, radius: 5);
 
             var btnClose2 = new Button
             {
@@ -1247,7 +1392,7 @@ public class PosScanView : UserControl
                 Location = new Point(158, 358),
                 Cursor = Cursors.Hand
             };
-            AppTheme.ApplySecondaryButton(btnClose2, radius: 6);
+            AppTheme.ApplySecondaryButton(btnClose2, radius: 5);
             btnClose2.Click += (s2, e2) => picker.Close();
 
             btnApply.Click += async (s2, e2) =>
@@ -1258,7 +1403,6 @@ public class PosScanView : UserControl
                 string selectedCode = items[idx].Code;
                 picker.Close();
 
-                // Put code into txtVoucherCode and fire apply
                 txtVoucherCode.Text = selectedCode;
                 await ApplyVoucherAsync();
             };
@@ -1276,6 +1420,193 @@ public class PosScanView : UserControl
         }
     }
 
+    #region POS Special Features: Park / Return / Print
+
+    private void ParkCurrentOrder()
+    {
+        if (_cart.Count == 0)
+        {
+            AntdUI.Message.warn(this.FindForm() ?? new Form(), "Giỏ hàng đang trống! Không thể tạm giữ.");
+            return;
+        }
+
+        var parked = new ParkedOrder
+        {
+            CustomerPhone = txtCustomerPhone?.Text.Trim() ?? "",
+            CustomerName = lblCustName.Text.Replace("Khách hàng: ", "").Trim(),
+            CustomerTier = lblCustTier.Text.Replace("Hạng thành viên: ", "").Trim(),
+            CustomerPoints = 0,
+            AppliedDiscountAmount = _appliedDiscountAmount,
+            AppliedVoucherCode = _appliedVoucherCode,
+            SelectedPaymentMethod = _selectedPaymentMethod,
+            CashPaid = numCashPaid.Value,
+            Items = _cart.Select(c => new ParkedOrderItem
+            {
+                ProductId = c.ProductId,
+                Barcode = c.Barcode,
+                Name = c.Name,
+                Price = c.Price,
+                Quantity = c.Quantity
+            }).ToList()
+        };
+
+        _parkedOrders.Add(parked);
+        UpdateParkedOrdersCountBadge();
+
+        _cart.Clear();
+        _appliedDiscountAmount = 0m;
+        _appliedVoucherCode = null;
+        txtCustomerPhone.Clear();
+        lblCustName.Text = "Khách Lẻ";
+        lblCustPoints.Text = "Điểm tích lũy: 0 điểm";
+        lblCustTier.Text = "Hạng thành viên: Thành viên mới";
+        pnlVoucherSuggestion.Visible = false;
+        txtVoucherCode.Clear();
+        lblVoucherStatus.Text = "";
+        numCashPaid.Value = 0;
+        RefreshCartGrid();
+        RelayoutCol3();
+
+        AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã tạm giữ giỏ hàng [{parked.ParkId}]! Sẵn sàng phục vụ khách tiếp theo.");
+    }
+
+    private void OpenParkedOrdersDialog()
+    {
+        if (_parkedOrders.Count == 0)
+        {
+            AntdUI.Message.info(this.FindForm() ?? new Form(), "Hiện không có đơn hàng nào đang tạm giữ.");
+            return;
+        }
+
+        using var formParked = new FormParkedOrders(_parkedOrders);
+        if (formParked.ShowDialog(this.FindForm()) == DialogResult.OK && formParked.SelectedOrderToResume != null)
+        {
+            var resume = formParked.SelectedOrderToResume;
+
+            if (_cart.Count > 0)
+            {
+                var dr = MessageBox.Show(
+                    "Giỏ hàng hiện tại đang có sản phẩm. Bạn có muốn tạm giữ giỏ này trước khi mở lại đơn không?",
+                    "Tạm giữ đơn hiện tại?",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (dr == DialogResult.Yes)
+                {
+                    ParkCurrentOrder();
+                }
+                else if (dr == DialogResult.Cancel)
+                {
+                    return;
+                }
+            }
+
+            _cart.Clear();
+            foreach (var item in resume.Items)
+            {
+                _cart.Add(new CartItem
+                {
+                    ProductId = item.ProductId,
+                    Barcode = item.Barcode,
+                    Name = item.Name,
+                    Price = item.Price,
+                    OriginalPrice = item.Price,
+                    Quantity = item.Quantity,
+                    VatPercent = 8
+                });
+            }
+
+            txtCustomerPhone.Text = resume.CustomerPhone;
+            lblCustName.Text = string.IsNullOrEmpty(resume.CustomerName) ? "Khách Lẻ" : $"Khách hàng: {resume.CustomerName}";
+            lblCustTier.Text = string.IsNullOrEmpty(resume.CustomerTier) ? "Hạng thành viên: Thành viên mới" : $"Hạng thành viên: {resume.CustomerTier}";
+            _appliedDiscountAmount = resume.AppliedDiscountAmount;
+            _appliedVoucherCode = resume.AppliedVoucherCode;
+            if (!string.IsNullOrEmpty(_appliedVoucherCode))
+            {
+                txtVoucherCode.Text = _appliedVoucherCode;
+                lblVoucherStatus.Text = $"✓ {_appliedVoucherCode}: -{_appliedDiscountAmount:N0} đ";
+                lblVoucherStatus.ForeColor = AppTheme.Success;
+            }
+            SetPaymentMethod(resume.SelectedPaymentMethod);
+            if (resume.CashPaid > 0) numCashPaid.Value = resume.CashPaid;
+
+            RefreshCartGrid();
+            RelayoutCol3();
+            UpdateParkedOrdersCountBadge();
+
+            AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã mở lại giỏ hàng [{resume.ParkId}] thành công!");
+        }
+        else
+        {
+            UpdateParkedOrdersCountBadge();
+        }
+    }
+
+    private void UpdateParkedOrdersCountBadge()
+    {
+        if (btnResumeParked != null)
+        {
+            btnResumeParked.Text = $"Đơn treo ({_parkedOrders.Count})";
+            btnResumeParked.BackColor = _parkedOrders.Count > 0 ? Color.FromArgb(254, 243, 199) : Color.FromArgb(243, 244, 246);
+            btnResumeParked.ForeColor = _parkedOrders.Count > 0 ? Color.FromArgb(180, 83, 9) : AppTheme.TextPrimary;
+            btnResumeParked.Invalidate();
+        }
+    }
+
+    private void OpenReturnRefundDialog()
+    {
+        using var formReturn = new FormPosReturn(_httpClient, _apiBaseUrl, CurrentSession.UserId);
+        formReturn.ShowDialog(this.FindForm());
+    }
+
+    private void PrintThermalBillDirect()
+    {
+        InvoicePrintModel model;
+        if (_cart.Count > 0)
+        {
+            decimal grossSubTotal = _cart.Sum(i => i.Price * i.Quantity);
+            decimal grandTotal = Math.Max(0, grossSubTotal - _appliedDiscountAmount);
+            decimal netSubTotal = Math.Round(grandTotal / 1.08m, 0);
+            decimal vatTotal = grandTotal - netSubTotal;
+
+            model = new InvoicePrintModel
+            {
+                OrderCode = $"TMP{Random.Shared.Next(10000, 99999)}",
+                OrderDate = DateTime.Now,
+                CustomerName = lblCustName.Text.Replace("Khách hàng: ", "").Trim(),
+                CustomerPhone = txtCustomerPhone?.Text.Trim() ?? "",
+                CashierName = CurrentSession.FullName ?? "Thu ngân POS",
+                SubTotal = netSubTotal,
+                VatTotal = vatTotal,
+                DiscountTotal = _appliedDiscountAmount,
+                GrandTotal = grandTotal,
+                PaymentMethod = _selectedPaymentMethod == 1 ? "Tiền mặt" : (_selectedPaymentMethod == 2 ? "VietQR" : "Thẻ POS"),
+                CashGiven = numCashPaid.Value > 0 ? numCashPaid.Value : grandTotal,
+                ChangeDue = Math.Max(0, numCashPaid.Value - grandTotal),
+                Items = _cart.Select(c => new InvoicePrintItem
+                {
+                    ProductName = c.Name,
+                    Barcode = c.Barcode,
+                    Quantity = c.Quantity,
+                    UnitPrice = c.Price
+                }).ToList()
+            };
+        }
+        else if (_lastInvoiceModel != null)
+        {
+            model = _lastInvoiceModel;
+        }
+        else
+        {
+            AntdUI.Message.info(this.FindForm() ?? new Form(), "Giỏ hàng trống và chưa có hóa đơn vừa hoàn tất để in.");
+            return;
+        }
+
+        ThermalBillPrinterService.PrintOrPreview(model, directPrint: false);
+    }
+
+    #endregion
+
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         if (keyData == Keys.F9)
@@ -1286,6 +1617,33 @@ public class PosScanView : UserControl
                 return true;
             }
         }
+        else if (keyData == Keys.F6)
+        {
+            if (_cart.Count > 0)
+            {
+                ParkCurrentOrder();
+            }
+            else if (_parkedOrders.Count > 0)
+            {
+                OpenParkedOrdersDialog();
+            }
+            else
+            {
+                AntdUI.Message.info(this.FindForm() ?? new Form(), "Giỏ hàng đang trống và không có đơn nào đang tạm giữ.");
+            }
+            return true;
+        }
+        else if (keyData == Keys.F7)
+        {
+            OpenReturnRefundDialog();
+            return true;
+        }
+        else if (keyData == (Keys.Control | Keys.P))
+        {
+            PrintThermalBillDirect();
+            return true;
+        }
+
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
@@ -1293,7 +1651,6 @@ public class PosScanView : UserControl
     {
         try
         {
-            // Bước 1: Kiểm tra giỏ hàng (TỔNG TIỀN PHẢI THU > 0, có ít nhất 1 sản phẩm)
             if (_cart.Count == 0)
             {
                 MessageBox.Show("Giỏ hàng đang trống! Vui lòng thêm sản phẩm.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1311,10 +1668,9 @@ public class PosScanView : UserControl
 
             decimal netSubTotal = Math.Round(grandTotal / 1.08m, 0);
             decimal vatTotal = grandTotal - netSubTotal;
-            string cashierId = "NV01";
+            string cashierId = string.IsNullOrEmpty(CurrentSession.UserId.ToString()) ? "NV01" : $"NV{CurrentSession.UserId}";
             string maHoaDon = $"SSM{Random.Shared.Next(10000, 99999)}";
 
-            // Bước 2A: Nếu phương thức là TIỀN MẶT
             if (_selectedPaymentMethod == 1)
             {
                 if (numCashPaid.Value == 0)
@@ -1329,7 +1685,6 @@ public class PosScanView : UserControl
                     return;
                 }
 
-                // Lưu PaymentTransaction (PaymentMethod=1, Status=1 Success)
                 decimal changeAmount = Math.Max(0, numCashPaid.Value - grandTotal);
                 string cashTransCode = PaymentService.GenerateTransactionCode();
                 var cashTransaction = new PaymentTransactionModel
@@ -1357,11 +1712,9 @@ public class PosScanView : UserControl
                     System.Diagnostics.Debug.WriteLine($"[PosScanView] Error saving cash transaction: {dbEx.Message}");
                 }
 
-                // Tiến hành Lưu Hóa đơn -> Trừ kho -> In Bill -> Xóa giỏ hàng
                 await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "Tiền mặt", numCashPaid.Value, changeAmount);
             }
-            // Bước 2B: Nếu phương thức là VIETQR / CHUYỂN KHOẢN (hoặc hình thức khác)
-            else
+            else if (_selectedPaymentMethod == 2)
             {
                 DialogResult qrResult;
                 using (var formQr = new FormThanhToanVietQR(maHoaDon, grandTotal, cashierId))
@@ -1371,13 +1724,29 @@ public class PosScanView : UserControl
 
                 if (qrResult == DialogResult.OK)
                 {
-                    // Tiến hành Lưu Hóa đơn -> Trừ kho -> In Bill -> Clear giỏ hàng
                     await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "VietQR", grandTotal, 0);
                 }
                 else
                 {
-                    // Báo "Thanh toán chưa hoàn tất", KHÔNG xóa giỏ hàng
                     MessageBox.Show("Thanh toán chưa hoàn tất! Quý khách có thể chọn lại phương thức thanh toán khác.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
+            else
+            {
+                var cardConfirm = MessageBox.Show(
+                    $"Quẹt thẻ ngân hàng máy POS:\n\n• Mã hóa đơn: {maHoaDon}\n• Số tiền: {grandTotal:N0} VNĐ\n\nVui lòng thao tác trên máy quẹt thẻ và bấm [Yes] khi giao dịch POS đã thành công.",
+                    "Thanh toán Thẻ POS",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (cardConfirm == DialogResult.Yes)
+                {
+                    await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "Thẻ POS", grandTotal, 0);
+                }
+                else
+                {
+                    MessageBox.Show("Chưa hoàn tất giao dịch thẻ!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
             }
@@ -1390,7 +1759,6 @@ public class PosScanView : UserControl
 
     private async Task CompleteOrderAsync(string maHoaDon, decimal grandTotal, decimal netSubTotal, decimal vatTotal, string methodStr, decimal cashGiven, decimal changeDue)
     {
-        // 1. Record POS Order in DataStore (Lưu Hóa đơn & Quản lý đơn hàng)
         var orderRecord = new PosOrderRecord
         {
             OrderId = Random.Shared.Next(1000, 9999),
@@ -1413,7 +1781,6 @@ public class PosScanView : UserControl
         };
         DataStore.AddOrder(orderRecord);
 
-        // 2. Post Order to Backend Server API (/api/v1/orders) - Tự động Lưu Hóa đơn & Trừ kho (OrderService)
         try
         {
             var reqObj = new
@@ -1430,53 +1797,59 @@ public class PosScanView : UserControl
                 }).ToList()
             };
             string jsonBody = JsonSerializer.Serialize(reqObj);
-            using var content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
+            using var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
             await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/orders", content);
         }
         catch
         {
-            // Offline mode handled cleanly via DataStore
         }
 
-        // 3. In Bill / Xuất hóa đơn PDF
-        string pdfPath = "";
+        var invoiceModel = new InvoicePrintModel
+        {
+            OrderCode = orderRecord.OrderCode,
+            OrderDate = orderRecord.OrderDate,
+            CustomerName = orderRecord.CustomerName,
+            CustomerPhone = txtCustomerPhone?.Text.Trim() ?? "",
+            CashierName = CurrentSession.FullName ?? "Thu ngân POS",
+            SubTotal = netSubTotal,
+            VatTotal = vatTotal,
+            DiscountTotal = _appliedDiscountAmount,
+            GrandTotal = grandTotal,
+            PaymentMethod = methodStr,
+            CashGiven = cashGiven,
+            ChangeDue = changeDue,
+            Items = _cart.Select(c => new InvoicePrintItem
+            {
+                ProductName = c.Name,
+                Barcode = c.Barcode,
+                Quantity = c.Quantity,
+                UnitPrice = c.Price
+            }).ToList()
+        };
+        _lastInvoiceModel = invoiceModel;
+
         try
         {
-            var invoiceModel = new InvoicePrintModel
-            {
-                OrderCode = orderRecord.OrderCode,
-                OrderDate = orderRecord.OrderDate,
-                CustomerName = orderRecord.CustomerName,
-                CustomerPhone = txtCustomerPhone?.Text.Trim() ?? "",
-                CashierName = "Thu ngân POS",
-                SubTotal = netSubTotal,
-                VatTotal = vatTotal,
-                DiscountTotal = _appliedDiscountAmount,
-                GrandTotal = grandTotal,
-                PaymentMethod = methodStr,
-                CashGiven = cashGiven,
-                ChangeDue = changeDue,
-                Items = _cart.Select(c => new InvoicePrintItem
-                {
-                    ProductName = c.Name,
-                    Barcode = c.Barcode,
-                    Quantity = c.Quantity,
-                    UnitPrice = c.Price
-                }).ToList()
-            };
-            pdfPath = InvoicePdfService.PrintOrPreview(invoiceModel, autoOpen: true);
+            ThermalBillPrinterService.PrintOrPreview(invoiceModel, directPrint: false);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PosScanView] PDF Export error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[PosScanView] Thermal print error: {ex.Message}");
         }
 
+        string pdfPath = "";
+        try
+        {
+            pdfPath = InvoicePdfService.PrintOrPreview(invoiceModel, autoOpen: false);
+        }
+        catch { }
+
         string pdfInfo = !string.IsNullOrEmpty(pdfPath)
-            ? $"• Hóa đơn PDF: Đã xuất & mở xem trước tại:\n  {pdfPath}\n\n"
+            ? $"• Hóa đơn PDF: Đã lưu tại: {pdfPath}\n\n"
             : "";
 
         var dialogRes = MessageBox.Show(
-            $"✅ HOÀN TẤT ĐƠN HÀNG BÁN LẺ!\n\n" +
+            $"HOÀN TẤT ĐƠN HÀNG BÁN LẺ!\n\n" +
             $"• Mã hóa đơn: {orderRecord.OrderCode}\n" +
             $"• Khách hàng: {orderRecord.CustomerName}\n" +
             $"• Tổng thanh toán: {grandTotal:N0} VNĐ\n" +
@@ -1485,11 +1858,10 @@ public class PosScanView : UserControl
             $"• Tiền thừa trả khách: {changeDue:N0} VNĐ\n" +
             $"• Điểm cộng thêm: +{Math.Round(grandTotal / 10000):N0} điểm\n\n" +
             pdfInfo +
-            $"Đã lưu CSDL và cập nhật realtime trên hệ thống.\n\n" +
-            $"👉 Bạn có muốn chuyển sang màn hình 'Quản Lý Đơn Hàng' để xem chi tiết ngay bây giờ không?",
+            $"Đã lưu CSDL, trừ tồn kho và in hóa đơn nhiệt K80.\n\n" +
+            $"👉 Bạn có muốn chuyển sang màn hình 'Quản Lý Đơn Hàng' không?",
             "Thanh toán thành công", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
 
-        // 4. Xóa giỏ hàng về 0 VNĐ
         _cart.Clear();
         _appliedDiscountAmount = 0m;
         _appliedVoucherCode = null;
@@ -1497,6 +1869,7 @@ public class PosScanView : UserControl
         txtVoucherCode.Clear();
         lblVoucherStatus.Text = "";
         RefreshCartGrid();
+        RelayoutCol3();
 
         if (dialogRes == DialogResult.Yes)
         {
@@ -1506,6 +1879,7 @@ public class PosScanView : UserControl
             }
         }
     }
+
     private class CatalogProduct
     {
         public int Id { get; set; }
@@ -1518,7 +1892,6 @@ public class PosScanView : UserControl
         public bool IsNearExpiry { get; set; }
         public string ExpiryNote { get; set; } = "";
         public int Stock { get; set; }
-        public string Icon { get; set; } = "📦";
     }
 
     private class CartItem
@@ -1534,6 +1907,5 @@ public class PosScanView : UserControl
         public string ExpiryNote { get; set; } = "";
         public int Quantity { get; set; }
         public decimal VatPercent { get; set; }
-        public string Icon { get; set; } = "📦";
     }
 }

@@ -27,3 +27,19 @@ public class CreateOrderDetailRequest
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
 }
+
+
+public class RefundOrderItemRequest
+{
+    public int ProductId { get; set; }
+    public int QuantityToRefund { get; set; }
+    public string? Reason { get; set; }
+}
+
+public class RefundOrderRequest
+{
+    public int OrderId { get; set; }
+    public int EmployeeId { get; set; } = 1;
+    public string Reason { get; set; } = "Khách đổi trả hàng tại quầy";
+    public List<RefundOrderItemRequest> Items { get; set; } = new();
+}

@@ -449,6 +449,119 @@ public class OrderService : IOrderService
         return true;
     }
 
+    public async Task<OrderDto> RefundOrderAsync(RefundOrderRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.Items == null || !request.Items.Any())
+        {
+            throw new ArgumentException("Danh sách sản phẩm hoàn trả không được để trống.");
+        }
+
+        var order = await _orderRepository.GetByIdAsync(request.OrderId, cancellationToken);
+        if (order == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy đơn hàng có ID = {request.OrderId}");
+        }
+
+        if (order.Status == OrderStatus.Cancelled || order.Status == OrderStatus.Refunded)
+        {
+            throw new InvalidOperationException($"Không thể hoàn trả đơn hàng đang ở trạng thái {order.Status}.");
+        }
+
+        decimal totalRefundAmount = 0m;
+
+        foreach (var item in request.Items)
+        {
+            if (item.QuantityToRefund <= 0) continue;
+
+            var orderDetail = order.OrderDetails.FirstOrDefault(od => od.ProductId == item.ProductId);
+            if (orderDetail == null)
+            {
+                throw new InvalidOperationException($"Sản phẩm ID = {item.ProductId} không có trong đơn hàng #{order.OrderId}.");
+            }
+
+            if (item.QuantityToRefund > orderDetail.Quantity)
+            {
+                throw new InvalidOperationException($"Số lượng trả ({item.QuantityToRefund}) vượt quá số lượng đã mua ({orderDetail.Quantity}) của sản phẩm ID = {item.ProductId}.");
+            }
+
+            decimal itemRefund = orderDetail.UnitPrice * item.QuantityToRefund;
+            totalRefundAmount += itemRefund;
+
+            var inv = await _inventoryRepository.GetByProductAndBranchAsync(item.ProductId, order.BranchId);
+            if (inv != null)
+            {
+                int qtyBefore = inv.QuantityOnHand;
+                inv.QuantityOnHand += item.QuantityToRefund;
+                inv.LastUpdated = DateTime.UtcNow;
+                await _inventoryRepository.UpsertAsync(inv);
+
+                await _inventoryRepository.AddStockHistoryAsync(new StockHistory
+                {
+                    ProductId = inv.ProductId,
+                    BranchId = inv.BranchId,
+                    ChangeType = StockChangeType.Adjustment,
+                    QuantityChange = item.QuantityToRefund,
+                    QuantityBefore = qtyBefore,
+                    QuantityAfter = inv.QuantityOnHand,
+                    Note = $"Khách trả hàng - HĐ #{order.OrderId} ({item.Reason ?? request.Reason})",
+                    CreatedByUserId = request.EmployeeId,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            orderDetail.Quantity -= item.QuantityToRefund;
+            orderDetail.SubTotal = orderDetail.Quantity * orderDetail.UnitPrice;
+        }
+
+        await _inventoryRepository.SaveChangesAsync();
+
+        int totalRemainingQty = order.OrderDetails.Sum(od => od.Quantity);
+        if (totalRemainingQty == 0)
+        {
+            order.Status = OrderStatus.Refunded;
+            order.FinalAmount = 0;
+            order.TotalAmount = 0;
+        }
+        else
+        {
+            order.Status = OrderStatus.PartiallyRefunded;
+            order.TotalAmount = Math.Max(0, order.TotalAmount - totalRefundAmount);
+            order.FinalAmount = Math.Max(0, order.FinalAmount - totalRefundAmount);
+        }
+
+        if (order.CustomerId.HasValue && totalRefundAmount > 0)
+        {
+            var customer = await _customerRepository.GetByIdAsync(order.CustomerId.Value, cancellationToken);
+            if (customer != null)
+            {
+                int pointsToRevoke = (int)(totalRefundAmount / 10000m);
+                if (pointsToRevoke > 0)
+                {
+                    customer.LoyaltyPoints = Math.Max(0, customer.LoyaltyPoints - pointsToRevoke);
+                    customer.MembershipTier = customer.LoyaltyPoints >= 5000 ? 3
+                        : customer.LoyaltyPoints >= 2000 ? 2
+                        : customer.LoyaltyPoints >= 500 ? 1
+                        : 0;
+                    _customerRepository.Update(customer);
+
+                    await _customerRepository.AddPointHistoryAsync(new PointHistory
+                    {
+                        CustomerId = customer.CustomerId,
+                        OrderId = order.OrderId,
+                        PointChange = -pointsToRevoke,
+                        Type = 3,
+                        CreatedAt = DateTime.UtcNow
+                    }, cancellationToken);
+                }
+            }
+        }
+
+        _orderRepository.Update(order);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return await MapToDtoAsync(order, cancellationToken);
+    }
+
     private async Task<OrderDto> MapToDtoAsync(Order order, CancellationToken cancellationToken)
     {
         var productIds = order.OrderDetails.Select(od => od.ProductId).Distinct().ToList();

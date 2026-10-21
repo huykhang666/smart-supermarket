@@ -1,5 +1,6 @@
 using SmartSupermarket.Backend.Domain.Enums;
 using SmartSupermarket.Backend.Features.Orders.DTOs;
+using SmartSupermarket.Backend.Features.Orders.DTOs.Requests;
 
 namespace SmartSupermarket.Backend.Features.Orders.Services;
 
@@ -18,5 +19,6 @@ public interface IOrderService
         CancellationToken cancellationToken = default);
     Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default);
     Task<bool> CancelOrderAsync(int orderId, CancellationToken cancellationToken = default);
+    Task<OrderDto> RefundOrderAsync(RefundOrderRequest request, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateInvoicePdfAsync(int orderId, CancellationToken cancellationToken = default);
 }
