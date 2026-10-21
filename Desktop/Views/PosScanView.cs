@@ -1418,7 +1418,7 @@ public class PosScanView : UserControl
         {
             var reqObj = new
             {
-                EmployeeId = 1,
+                EmployeeId = CurrentSession.UserId,
                 BranchId = 1,
                 PaymentMethod = _selectedPaymentMethod,
                 PromotionCode = _appliedVoucherCode,

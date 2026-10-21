@@ -90,7 +90,7 @@ public class OrdersView : UserControl
 
         btnRefresh = new Button { Text = "🔄 Tải lại", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnRefresh);
-        btnRefresh.Click += BtnRefresh_Click;
+        btnRefresh.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnRefresh, "Đang tải...", () => LoadOrdersAsync());
 
         btnViewDetail = new Button { Text = "🔍 Xem Chi Tiết", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplySecondaryButton(btnViewDetail);
@@ -98,7 +98,11 @@ public class OrdersView : UserControl
 
         btnExportPdf = new Button { Text = "🖨️ In / Xuất PDF", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplyPrimaryButton(btnExportPdf);
-        btnExportPdf.Click += BtnExportPdf_Click;
+        btnExportPdf.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnExportPdf, "Đang tạo PDF...", () => ExportSelectedOrderPdfAsync());
+
+        btnExportExcel = new Button { Text = "📥 Xuất Excel", Size = new Size(120, 32), Margin = new Padding(0, 0, 8, 4) };
+        AppTheme.ApplySuccessButton(btnExportExcel);
+        btnExportExcel.Click += (s, e) => AppTheme.ExecuteWithLoading(btnExportExcel, "Đang xuất...", () => ExcelExportService.ExportDataGridViewToExcel(dgvOrders, "Lịch Sử Đơn Hàng POS", "LichSuDonHang"));
 
         btnExportExcel = new Button { Text = "📊 Xuất Excel", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplyPrimaryButton(btnExportExcel);
@@ -507,6 +511,11 @@ public class OrdersView : UserControl
     }
 
     private async void BtnExportPdf_Click(object? sender, EventArgs e)
+    {
+        await ExportSelectedOrderPdfAsync();
+    }
+
+    private async Task ExportSelectedOrderPdfAsync()
     {
         if (dgvOrders.CurrentRow == null)
         {

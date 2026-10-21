@@ -31,6 +31,7 @@ public class MainForm : Form
     private IconButton btnNavSuppliers = null!;
     private IconButton btnNavImport = null!;
     private IconButton btnNavInventory = null!;
+    private IconButton btnNavStockAudit = null!;
     private IconButton btnNavPosScan = null!;
     private IconButton btnNavOrders = null!;
     private IconButton btnNavCustomers = null!;
@@ -49,6 +50,7 @@ public class MainForm : Form
     private readonly SuppliersView _suppliersView = new();
     private readonly ImportGoodsView _importGoodsView = new();
     private readonly InventoryView _inventoryView = new();
+    private readonly StockAuditView _stockAuditView = new();
     private readonly PosScanView _posScanView = new();
     private readonly OrdersView _ordersView = new();
     private readonly CustomersView _customersView = new();
@@ -278,6 +280,7 @@ public class MainForm : Form
         btnNavSuppliers = CreateNavButton("Nhà Cung Cấp", IconChar.TruckLoading);
         btnNavImport = CreateNavButton("Nhập Hàng Kho", IconChar.FileImport);
         btnNavInventory = CreateNavButton("Quản Lý Tồn Kho", IconChar.BoxesStacked);
+        btnNavStockAudit = CreateNavButton("Kiểm Kê & Cân Bằng", IconChar.ClipboardCheck);
         btnNavPosScan = CreateNavButton("Bán Hàng POS", IconChar.CashRegister);
         btnNavOrders = CreateNavButton("Quản Lý Đơn Hàng", IconChar.Receipt);
         btnNavCustomers = CreateNavButton("Khách Hàng Loyalty", IconChar.UserGroup);
@@ -293,6 +296,7 @@ public class MainForm : Form
         btnNavSuppliers.Click += (s, e) => SelectNavButton(btnNavSuppliers, _suppliersView);
         btnNavImport.Click += (s, e) => SelectNavButton(btnNavImport, _importGoodsView);
         btnNavInventory.Click += (s, e) => SelectNavButton(btnNavInventory, _inventoryView);
+        btnNavStockAudit.Click += (s, e) => SelectNavButton(btnNavStockAudit, _stockAuditView);
         btnNavPosScan.Click += (s, e) => SelectNavButton(btnNavPosScan, _posScanView);
         btnNavOrders.Click += (s, e) => SelectNavButton(btnNavOrders, _ordersView);
         btnNavCustomers.Click += (s, e) => SelectNavButton(btnNavCustomers, _customersView);
@@ -310,6 +314,7 @@ public class MainForm : Form
         pnlSidebar.Controls.Add(btnNavCustomers);
         pnlSidebar.Controls.Add(btnNavOrders);
         pnlSidebar.Controls.Add(btnNavPosScan);
+        pnlSidebar.Controls.Add(btnNavStockAudit);
         pnlSidebar.Controls.Add(btnNavInventory);
         pnlSidebar.Controls.Add(btnNavImport);
         pnlSidebar.Controls.Add(btnNavSuppliers);

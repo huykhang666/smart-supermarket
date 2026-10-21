@@ -112,7 +112,8 @@ public class OrderService : IOrderService
         foreach (var item in request.Items)
         {
             var product = products[item.ProductId];
-            decimal unitPrice = item.UnitPrice > 0 ? item.UnitPrice : product.Price;
+            // Luôn lấy giá niêm yết từ cơ sở dữ liệu, không chấp nhận giá can thiệp từ client
+            decimal unitPrice = product.Price;
             decimal subTotal = unitPrice * item.Quantity;
             totalAmount += subTotal;
 

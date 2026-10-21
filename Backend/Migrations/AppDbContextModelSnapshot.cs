@@ -17,10 +17,80 @@ namespace SmartSupermarket.Backend.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Attendance", b =>
+                {
+                    b.Property<int>("AttendanceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AttendanceId"));
+
+                    b.Property<DateTime>("CheckIn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CheckOut")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LateMinute")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("WorkingMinute")
+                        .HasColumnType("integer");
+
+                    b.HasKey("AttendanceId");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("ShiftId");
+
+                    b.ToTable("Attendances");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<int>("AuditLogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AuditLogId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("AuditLogId");
+
+                    b.ToTable("AuditLogs");
+                });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Category", b =>
                 {
@@ -90,6 +160,18 @@ namespace SmartSupermarket.Backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CustomerId"));
 
+                    b.Property<string>("Address")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<byte?>("Gender")
+                        .HasColumnType("smallint");
+
                     b.Property<int>("LoyaltyPoints")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -99,6 +181,14 @@ namespace SmartSupermarket.Backend.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
+
+                    b.Property<byte>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((byte)1);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -140,6 +230,50 @@ namespace SmartSupermarket.Backend.Migrations
                     b.ToTable("DiscountRule", (string)null);
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Employee", b =>
+                {
+                    b.Property<int>("EmployeeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("EmployeeId"));
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DepartmentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("HireDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Salary")
+                        .HasColumnType("numeric");
+
+                    b.Property<int?>("ShiftId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("EmployeeId");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Employees");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportDetail", b =>
                 {
                     b.Property<int>("ImportDetailId")
@@ -175,6 +309,74 @@ namespace SmartSupermarket.Backend.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("ImportDetail", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportInvoice", b =>
+                {
+                    b.Property<int>("ImportInvoiceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ImportInvoiceId"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ImportDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InvoiceCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SupplierId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("ImportInvoiceId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("ImportInvoices");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportInvoiceItem", b =>
+                {
+                    b.Property<int>("ImportInvoiceItemId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ImportInvoiceItemId"));
+
+                    b.Property<decimal>("CostPrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ImportInvoiceId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ImportInvoiceItemId");
+
+                    b.HasIndex("ImportInvoiceId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ImportInvoiceItems");
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportReceipt", b =>
@@ -274,6 +476,45 @@ namespace SmartSupermarket.Backend.Migrations
                     b.ToTable("Inventory", (string)null);
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.InventoryBatch", b =>
+                {
+                    b.Property<int>("BatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("BatchId"));
+
+                    b.Property<string>("BatchCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ManufacturingDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StorageLocation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("BatchId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("InventoryBatches");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Order", b =>
                 {
                     b.Property<int>("OrderId")
@@ -285,11 +526,21 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Property<int>("BranchId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
                     b.Property<int?>("CustomerId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("CustomerId1")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<int>("EmployeeId")
                         .HasColumnType("integer");
@@ -298,7 +549,9 @@ namespace SmartSupermarket.Backend.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("OrderDate")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -310,6 +563,12 @@ namespace SmartSupermarket.Backend.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("OrderId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("CustomerId1");
+
+                    b.HasIndex("EmployeeId");
 
                     b.ToTable("Orders", (string)null);
                 });
@@ -341,7 +600,164 @@ namespace SmartSupermarket.Backend.Migrations
 
                     b.HasIndex("OrderId");
 
+                    b.HasIndex("ProductId");
+
                     b.ToTable("OrderDetails", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.OrderPromotion", b =>
+                {
+                    b.Property<int>("OrderPromotionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("OrderPromotionId"));
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PromotionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("OrderPromotionId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.ToTable("OrderPromotions", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Payment", b =>
+                {
+                    b.Property<int>("PaymentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PaymentId"));
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PaymentId");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.Property<int>("PaymentTransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PaymentTransactionId"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime?>("ExpiredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("GatewayTransactionId")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PaymentUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("QrCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TransactionCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("PaymentTransactionId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("TransactionCode")
+                        .IsUnique();
+
+                    b.ToTable("PaymentTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.PointHistory", b =>
+                {
+                    b.Property<int>("PointHistoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PointHistoryId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PointChange")
+                        .HasColumnType("integer");
+
+                    b.Property<byte>("Type")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((byte)1);
+
+                    b.HasKey("PointHistoryId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("PointHistories", (string)null);
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Product", b =>
@@ -369,9 +785,15 @@ namespace SmartSupermarket.Backend.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("ManufacturingDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 2)
@@ -531,6 +953,112 @@ namespace SmartSupermarket.Backend.Migrations
                     b.HasKey("PromotionId");
 
                     b.ToTable("Promotions", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Shift", b =>
+                {
+                    b.Property<int>("ShiftId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ShiftId"));
+
+                    b.Property<int>("BreakMinute")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("ShiftId");
+
+                    b.ToTable("Shifts");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.StockAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AuditDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReconciledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReconciledBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Zone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StockAudits");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.StockAuditDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActualQty")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LossReason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("StockAuditId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SystemQty")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StockAuditId");
+
+                    b.ToTable("StockAuditDetails");
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.StockHistory", b =>
@@ -724,6 +1252,82 @@ namespace SmartSupermarket.Backend.Migrations
                     b.ToTable("User", (string)null);
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Voucher", b =>
+                {
+                    b.Property<int>("VoucherId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("VoucherId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<decimal>("MinimumOrderAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("VoucherId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Vouchers", (string)null);
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Attendance", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Employee", "Employee")
+                        .WithMany("Attendances")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Shift", "Shift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Shift");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Category", b =>
                 {
                     b.HasOne("SmartSupermarket.Backend.Domain.Entities.Category", "Parent")
@@ -745,6 +1349,23 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Employee", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Shift", "Shift")
+                        .WithMany("Employees")
+                        .HasForeignKey("ShiftId");
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Shift");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportDetail", b =>
                 {
                     b.HasOne("SmartSupermarket.Backend.Domain.Entities.ImportReceipt", "ImportReceipt")
@@ -760,6 +1381,36 @@ namespace SmartSupermarket.Backend.Migrations
                         .IsRequired();
 
                     b.Navigation("ImportReceipt");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportInvoice", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportInvoiceItem", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.ImportInvoice", "ImportInvoice")
+                        .WithMany("Items")
+                        .HasForeignKey("ImportInvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ImportInvoice");
 
                     b.Navigation("Product");
                 });
@@ -801,13 +1452,115 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.InventoryBatch", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Order", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Customer", null)
+                        .WithMany("Orders")
+                        .HasForeignKey("CustomerId1");
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.User", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.OrderDetail", b =>
                 {
-                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", null)
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", "Order")
                         .WithMany("OrderDetails")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.OrderPromotion", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", "Order")
+                        .WithMany("OrderPromotions")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Promotion", "Promotion")
+                        .WithMany()
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Promotion");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", "Order")
+                        .WithMany("Payments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", "Order")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.PointHistory", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Customer", "Customer")
+                        .WithMany("PointHistories")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Product", b =>
@@ -866,6 +1619,17 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Navigation("Supplier");
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.StockAuditDetail", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.StockAudit", "StockAudit")
+                        .WithMany("Details")
+                        .HasForeignKey("StockAuditId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StockAudit");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.StockHistory", b =>
                 {
                     b.HasOne("SmartSupermarket.Backend.Domain.Entities.User", "CreatedByUser")
@@ -885,6 +1649,23 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Voucher", b =>
+                {
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Customer", "Customer")
+                        .WithMany("Vouchers")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SmartSupermarket.Backend.Domain.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Category", b =>
                 {
                     b.Navigation("ProductCategories");
@@ -892,6 +1673,25 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Navigation("Products");
 
                     b.Navigation("SubCategories");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Customer", b =>
+                {
+                    b.Navigation("Orders");
+
+                    b.Navigation("PointHistories");
+
+                    b.Navigation("Vouchers");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Employee", b =>
+                {
+                    b.Navigation("Attendances");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportInvoice", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.ImportReceipt", b =>
@@ -902,6 +1702,12 @@ namespace SmartSupermarket.Backend.Migrations
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Order", b =>
                 {
                     b.Navigation("OrderDetails");
+
+                    b.Navigation("OrderPromotions");
+
+                    b.Navigation("PaymentTransactions");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Product", b =>
@@ -909,6 +1715,16 @@ namespace SmartSupermarket.Backend.Migrations
                     b.Navigation("ProductCategories");
 
                     b.Navigation("ProductSuppliers");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Shift", b =>
+                {
+                    b.Navigation("Employees");
+                });
+
+            modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.StockAudit", b =>
+                {
+                    b.Navigation("Details");
                 });
 
             modelBuilder.Entity("SmartSupermarket.Backend.Domain.Entities.Supplier", b =>

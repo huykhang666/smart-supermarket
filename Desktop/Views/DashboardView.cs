@@ -81,7 +81,7 @@ public class DashboardView : UserControl
             Size = new Size(160, 36)
         };
         ThemeManager.ApplyPrimaryButton(btnRefreshRealtime);
-        btnRefreshRealtime.Click += (s, e) => LoadRealtimeDataAsync();
+        btnRefreshRealtime.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnRefreshRealtime, "Đang đồng bộ...", () => LoadRealtimeDataAsync());
         pnlBannerRight.Controls.Add(btnRefreshRealtime);
 
         var pnlBannerLeft = new Panel
@@ -266,7 +266,7 @@ public class DashboardView : UserControl
         return card;
     }
 
-    private async void LoadRealtimeDataAsync()
+    private async Task LoadRealtimeDataAsync()
     {
         try
         {
