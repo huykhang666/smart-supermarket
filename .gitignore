@@ -1,3 +1,20 @@
+# Build and Output
 .vs/
 **/[Bb]in/
 **/[Oo]bj/
+.idea/
+*.user
+*.suo
+
+# Configuration & Sensitive Secrets
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+*.env
+*.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.cert
+secrets.json

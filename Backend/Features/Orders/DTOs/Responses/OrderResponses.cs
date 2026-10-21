@@ -1,6 +1,8 @@
+using System;
+using System.Collections.Generic;
 using SmartSupermarket.Backend.Domain.Enums;
 
-namespace SmartSupermarket.Backend.Features.Orders.DTOs;
+namespace SmartSupermarket.Backend.Features.Orders.DTOs.Responses;
 
 public class OrderDto
 {
@@ -49,31 +51,6 @@ public class PaymentDto
     public PaymentMethod PaymentMethod { get; set; }
     public decimal AmountPaid { get; set; }
     public DateTime PaymentDate { get; set; }
-}
-
-public class CreatePaymentRequest
-{
-    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
-    public decimal AmountPaid { get; set; }
-}
-
-public class CreateOrderRequest
-{
-    public int EmployeeId { get; set; }
-    public int? CustomerId { get; set; }
-    public int BranchId { get; set; } = 1;
-    public int? VoucherId { get; set; }
-    public string? PromotionCode { get; set; }
-    public PaymentMethod? PaymentMethod { get; set; }
-    public List<CreatePaymentRequest> Payments { get; set; } = new();
-    public List<CreateOrderDetailRequest> Items { get; set; } = new();
-}
-
-public class CreateOrderDetailRequest
-{
-    public int ProductId { get; set; }
-    public int Quantity { get; set; }
-    public decimal UnitPrice { get; set; }
 }
 
 public class OrderPagedResult

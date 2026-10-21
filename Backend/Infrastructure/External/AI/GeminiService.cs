@@ -1,6 +1,11 @@
+using System;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace SmartSupermarket.Backend.Infrastructure.External.AI;
 
@@ -8,12 +13,13 @@ public class GeminiService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
-    private const string BaseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    private readonly string _model;
 
     public GeminiService(IConfiguration configuration)
     {
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         _apiKey = configuration["Gemini:ApiKey"] ?? string.Empty;
+        _model = configuration["Gemini:Model"] ?? "gemini-2.5-flash";
     }
 
     public async Task<string> GenerateAsync(string prompt, CancellationToken cancellationToken = default)
@@ -39,7 +45,7 @@ public class GeminiService
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var url = $"{BaseUrl}?key={_apiKey}";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
 
         var response = await _httpClient.PostAsync(url, content, cancellationToken);
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -48,13 +54,18 @@ public class GeminiService
             return $"[Lỗi Gemini API: {response.StatusCode}] {responseBody}";
 
         using var doc = JsonDocument.Parse(responseBody);
-        var text = doc.RootElement
-            .GetProperty("candidates")[0]
-            .GetProperty("content")
-            .GetProperty("parts")[0]
-            .GetProperty("text")
-            .GetString();
-
-        return text ?? "[Không có nội dung trả về từ AI]";
+        try
+        {
+            return doc.RootElement
+                .GetProperty("candidates")[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString() ?? "[Không có phản hồi từ Gemini]";
+        }
+        catch
+        {
+            return "[Lỗi phân tích cú pháp phản hồi từ Gemini]";
+        }
     }
 }

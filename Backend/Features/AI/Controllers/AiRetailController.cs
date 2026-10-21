@@ -23,9 +23,7 @@ public class AiRetailController : ControllerBase
         _shoppingConciergeService = shoppingConciergeService;
     }
 
-    /// <summary>
-    /// Phân tích rủi ro kho hàng (cận date, tồn kho thấp, hàng ế) và đề xuất mức giảm giá thông minh.
-    /// </summary>
+    // Phân tích rủi ro kho hàng và dự báo đứt hàng
     [HttpPost("retail/product-risks")]
     [AllowAnonymous]
     public async Task<ActionResult<ApiResult<AiProductRiskReport>>> AnalyzeProductRisks(CancellationToken cancellationToken = default)
@@ -34,9 +32,7 @@ public class AiRetailController : ControllerBase
         return Ok(ApiResult<AiProductRiskReport>.Success(result, "Phân tích rủi ro sản phẩm bằng AI thành công."));
     }
 
-    /// <summary>
-    /// Phân tích rổ hàng (Market Basket Analysis) tìm các cặp sản phẩm thường mua kèm để tạo combo.
-    /// </summary>
+    // Phân tích rổ hàng và gợi ý combo bán kèm
     [HttpPost("retail/market-basket")]
     [AllowAnonymous]
     public async Task<ActionResult<ApiResult<AiMarketBasketReport>>> AnalyzeMarketBasket(
@@ -47,9 +43,7 @@ public class AiRetailController : ControllerBase
         return Ok(ApiResult<AiMarketBasketReport>.Success(result, "Phân tích rổ hàng và gợi ý combo thành công."));
     }
 
-    /// <summary>
-    /// Tự động sinh phiếu nhập hàng nháp (1-Click Draft Import Order) cho các mặt hàng sắp hết.
-    /// </summary>
+    // Đề xuất phiếu nhập hàng nháp
     [HttpPost("retail/draft-import-order")]
     [AllowAnonymous]
     public async Task<ActionResult<ApiResult<AiDraftImportOrder>>> GenerateDraftImportOrder(
@@ -60,10 +54,24 @@ public class AiRetailController : ControllerBase
         return Ok(ApiResult<AiDraftImportOrder>.Success(result, "Tạo phiếu nhập kho nháp bằng AI thành công."));
     }
 
-    /// <summary>
-    /// Trợ lý Đi chợ & Tư vấn Bữa ăn Web AI (AI Shopping Concierge):
-    /// Tiếp nhận nhu cầu món ăn + ngân sách -> Tra cứu kho hàng -> Gợi ý mâm nguyên liệu chuẩn khít giá.
-    /// </summary>
+    // 1-Click lưu trực tiếp phiếu nhập hàng nháp vào CSDL
+    [HttpPost("retail/commit-draft-import")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResult<object>>> CommitDraftImportOrder(
+        [FromBody] AiDraftImportOrder draftOrder,
+        CancellationToken cancellationToken = default)
+    {
+        var receipt = await _aiRetailService.CommitDraftImportOrderAsync(draftOrder, cancellationToken);
+        return Ok(ApiResult<object>.Success(new 
+        { 
+            receipt.ImportReceiptId, 
+            receipt.ReceiptCode, 
+            receipt.TotalAmount, 
+            Status = receipt.Status.ToString() 
+        }, $"Đã lưu phiếu nhập kho nháp {receipt.ReceiptCode} thành công."));
+    }
+
+    // Trợ lý gợi ý món ăn và giỏ hàng
     [HttpPost("shopping/meal-plan")]
     [AllowAnonymous]
     public async Task<ActionResult<ApiResult<MealPlanChatResponse>>> PlanMealAndShop(

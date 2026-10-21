@@ -1,4 +1,6 @@
-namespace SmartSupermarket.Backend.Features.AI.DTOs;
+using System;
+
+namespace SmartSupermarket.Backend.Features.AI.DTOs.Requests;
 
 public class AiImportForecastRequest
 {
@@ -16,11 +18,4 @@ public class AiProductAnalysisRequest
 {
     public int TopN { get; set; } = 10;
     public int DaysBack { get; set; } = 30;
-}
-
-public class AiResponse
-{
-    public string Content { get; set; } = string.Empty;
-    public string Model { get; set; } = string.Empty;
-    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
 }

@@ -1,6 +1,8 @@
+using System;
+using System.Collections.Generic;
 using SmartSupermarket.Backend.Domain.Enums;
 
-namespace SmartSupermarket.Backend.Features.Products.DTOs;
+namespace SmartSupermarket.Backend.Features.Products.DTOs.Responses;
 
 public class ProductDto
 {
@@ -28,8 +30,6 @@ public class ProductDto
     public bool IsExpired => ExpiryDate.HasValue && ExpiryDate.Value < DateTime.UtcNow;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-
-    // Calculated Financial Fields
     public decimal GrossProfit => CostPrice.HasValue ? (Price - CostPrice.Value) : Price;
     public decimal ProfitMarginPercentage => (Price > 0 && CostPrice.HasValue) 
         ? Math.Round(((Price - CostPrice.Value) / Price) * 100, 2) 
@@ -48,40 +48,6 @@ public class ProductBarcodeDto
     public string CategoryName { get; set; } = string.Empty;
     public DateTime? ManufacturingDate { get; set; }
     public DateTime? ExpiryDate { get; set; }
-}
-
-public class CreateProductRequest
-{
-    public string ProductName { get; set; } = string.Empty;
-    public string? Barcode { get; set; }
-    public int CategoryId { get; set; }
-    public int? SupplierId { get; set; }
-    public decimal Price { get; set; }
-    public decimal? CostPrice { get; set; }
-    public string? ImageUrl { get; set; }
-    public string Unit { get; set; } = string.Empty;
-    public DateTime? ManufacturingDate { get; set; }
-    public DateTime? ExpiryDate { get; set; }
-}
-
-public class UpdateProductRequest
-{
-    public string ProductName { get; set; } = string.Empty;
-    public string Barcode { get; set; } = string.Empty;
-    public int CategoryId { get; set; }
-    public int? SupplierId { get; set; }
-    public decimal Price { get; set; }
-    public decimal? CostPrice { get; set; }
-    public string? ImageUrl { get; set; }
-    public string Unit { get; set; } = string.Empty;
-    public DateTime? ManufacturingDate { get; set; }
-    public DateTime? ExpiryDate { get; set; }
-}
-
-public class UpdatePriceRequest
-{
-    public decimal Price { get; set; }
-    public decimal? CostPrice { get; set; }
 }
 
 public class ProductPriceHistoryDto

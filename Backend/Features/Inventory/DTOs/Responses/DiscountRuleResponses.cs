@@ -14,7 +14,7 @@ public class ExpiringProductDto
     public decimal OriginalPrice { get; set; }
     public decimal DiscountPercent { get; set; }
     public decimal ClearancePrice { get; set; }
-    public string AlertLevel { get; set; } = "Notice"; // "Critical", "Warning", "Notice", "Expired"
+    public string AlertLevel { get; set; } = "Notice";
 }
 
 public class CheckProductExpiryDiscountResponse

@@ -1,25 +1,7 @@
-namespace SmartSupermarket.Backend.Features.Customers.DTOs;
+using System;
+using System.Collections.Generic;
 
-public class CreateCustomerRequest
-{
-    public string FullName { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public DateTime? DateOfBirth { get; set; }
-    public byte? Gender { get; set; }
-    public string? Address { get; set; }
-}
-
-public class UpdateCustomerRequest
-{
-    public string FullName { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string? Email { get; set; }
-    public DateTime? DateOfBirth { get; set; }
-    public byte? Gender { get; set; }
-    public string? Address { get; set; }
-    public byte? Status { get; set; }
-}
+namespace SmartSupermarket.Backend.Features.Customers.DTOs.Responses;
 
 public class CustomerResponseDto
 {
@@ -109,9 +91,6 @@ public class CustomerLookupDto
     public byte Status { get; set; }
 }
 
-// ==========================================
-// Backward compatibility DTOs for Desktop POS
-// ==========================================
 public class CustomerDto
 {
     public int CustomerId { get; set; }
@@ -133,17 +112,6 @@ public class CustomerPagedResult
     public int Page { get; set; }
     public int PageSize { get; set; }
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-}
-
-public class AddPointsRequest
-{
-    public int PointsToAdd { get; set; }
-    public string? Note { get; set; }
-}
-
-public class RedeemVoucherRequest
-{
-    public int PointsToRedeem { get; set; }
 }
 
 public class RedeemVoucherResponse

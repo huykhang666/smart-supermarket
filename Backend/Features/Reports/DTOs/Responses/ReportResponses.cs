@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SmartSupermarket.Backend.Features.Reports.DTOs;
+namespace SmartSupermarket.Backend.Features.Reports.DTOs.Responses;
 
 public class RevenueProfitReportDto
 {
@@ -30,7 +30,7 @@ public class PaymentBreakdownDto
 
 public class DailyRevenueProfitDto
 {
-    public string Date { get; set; } = string.Empty; // dd/MM/yyyy
+    public string Date { get; set; } = string.Empty;
     public decimal Revenue { get; set; }
     public decimal Cost { get; set; }
     public decimal Profit { get; set; }
@@ -70,7 +70,7 @@ public class ExpiryBatchItemDto
     public DateTime ExpiryDate { get; set; }
     public int DaysRemaining { get; set; }
     public string StorageLocation { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty; // "Đã hết hạn", "Cận hạn nguy cấp (≤5 ngày)", "Cảnh báo (≤30 ngày)"
+    public string Status { get; set; } = string.Empty;
 }
 
 public class SlowMovingItemDto
@@ -111,7 +111,7 @@ public class CashierSummaryDto
 
 public class ShiftSummaryDto
 {
-    public string ShiftName { get; set; } = string.Empty; // "Ca Sáng (06:00 - 14:00)", "Ca Chiều-Tối (14:00 - 22:00)", "Khác"
+    public string ShiftName { get; set; } = string.Empty;
     public string TimeRange { get; set; } = string.Empty;
     public int TotalOrders { get; set; }
     public decimal TotalRevenue { get; set; }

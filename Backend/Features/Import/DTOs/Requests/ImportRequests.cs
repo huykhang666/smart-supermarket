@@ -1,6 +1,7 @@
+using System;
 using SmartSupermarket.Backend.Domain.Enums;
 
-namespace SmartSupermarket.Backend.Features.Import.DTOs;
+namespace SmartSupermarket.Backend.Features.Import.DTOs.Requests;
 
 public class CreateImportReceiptRequest
 {
