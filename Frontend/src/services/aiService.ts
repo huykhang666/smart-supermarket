@@ -28,6 +28,16 @@ export interface MealIngredientItem {
   inStockQuantity: number;
 }
 
+export interface MealOption {
+  optionName: string;
+  dishName: string;
+  description: string;
+  totalEstimatedCost: number;
+  totalSavedAmount: number;
+  ingredients: MealIngredientItem[];
+  cookingTips: string;
+}
+
 export interface MealPlanChatResponse {
   assistantMessage: string;
   dishName: string;
@@ -37,6 +47,7 @@ export interface MealPlanChatResponse {
   isWithinBudget: boolean;
   hasMealSuggestion: boolean;
   ingredients: MealIngredientItem[];
+  mealOptions?: MealOption[];
   cookingTips: string;
 }
 

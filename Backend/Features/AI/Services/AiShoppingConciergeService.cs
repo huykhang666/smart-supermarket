@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,6 +52,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 TotalSavedAmount = 0,
                 IsWithinBudget = true,
                 Ingredients = new List<MealIngredientItemDto>(),
+                MealOptions = new List<MealOptionDto>(),
                 CookingTips = string.Empty
             };
         }
@@ -68,12 +70,13 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 TotalSavedAmount = 0,
                 IsWithinBudget = true,
                 Ingredients = new List<MealIngredientItemDto>(),
+                MealOptions = new List<MealOptionDto>(),
                 CookingTips = string.Empty
             };
         }
 
         // Xác định chủ đề món ăn phù hợp với yêu cầu
-        string dishName = DetermineDishTheme(prompt, request.ConversationHistory);
+        string mainDishTheme = DetermineDishTheme(prompt, request.ConversationHistory);
 
         // Lấy danh sách sản phẩm thật từ kho hàng
         var dbProducts = await _dbContext.Products
@@ -92,29 +95,340 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 g => g.Key,
                 g => new ProductBatchSummary(g.Sum(x => x.Quantity), g.Min(x => x.ExpiryDate)));
 
-        // Lọc nguyên liệu phù hợp với chủ đề món ăn dựa trên kho hàng thực tế
-        var matchedItems = SelectIngredientsForTheme(dishName, dbProducts, batchLookup, servings, targetBudget, request.PrioritizePromotions);
+        // Xây dựng 2 đến 3 Option thực đơn khác nhau để khách hàng lựa chọn
+        var mealOptions = BuildMealOptions(mainDishTheme, dbProducts, batchLookup, servings, targetBudget, request.PrioritizePromotions);
 
-        decimal totalCost = matchedItems.Sum(i => i.FinalPrice * i.QuantityToBuy);
-        decimal originalTotal = matchedItems.Sum(i => i.RegularPrice * i.QuantityToBuy);
-        decimal totalSaved = Math.Max(0, originalTotal - totalCost);
+        var primaryOption = mealOptions.FirstOrDefault() ?? new MealOptionDto
+        {
+            DishName = mainDishTheme,
+            OptionName = "Thực đơn tiêu chuẩn",
+            Ingredients = new List<MealIngredientItemDto>()
+        };
 
-        // Chuẩn bị thông điệp đầu bếp và mẹo nấu ăn chính thống
-        string message = GenerateChefMealMessage(dishName, servings, totalCost, targetBudget, totalSaved, matchedItems);
-        string cookingTips = GenerateCookingTips(dishName);
+        // Chuẩn bị thông điệp đầu bếp có liệt kê gạch đầu dòng rõ từng món và giá tiền
+        string message = GenerateChefMealMessageWithMultiOptions(servings, targetBudget, mealOptions);
 
         return new MealPlanChatResponse
         {
             AssistantMessage = message,
-            DishName = dishName,
+            DishName = primaryOption.DishName,
             Servings = servings,
-            TotalEstimatedCost = totalCost,
-            TotalSavedAmount = totalSaved,
-            IsWithinBudget = totalCost <= targetBudget * 1.15m,
+            TotalEstimatedCost = primaryOption.TotalEstimatedCost,
+            TotalSavedAmount = primaryOption.TotalSavedAmount,
+            IsWithinBudget = primaryOption.TotalEstimatedCost <= targetBudget * 1.15m,
             HasMealSuggestion = true,
-            Ingredients = matchedItems,
-            CookingTips = cookingTips
+            Ingredients = primaryOption.Ingredients,
+            MealOptions = mealOptions,
+            CookingTips = primaryOption.CookingTips
         };
+    }
+
+    private static List<MealOptionDto> BuildMealOptions(
+        string theme,
+        List<Product> products,
+        Dictionary<int, ProductBatchSummary> batchLookup,
+        int servings,
+        decimal targetBudget,
+        bool prioritizePromotions)
+    {
+        var options = new List<MealOptionDto>();
+
+        if (theme.Contains("Lẩu"))
+        {
+            // Option 1: Lẩu Tiêu Chuẩn (Vừa vặn ngân sách, tươi ngon)
+            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("bò", servings >= 4 ? 1 : 1),
+                ("tôm", 1),
+                ("nấm kim châm", 2),
+                ("cải thảo", 1),
+                ("ngô", 2),
+                ("hạt nêm", 1)
+            };
+            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Lẩu Tiêu Chuẩn (Tiết kiệm)",
+                DishName = "Lẩu Thái Chua Cay Tiêu Chuẩn",
+                Description = "Đầy đủ thịt bò tươi, tôm thẻ, nấm kim châm & rau củ thanh ngọt.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Lẩu")
+            });
+
+            // Option 2: Lẩu Thịnh Soạn (Nhiều thịt bò Pacow, tôm mực, nấm đùi gà)
+            var opt2Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("bò", servings >= 4 ? 2 : 1),
+                ("tôm", 1),
+                ("mực", 1),
+                ("nấm kim châm", 2),
+                ("nấm đùi gà", 1),
+                ("cải thảo", 1),
+                ("rau muống", 1),
+                ("ngô", 2)
+            };
+            var items2 = MatchProductsForKeywords(opt2Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Lẩu Hải Sản & Bò Thịnh Soạn",
+                DishName = "Lẩu Thái Hải Sản & Bò Úc Đặc Biệt",
+                Description = "Gấp đôi thịt bò Úc Pacow, tôm tươi, mực ống giòn sần sật và nấm tươi phong phú.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Lẩu")
+            });
+
+            // Option 3: Mâm Lẩu Bò Nấm Dưỡng Sinh
+            var opt3Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("bò", servings >= 4 ? 2 : 1),
+                ("nấm kim châm", 2),
+                ("nấm đùi gà", 2),
+                ("cải thảo", 1),
+                ("ngô", 2),
+                ("hạt nêm", 1)
+            };
+            var items3 = MatchProductsForKeywords(opt3Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 3: Lẩu Bò & Nấm Thập Cẩm Thanh Ngọt",
+                DishName = "Lẩu Bò Nấm Tươi Dưỡng Sinh",
+                Description = "Vị nước dùng ngọt thanh từ ngô ngọt và các loại nấm tươi Hàn Quốc, nhúng bò Úc mềm mọng.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Lẩu")
+            });
+        }
+        else if (theme.Contains("Kho Tàu"))
+        {
+            // Option 1: Mâm Cơm Kho Tàu Tiêu Chuẩn
+            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("ba chỉ", servings >= 4 ? 2 : 1),
+                ("trứng", 1),
+                ("rau muống", 1),
+                ("nước mắm", 1)
+            };
+            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Thịt Kho Tàu & Canh Rau Muống",
+                DishName = "Thịt Ba Chỉ Kho Tàu & Canh Rau Muống",
+                Description = "Thịt ba chỉ MeatDeli kho trứng mềm rục, ăn kèm canh rau muống dầm chanh thanh mát.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Kho Tàu")
+            });
+
+            // Option 2: Mâm Cơm Gia Đình Đầy Đặn (Thêm Sườn Hoặc Đậu Phụ)
+            var opt2Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("ba chỉ", servings >= 4 ? 2 : 1),
+                ("trứng", 1),
+                ("cà chua", 1),
+                ("rau muống", 1),
+                ("nước mắm", 1),
+                ("đường", 1)
+            };
+            var items2 = MatchProductsForKeywords(opt2Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Thịt Kho Tàu & Canh Cà Chua Trứng",
+                DishName = "Mâm Cơm Gia Đình Thịt Kho & Canh Cà Chua",
+                Description = "Thịt ba chỉ kho béo ngậy kèm bát canh trứng cà chua thơm lừng.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Kho Tàu")
+            });
+        }
+        else if (theme.Contains("Sốt Vang"))
+        {
+            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("bò", servings >= 4 ? 2 : 1),
+                ("khoai tây", 1),
+                ("cà rốt", 1),
+                ("cà chua", 1),
+                ("bánh mì", servings >= 4 ? 4 : 2)
+            };
+            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Bò Úc Sốt Vang Tiêu Chuẩn & Bánh Mì",
+                DishName = "Bò Úc Sốt Vang Bánh Mì",
+                Description = "Thịt bò Úc thái vuông om cà chua sánh mịn, khoai tây cà rốt mềm ngọt.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Sốt Vang")
+            });
+        }
+        else
+        {
+            // Mâm cơm gia đình đa dạng
+            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("sườn", servings >= 4 ? 2 : 1),
+                ("cà chua", 1),
+                ("rau muống", 1),
+                ("nước mắm", 1)
+            };
+            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Sườn Xào Chua Ngọt & Canh Rau Muống",
+                DishName = "Sườn Non Xào Chua Ngọt & Canh Rau Muống",
+                Description = "Sườn non xào đậm đà óng ánh, canh rau thanh mát vừa miệng.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Chua Ngọt")
+            });
+
+            var opt2Keywords = new List<(string Keyword, int DefaultQty)>
+            {
+                ("ba chỉ", servings >= 4 ? 2 : 1),
+                ("trứng", 1),
+                ("rau muống", 1),
+                ("nước mắm", 1)
+            };
+            var items2 = MatchProductsForKeywords(opt2Keywords, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Thịt Ba Chỉ Kho Tàu Đậm Vị",
+                DishName = "Thịt Ba Chỉ Kho Tàu & Canh Rau",
+                Description = "Thịt ba chỉ thái miếng vuông kho vàng óng thơm ngậy cùng trứng luộc.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Kho Tàu")
+            });
+        }
+
+        return options;
+    }
+
+    private static List<MealIngredientItemDto> MatchProductsForKeywords(
+        List<(string Keyword, int DefaultQty)> keywords,
+        List<Product> products,
+        Dictionary<int, ProductBatchSummary> batchLookup,
+        bool prioritizePromotions)
+    {
+        var result = new List<MealIngredientItemDto>();
+        var selectedProductIds = new HashSet<int>();
+
+        foreach (var (kw, qty) in keywords)
+        {
+            var match = products
+                .Where(p => !selectedProductIds.Contains(p.ProductId))
+                .Where(p => p.ProductName.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(p => p.Price > 0)
+                .FirstOrDefault();
+
+            if (match == null) continue;
+
+            selectedProductIds.Add(match.ProductId);
+
+            int inStock = 100;
+            bool isNearExpiry = false;
+            decimal discountPercent = 0;
+            string promoNote = string.Empty;
+
+            if (batchLookup.TryGetValue(match.ProductId, out var batchInfo))
+            {
+                inStock = batchInfo.TotalStock;
+                DateTime minExp = batchInfo.MinExpiry;
+                int daysLeft = (minExp - DateTime.UtcNow).Days;
+                if (daysLeft <= 7 && prioritizePromotions)
+                {
+                    isNearExpiry = true;
+                    discountPercent = 30m;
+                    promoNote = "Flash Sale cận date giảm 30%";
+                }
+            }
+
+            decimal regularPrice = match.Price;
+            decimal finalPrice = discountPercent > 0
+                ? Math.Round(regularPrice * (100m - discountPercent) / 100m, 0)
+                : regularPrice;
+
+            result.Add(new MealIngredientItemDto
+            {
+                ProductId = match.ProductId,
+                ProductName = match.ProductName,
+                Barcode = match.Barcode,
+                ImageUrl = match.ImageUrl ?? "/images/products/default.png",
+                Unit = match.Unit,
+                QuantityToBuy = qty,
+                RegularPrice = regularPrice,
+                FinalPrice = finalPrice,
+                DiscountPercent = discountPercent,
+                IsPromotionOrNearExpiry = isNearExpiry,
+                PromotionNote = promoNote,
+                InStockQuantity = inStock
+            });
+        }
+
+        return result;
+    }
+
+    private static string GenerateChefMealMessageWithMultiOptions(
+        int servings,
+        decimal targetBudget,
+        List<MealOptionDto> options)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Dạ, với yêu cầu của bạn, em đã lên **{options.Count} lựa chọn thực đơn** phù hợp cho **{servings} người ăn** (ngân sách dự kiến: {targetBudget:N0} đ):\n");
+
+        for (int i = 0; i < options.Count; i++)
+        {
+            var opt = options[i];
+            string icon = i == 0 ? "🍲" : (i == 1 ? "✨" : "🌿");
+            sb.AppendLine($"{icon} **{opt.OptionName} (Tổng: {opt.TotalEstimatedCost:N0} đ)**");
+            if (!string.IsNullOrEmpty(opt.Description))
+            {
+                sb.AppendLine($"  *Đặc điểm: {opt.Description}*");
+            }
+            sb.AppendLine("  **Danh sách nguyên liệu:**");
+
+            foreach (var ing in opt.Ingredients)
+            {
+                decimal lineTotal = ing.FinalPrice * ing.QuantityToBuy;
+                string promoTag = ing.DiscountPercent > 0 ? $" *(Giảm {ing.DiscountPercent}% Flash Sale)*" : "";
+                sb.AppendLine($"  • **{ing.ProductName}** ({ing.QuantityToBuy} {ing.Unit}): **{lineTotal:N0} đ**{promoTag}");
+            }
+
+            if (opt.TotalSavedAmount > 0)
+            {
+                sb.AppendLine($"  💰 *Tiết kiệm hôm nay: -{opt.TotalSavedAmount:N0} đ*");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("Mời bạn bấm vào nút lựa chọn bên dưới để xem chi tiết mâm nguyên liệu, tùy ý thêm/bớt món trước khi nạp vào giỏ hàng nhé!");
+        return sb.ToString().TrimEnd();
     }
 
     private static bool IsGreeting(string prompt)
@@ -279,184 +593,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         }
 
         return "Mâm Cơm Gia Đình Dinh Dưỡng";
-    }
-
-    private static List<MealIngredientItemDto> SelectIngredientsForTheme(
-        string theme,
-        List<Product> products,
-        Dictionary<int, ProductBatchSummary> batchLookup,
-        int servings,
-        decimal targetBudget,
-        bool prioritizePromotions)
-    {
-        var result = new List<MealIngredientItemDto>();
-        var selectedProductIds = new HashSet<int>();
-
-        // Danh sách từ khóa nguyên liệu chính xác theo ẩm thực truyền thống
-        var keywords = new List<(string Keyword, int DefaultQty)>();
-
-        if (theme.Contains("Lẩu Thái") || theme.Contains("Lẩu"))
-        {
-            keywords.Add(("bò", servings >= 4 ? 2 : 1));
-            keywords.Add(("tôm", 1));
-            keywords.Add(("mực", 1));
-            keywords.Add(("nấm kim châm", 2));
-            keywords.Add(("cải thảo", 1));
-            keywords.Add(("rau muống", 1));
-            keywords.Add(("ngô", 2));
-            keywords.Add(("hạt nêm", 1));
-        }
-        else if (theme.Contains("Kho Tàu"))
-        {
-            keywords.Add(("ba chỉ", servings >= 4 ? 2 : 1));
-            keywords.Add(("trứng", 1));
-            keywords.Add(("nước mắm", 1));
-            keywords.Add(("rau muống", 1));
-            keywords.Add(("đường", 1));
-            keywords.Add(("tiêu", 1));
-        }
-        else if (theme.Contains("Sốt Vang"))
-        {
-            keywords.Add(("bò", servings >= 4 ? 2 : 1));
-            keywords.Add(("khoai tây", 1));
-            keywords.Add(("cà rốt", 1));
-            keywords.Add(("cà chua", 1));
-            keywords.Add(("bánh mì", servings >= 4 ? 4 : 2));
-            keywords.Add(("hạt nêm", 1));
-        }
-        else if (theme.Contains("Canh Chua") || theme.Contains("Cá Hồi"))
-        {
-            keywords.Add(("cá hồi", 1));
-            keywords.Add(("thịt nạc", 1));
-            keywords.Add(("cà chua", 1));
-            keywords.Add(("rau muống", 1));
-            keywords.Add(("nước mắm", 1));
-        }
-        else if (theme.Contains("Sườn Non") || theme.Contains("Chua Ngọt"))
-        {
-            keywords.Add(("sườn", servings >= 4 ? 2 : 1));
-            keywords.Add(("cà chua", 1));
-            keywords.Add(("đường", 1));
-            keywords.Add(("nước mắm", 1));
-            keywords.Add(("rau muống", 1));
-        }
-        else if (theme.Contains("Gà Ta") || theme.Contains("Gà Kho"))
-        {
-            keywords.Add(("gà", servings >= 4 ? 2 : 1));
-            keywords.Add(("nước mắm", 1));
-            keywords.Add(("hạt nêm", 1));
-            keywords.Add(("cải thảo", 1));
-            keywords.Add(("cà rốt", 1));
-        }
-        else if (theme.Contains("Mực Tươi") || theme.Contains("Mực"))
-        {
-            keywords.Add(("mực", 1));
-            keywords.Add(("thịt ba chỉ", 1));
-            keywords.Add(("cà chua", 1));
-            keywords.Add(("rau muống", 1));
-            keywords.Add(("nước mắm", 1));
-        }
-        else if (theme.Contains("Chay"))
-        {
-            keywords.Add(("nấm đùi gà", 2));
-            keywords.Add(("nấm kim châm", 2));
-            keywords.Add(("cải thảo", 1));
-            keywords.Add(("rau muống", 1));
-            keywords.Add(("cà rốt", 1));
-            keywords.Add(("đường", 1));
-        }
-        else
-        {
-            keywords.Add(("thịt", 1));
-            keywords.Add(("trứng", 1));
-            keywords.Add(("rau", 1));
-            keywords.Add(("cà chua", 1));
-            keywords.Add(("nước mắm", 1));
-        }
-
-        foreach (var (kw, qty) in keywords)
-        {
-            var match = products
-                .Where(p => !selectedProductIds.Contains(p.ProductId))
-                .Where(p => p.ProductName.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(p => p.Price > 0)
-                .FirstOrDefault();
-
-            if (match == null) continue;
-
-            selectedProductIds.Add(match.ProductId);
-
-            // Kiểm tra tồn kho thực tế và áp dụng giảm giá cận date nếu có
-            int inStock = 100;
-            bool isNearExpiry = false;
-            decimal discountPercent = 0;
-            string promoNote = string.Empty;
-
-            if (batchLookup.TryGetValue(match.ProductId, out var batchInfo))
-            {
-                inStock = batchInfo.TotalStock;
-                DateTime minExp = batchInfo.MinExpiry;
-                int daysLeft = (minExp - DateTime.UtcNow).Days;
-                if (daysLeft <= 7 && prioritizePromotions)
-                {
-                    isNearExpiry = true;
-                    discountPercent = 30m;
-                    promoNote = "Flash Sale cận date giảm 30%";
-                }
-            }
-
-            decimal regularPrice = match.Price;
-            decimal finalPrice = discountPercent > 0
-                ? Math.Round(regularPrice * (100m - discountPercent) / 100m, 0)
-                : regularPrice;
-
-            result.Add(new MealIngredientItemDto
-            {
-                ProductId = match.ProductId,
-                ProductName = match.ProductName,
-                Barcode = match.Barcode,
-                ImageUrl = match.ImageUrl ?? "/images/products/default.png",
-                Unit = match.Unit,
-                QuantityToBuy = qty,
-                RegularPrice = regularPrice,
-                FinalPrice = finalPrice,
-                DiscountPercent = discountPercent,
-                IsPromotionOrNearExpiry = isNearExpiry,
-                PromotionNote = promoNote,
-                InStockQuantity = inStock
-            });
-        }
-
-        // Tối ưu ngân sách nếu vượt quá giới hạn mong muốn
-        decimal currentTotal = result.Sum(r => r.FinalPrice * r.QuantityToBuy);
-        if (currentTotal > targetBudget * 1.15m && result.Count > 3)
-        {
-            var highestItem = result.OrderByDescending(r => r.FinalPrice * r.QuantityToBuy).FirstOrDefault();
-            if (highestItem != null && highestItem.QuantityToBuy > 1)
-            {
-                highestItem.QuantityToBuy = 1;
-            }
-        }
-
-        return result;
-    }
-
-    private static string GenerateChefMealMessage(
-        string dishName,
-        int servings,
-        decimal totalCost,
-        decimal targetBudget,
-        decimal totalSaved,
-        List<MealIngredientItemDto> ingredients)
-    {
-        var promoItems = ingredients.Where(i => i.IsPromotionOrNearExpiry).ToList();
-        string promoText = promoItems.Any()
-            ? $"Đặc biệt, siêu thị đang có chương trình Flash Sale ưu đãi cho {string.Join(", ", promoItems.Take(2).Select(i => i.ProductName))}, giúp bạn tiết kiệm được {totalSaved:N0} đ!"
-            : "Toàn bộ nguyên liệu đều được tuyển chọn tươi mới từ các nhà cung cấp uy tín trong sáng nay.";
-
-        return $"Dạ, với yêu cầu của bạn, em gợi ý mâm cơm **\"{dishName}\"** rất hợp khẩu vị cho **{servings} người ăn**.\n\n" +
-               $"Tổng chi phí mâm nguyên liệu dự kiến là **{totalCost:N0} đ** (ngân sách dự kiến: {targetBudget:N0} đ). {promoText}\n\n" +
-               "Mời bạn bấm vào nút bên dưới để xem chi tiết mâm nguyên liệu, tùy ý giữ lại hoặc bỏ bớt món theo ý thích trước khi thêm vào giỏ hàng nhé!";
     }
 
     private static string GenerateCookingTips(string theme)

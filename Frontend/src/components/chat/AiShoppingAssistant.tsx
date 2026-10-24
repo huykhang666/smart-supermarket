@@ -3,6 +3,7 @@ import {
   aiService,
   type MealPlanChatResponse,
   type MealIngredientItem,
+  type MealOption,
   type ChatMessage,
 } from '../../services/aiService';
 
@@ -12,6 +13,14 @@ interface ChatItem {
   content: string;
   mealData?: MealPlanChatResponse;
   timestamp: Date;
+}
+
+interface ActiveMealTray {
+  dishName: string;
+  servings: number;
+  ingredients: MealIngredientItem[];
+  cookingTips?: string;
+  totalEstimatedCost?: number;
 }
 
 interface SelectedIngredientState {
@@ -41,7 +50,7 @@ export const AiShoppingAssistant: React.FC = () => {
   ]);
 
   // Modal tùy chỉnh mâm nguyên liệu
-  const [activeMealModal, setActiveMealModal] = useState<MealPlanChatResponse | null>(null);
+  const [activeMealModal, setActiveMealModal] = useState<ActiveMealTray | null>(null);
   const [customizingItems, setCustomizingItems] = useState<SelectedIngredientState[]>([]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -54,7 +63,7 @@ export const AiShoppingAssistant: React.FC = () => {
   }, [messages, isOpen, loading]);
 
   // Khi mở modal mâm nguyên liệu, khởi tạo danh sách món được chọn
-  const handleOpenMealModal = (meal: MealPlanChatResponse) => {
+  const handleOpenMealModal = (meal: ActiveMealTray) => {
     setActiveMealModal(meal);
     setCustomizingItems(
       meal.ingredients.map((ing) => ({
@@ -259,9 +268,9 @@ export const AiShoppingAssistant: React.FC = () => {
       {isOpen && (
         <div
           style={{
-            width: 520,
+            width: 530,
             maxWidth: 'calc(100vw - 32px)',
-            height: 740,
+            height: 750,
             maxHeight: 'calc(100vh - 40px)',
             backgroundColor: '#ffffff',
             borderRadius: 18,
@@ -401,7 +410,7 @@ export const AiShoppingAssistant: React.FC = () => {
                 {/* Bong bóng chat */}
                 <div
                   style={{
-                    maxWidth: '85%',
+                    maxWidth: '88%',
                     backgroundColor: msg.role === 'user' ? '#0F5132' : '#ffffff',
                     color: msg.role === 'user' ? '#ffffff' : '#1e293b',
                     padding: '12px 16px',
@@ -413,10 +422,9 @@ export const AiShoppingAssistant: React.FC = () => {
                     whiteSpace: 'pre-line',
                   }}
                 >
-                  {/* Nội dung tin nhắn dạng văn bản/markdown đơn giản */}
+                  {/* Nội dung tin nhắn */}
                   <div>
                     {msg.content.split('\n').map((line, idx) => {
-                      // Đậm chữ với **
                       const parts = line.split(/(\*\*.*?\*\*)/g);
                       return (
                         <div key={idx} style={{ minHeight: line.trim() ? undefined : 8 }}>
@@ -431,68 +439,151 @@ export const AiShoppingAssistant: React.FC = () => {
                     })}
                   </div>
 
-                  {/* Nút bấm tương tác nếu AI đề xuất mâm món ăn */}
+                  {/* Hiển thị các Option thực đơn kèm nút chọn mâm */}
                   {msg.mealData && msg.mealData.hasMealSuggestion && (
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: 12,
-                        backgroundColor: '#f0fdf4',
-                        borderRadius: 10,
-                        border: '1px solid #bbf7d0',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: 8,
-                        }}
-                      >
-                        <strong style={{ fontSize: 14, color: '#0F5132' }}>
-                          🍽️ {msg.mealData.dishName}
-                        </strong>
-                        <span
+                    <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {/* Nếu có nhiều Option thì hiển thị từng Option */}
+                      {msg.mealData.mealOptions && msg.mealData.mealOptions.length > 0 ? (
+                        msg.mealData.mealOptions.map((opt: MealOption, optIdx: number) => (
+                          <div
+                            key={optIdx}
+                            style={{
+                              padding: 12,
+                              backgroundColor: optIdx === 0 ? '#f0fdf4' : '#f8fafc',
+                              borderRadius: 10,
+                              border: optIdx === 0 ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <strong style={{ fontSize: 13.5, color: '#0F5132' }}>
+                                {opt.optionName}
+                              </strong>
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  backgroundColor: '#dcfce7',
+                                  color: '#166534',
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
+                                  borderRadius: 10,
+                                }}
+                              >
+                                {opt.totalEstimatedCost.toLocaleString()} đ
+                              </span>
+                            </div>
+
+                            {opt.description && (
+                              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8, fontStyle: 'italic' }}>
+                                {opt.description}
+                              </div>
+                            )}
+
+                            {/* Gạch đầu dòng tóm tắt các món và giá tiền */}
+                            <div style={{ fontSize: 12, color: '#334155', marginBottom: 10, lineHeight: 1.5 }}>
+                              {opt.ingredients.slice(0, 4).map((ing, ingIdx) => (
+                                <div key={ingIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}>
+                                  <span>• {ing.productName} ({ing.quantityToBuy} {ing.unit}):</span>
+                                  <strong>{(ing.finalPrice * ing.quantityToBuy).toLocaleString()} đ</strong>
+                                </div>
+                              ))}
+                              {opt.ingredients.length > 4 && (
+                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                                  + và {opt.ingredients.length - 4} nguyên liệu khác...
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Nút chọn mâm */}
+                            <button
+                              onClick={() =>
+                                handleOpenMealModal({
+                                  dishName: opt.dishName,
+                                  servings: msg.mealData!.servings,
+                                  ingredients: opt.ingredients,
+                                  cookingTips: opt.cookingTips,
+                                  totalEstimatedCost: opt.totalEstimatedCost,
+                                })
+                              }
+                              style={{
+                                width: '100%',
+                                backgroundColor: optIdx === 0 ? '#2563eb' : '#0F5132',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 8,
+                                padding: '9px 12px',
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                fontSize: 12.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.12)',
+                              }}
+                            >
+                              👉 Chọn mâm này ({opt.totalEstimatedCost.toLocaleString()} đ)
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        // Fallback nếu chỉ có 1 mâm duy nhất
+                        <div
                           style={{
-                            fontSize: 11.5,
-                            backgroundColor: '#dcfce7',
-                            color: '#166534',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 12,
+                            padding: 12,
+                            backgroundColor: '#f0fdf4',
+                            borderRadius: 10,
+                            border: '1px solid #bbf7d0',
                           }}
                         >
-                          {msg.mealData.servings} người • {msg.mealData.totalEstimatedCost.toLocaleString()} đ
-                        </span>
-                      </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <strong style={{ fontSize: 14, color: '#0F5132' }}>
+                              🍽️ {msg.mealData.dishName}
+                            </strong>
+                            <span
+                              style={{
+                                fontSize: 11.5,
+                                backgroundColor: '#dcfce7',
+                                color: '#166534',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: 12,
+                              }}
+                            >
+                              {msg.mealData.servings} người • {msg.mealData.totalEstimatedCost.toLocaleString()} đ
+                            </span>
+                          </div>
 
-                      <div style={{ fontSize: 12, color: '#475569', marginBottom: 10 }}>
-                        Kho siêu thị có sẵn {msg.mealData.ingredients.length} nguyên liệu. Bạn có thể xem mâm chi tiết và tùy ý thêm/bớt món.
-                      </div>
-
-                      {/* Nút hành động chính theo đúng yêu cầu người dùng */}
-                      <button
-                        onClick={() => handleOpenMealModal(msg.mealData!)}
-                        style={{
-                          width: '100%',
-                          backgroundColor: '#2563eb',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 8,
-                          padding: '10px 14px',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          fontSize: 13,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                          boxShadow: '0 2px 6px rgba(37,99,235,0.28)',
-                        }}
-                      >
-                        👉 Bạn có muốn chọn mâm nguyên liệu cho món này?
-                      </button>
+                          <button
+                            onClick={() =>
+                              handleOpenMealModal({
+                                dishName: msg.mealData!.dishName,
+                                servings: msg.mealData!.servings,
+                                ingredients: msg.mealData!.ingredients,
+                                cookingTips: msg.mealData!.cookingTips,
+                                totalEstimatedCost: msg.mealData!.totalEstimatedCost,
+                              })
+                            }
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#2563eb',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 8,
+                              padding: '10px 14px',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              fontSize: 13,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            👉 Bạn có muốn chọn mâm nguyên liệu cho món này?
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
