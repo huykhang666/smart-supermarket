@@ -1,0 +1,66 @@
+<Page x:Class="SmartSupermarket.POS.Views.Pages.ProductsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Danh Mục Sản Phẩm">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Page Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="QUẢN LÝ DANH MỤC HÀNG HÓA &amp; SẢN PHẨM" FontSize="18" FontWeight="Bold" />
+                <TextBlock Text="Theo dõi danh mục, giá niêm yết, mã vạch barcode và số lượng tồn kho thực tế"
+                           FontSize="12.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" />
+            </StackPanel>
+            <ui:Button HorizontalAlignment="Right" Appearance="Primary" Icon="{ui:SymbolIcon Add24}"
+                       Content="Thêm Sản Phẩm" Click="BtnAddProduct_Click" />
+        </Grid>
+
+        <!-- Filters Toolbar -->
+        <ui:Card Grid.Row="1" Margin="0,0,0,16" Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280" />
+                    <ColumnDefinition Width="200" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ui:TextBox Grid.Column="0" x:Name="TxtSearch" PlaceholderText="🔍 Tìm tên, mã vạch barcode..."
+                            Height="36" TextChanged="TxtSearch_TextChanged" Margin="0,0,10,0" />
+
+                <ComboBox Grid.Column="1" x:Name="CbCategory" Height="36" SelectionChanged="CbCategory_SelectionChanged">
+                    <ComboBoxItem Content="Tất cả danh mục" IsSelected="True" />
+                    <ComboBoxItem Content="Nước giải khát" />
+                    <ComboBoxItem Content="Sữa &amp; Sản phẩm sữa" />
+                    <ComboBoxItem Content="Bánh kẹo" />
+                    <ComboBoxItem Content="Gia vị &amp; Đồ khô" />
+                    <ComboBoxItem Content="Đồ ăn liền" />
+                </ComboBox>
+            </Grid>
+        </ui:Card>
+
+        <!-- Product Table -->
+        <ui:Card Grid.Row="2" Padding="12">
+            <DataGrid x:Name="DgvProducts" AutoGenerateColumns="False" IsReadOnly="True"
+                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      RowHeight="42" FontSize="13" CanUserResizeRows="False"
+                      BorderThickness="0" Background="Transparent" SelectionUnit="FullRow">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="MÃ SP" Binding="{Binding ProductId}" Width="80" />
+                    <DataGridTextColumn Header="MÃ VẠCH" Binding="{Binding Barcode}" Width="130" />
+                    <DataGridTextColumn Header="TÊN SẢN PHẨM" Binding="{Binding ProductName}" Width="*" />
+                    <DataGridTextColumn Header="NGÀNH HÀNG" Binding="{Binding CategoryName}" Width="160" />
+                    <DataGridTextColumn Header="ĐƠN GIÁ BÁN" Binding="{Binding FormattedPrice}" Width="120" />
+                    <DataGridTextColumn Header="TỒN KHO" Binding="{Binding FormattedStock}" Width="110" />
+                    <DataGridTextColumn Header="TRẠNG THÁI" Binding="{Binding Status}" Width="110" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </ui:Card>
+    </Grid>
+</Page>

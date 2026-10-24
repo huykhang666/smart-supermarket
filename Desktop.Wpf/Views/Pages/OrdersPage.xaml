@@ -1,0 +1,44 @@
+<Page x:Class="SmartSupermarket.POS.Views.Pages.OrdersPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      Title="Lịch Sử Đơn Hàng">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Page Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="QUẢN LÝ ĐƠN HÀNG &amp; LỊCH SỬ GIAO DỊCH" FontSize="18" FontWeight="Bold" />
+                <TextBlock Text="Đối soát giao dịch bán lẻ, phương thức thanh toán VietQR / Thẻ / Tiền mặt &amp; in hóa đơn"
+                           FontSize="12.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" />
+            </StackPanel>
+
+            <ui:Button HorizontalAlignment="Right" Appearance="Primary" Icon="{ui:SymbolIcon ArrowClockwise24}"
+                       Content="Tải lại đơn hàng" Click="BtnRefresh_Click" />
+        </Grid>
+
+        <!-- Orders Table -->
+        <ui:Card Grid.Row="2" Padding="12">
+            <DataGrid x:Name="DgvOrders" AutoGenerateColumns="False" IsReadOnly="True"
+                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      RowHeight="42" FontSize="13" CanUserResizeRows="False"
+                      BorderThickness="0" Background="Transparent" SelectionUnit="FullRow">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="MÃ ĐƠN" Binding="{Binding OrderCode}" Width="120" />
+                    <DataGridTextColumn Header="KHÁCH HÀNG" Binding="{Binding CustomerName}" Width="160" />
+                    <DataGridTextColumn Header="THU NGÂN" Binding="{Binding EmployeeName}" Width="130" />
+                    <DataGridTextColumn Header="THỜI GIAN" Binding="{Binding FormattedDate}" Width="150" />
+                    <DataGridTextColumn Header="PHƯƠNG THỨC TT" Binding="{Binding PaymentMethod}" Width="140" />
+                    <DataGridTextColumn Header="THỰC THU" Binding="{Binding FormattedFinalAmount}" Width="140" />
+                    <DataGridTextColumn Header="TRẠNG THÁI" Binding="{Binding Status}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </ui:Card>
+    </Grid>
+</Page>

@@ -1,0 +1,58 @@
+<ui:FluentWindow x:Class="SmartSupermarket.POS.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:pages="clr-namespace:SmartSupermarket.POS.Views.Pages"
+        Title="KATQ Smart Supermarket - Modern POS &amp; ERP"
+        Height="780" Width="1240" MinHeight="600" MinWidth="950"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Windows 11 TitleBar -->
+        <ui:TitleBar Grid.Row="0" Title="KATQ Smart Supermarket • Windows 11 Fluent POS Workstation">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="https://cdn-icons-png.flaticon.com/512/3081/3081840.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!-- NavigationView Sidebar -->
+        <ui:NavigationView Grid.Row="1" x:Name="RootNavigation"
+                           PaneDisplayMode="Left"
+                           IsBackButtonVisible="Collapsed"
+                           OpenPaneLength="220">
+
+            <!-- Primary Navigation Items -->
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="Tổng Quan ERP"
+                                       Icon="{ui:SymbolIcon Home24}"
+                                       TargetPageType="{x:Type pages:DashboardPage}" />
+
+                <ui:NavigationViewItem Content="POS Bán Hàng"
+                                       Icon="{ui:SymbolIcon Cart24}"
+                                       TargetPageType="{x:Type pages:PosPage}" />
+
+                <ui:NavigationViewItem Content="Hàng Hóa &amp; Giá"
+                                       Icon="{ui:SymbolIcon Box24}"
+                                       TargetPageType="{x:Type pages:ProductsPage}" />
+
+                <ui:NavigationViewItem Content="Đơn Hàng &amp; HĐ"
+                                       Icon="{ui:SymbolIcon Receipt24}"
+                                       TargetPageType="{x:Type pages:OrdersPage}" />
+            </ui:NavigationView.MenuItems>
+
+            <!-- Footer Navigation Items -->
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="Cài Đặt Hệ Thống"
+                                       Icon="{ui:SymbolIcon Settings24}"
+                                       TargetPageType="{x:Type pages:SettingsPage}" />
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>
