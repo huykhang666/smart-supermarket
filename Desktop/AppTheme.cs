@@ -59,6 +59,7 @@ public static class AppTheme
     public static readonly Font FontBodyBold = new Font("Segoe UI", 10F, FontStyle.Bold);
     public static readonly Font FontKpi = new Font("Segoe UI", 22F, FontStyle.Bold);
     public static readonly Font FontCaption = new Font("Segoe UI", 9F, FontStyle.Regular);
+    public static readonly Font FontCaptionBold = new Font("Segoe UI", 9F, FontStyle.Bold);
 
     public static void ApplyGridStyle(DataGridView dgv)
     {

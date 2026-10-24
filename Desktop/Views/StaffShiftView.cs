@@ -1,51 +1,87 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using FontAwesome.Sharp;
+using Desktop.Forms;
 
 namespace Desktop.Views;
 
 public class StaffShiftView : UserControl
 {
     private Label lblShiftStatus = null!;
+    private Panel pnlShiftBadge = null!;
     private Label lblShiftTime = null!;
+    private Label lblWorkstation = null!;
     private NumericUpDown numInitialCash = null!;
     private Label lblTotalOrdersVal = null!;
     private Label lblTotalRevenueVal = null!;
-    private Label lblCashRevenueVal = null!;
-    private Label lblQrRevenueVal = null!;
-    private Label lblCardRevenueVal = null!;
+    private Label lblCashAmountVal = null!;
+    private Label lblCashPercentVal = null!;
+    private Label lblQrAmountVal = null!;
+    private Label lblQrPercentVal = null!;
+    private Label lblCardAmountVal = null!;
+    private Label lblCardPercentVal = null!;
+    private Label lblExpectedCashVal = null!;
     private NumericUpDown numActualCash = null!;
     private Label lblCashDifference = null!;
+    private Panel pnlDiscrepancyBox = null!;
+    private ComboBox cbDiscrepancyReason = null!;
+    private TextBox txtDiscrepancyNote = null!;
     private Button btnOpenShift = null!;
     private Button btnCloseShift = null!;
     private Button btnPrintReport = null!;
+    private Button btnRefreshData = null!;
+    private DataGridView _dgvOrdersInShift = null!;
 
-    private bool _isShiftOpen = true;
+    private readonly HttpClient _httpClient = new();
+    private readonly string _apiBaseUrl = AppTheme.ApiBaseUrl;
+
+    private int _currentSessionId = 0;
+    private bool _isShiftOpen = false;
+    private decimal _cashSales = 0;
+    private decimal _qrSales = 0;
+    private decimal _cardSales = 0;
+    private decimal _totalSales = 0;
+    private int _ordersCount = 0;
+    private DateTime _shiftStartTime = DateTime.Now;
 
     public StaffShiftView()
     {
         InitializeComponent();
+        this.VisibleChanged += async (s, e) =>
+        {
+            if (this.Visible)
+            {
+                await LoadCurrentSessionAsync();
+            }
+        };
+        _ = LoadCurrentSessionAsync();
     }
 
     private void InitializeComponent()
     {
         this.Dock = DockStyle.Fill;
         this.BackColor = AppTheme.BackgroundGray;
-        this.Padding = new Padding(24);
+        this.Padding = new Padding(20);
         this.AutoScroll = true;
 
-        // --- 1. Page Header ---
+        // --- 1. Header Bar ---
         var pnlHeader = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 55,
+            Height = 60,
             BackColor = Color.Transparent
         };
 
         var lblTitle = new Label
         {
-            Text = "👤 Quản Lý Ca Làm Việc & Kết Ca Bán Hàng",
+            Text = "👤 Quản Lý Ca Trực & Kiểm Đếm Két Tiền (Cash Balancing)",
             Font = AppTheme.FontH1,
             ForeColor = AppTheme.TextPrimary,
             Location = new Point(0, 4),
@@ -54,17 +90,29 @@ public class StaffShiftView : UserControl
 
         var lblSub = new Label
         {
-            Text = "Kiểm soát tiền mặt đầu ca, tổng doanh thu phương thức thanh toán và bàn giao kết ca thu ngân",
+            Text = "Kiểm soát tiền mặt đầu ca, giám sát doanh thu realtime, đối soát thừa thiếu và bàn giao két thu ngân",
             Font = AppTheme.FontCaption,
             ForeColor = AppTheme.TextSecondary,
             Location = new Point(2, 34),
             AutoSize = true
         };
 
+        btnRefreshData = new Button
+        {
+            Text = "🔄 Làm Mới Số Liệu",
+            Size = new Size(160, 34),
+            Location = new Point(this.Width - 190, 10),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Cursor = Cursors.Hand
+        };
+        AppTheme.ApplySecondaryButton(btnRefreshData, radius: 6);
+        btnRefreshData.Click += async (s, e) => await LoadCurrentSessionAsync();
+
         pnlHeader.Controls.Add(lblTitle);
         pnlHeader.Controls.Add(lblSub);
+        pnlHeader.Controls.Add(btnRefreshData);
 
-        // --- 2. Main Grid Layout (2 Columns: Left = Shift Status & Controls, Right = Financial Summary) ---
+        // --- 2. Main 2-Column Grid ---
         var pnlMain = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -76,102 +124,117 @@ public class StaffShiftView : UserControl
         pnlMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
         pnlMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
 
-        // LEFT CARD: Thông tin ca & Mở/Đóng ca
+        // ==========================================
+        // CỘT TRÁI: KIỂM KÉT & THAO TÁC CA TRỰC
+        // ==========================================
         var pnlLeftCard = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = AppTheme.SurfaceWhite,
             Padding = new Padding(20),
-            Margin = new Padding(0, 8, 10, 0)
+            Margin = new Padding(0, 8, 10, 0),
+            AutoScroll = true
         };
         AppTheme.ApplyCardPanel(pnlLeftCard);
 
-        var lblLeftCardTitle = new Label
+        var lblLeftTitle = new Label
         {
-            Text = "🕒 THÔNG TIN CA TRỰC HIỆN TẠI",
+            Text = "🕒 THÔNG TIN CA & KIỂM ĐẾM KÉT TIỀN",
             Font = AppTheme.FontH2,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(16, 16),
+            Location = new Point(16, 14),
             AutoSize = true
         };
 
-        var pnlShiftBadge = new Panel
+        pnlShiftBadge = new Panel
         {
-            Location = new Point(16, 50),
-            Size = new Size(200, 32),
-            BackColor = AppTheme.SuccessSubtle
+            Location = new Point(16, 46),
+            Size = new Size(240, 32),
+            BackColor = AppTheme.DangerSubtle
         };
         lblShiftStatus = new Label
         {
-            Text = "🟢 Trạng thái: ĐANG MỞ CA",
+            Text = "🔴 Trạng thái: CHƯA MỞ CA",
             Font = AppTheme.FontBodyBold,
-            ForeColor = AppTheme.Success,
+            ForeColor = AppTheme.Danger,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter
         };
         pnlShiftBadge.Controls.Add(lblShiftStatus);
 
-        lblShiftTime = new Label
+        lblWorkstation = new Label
         {
-            Text = "Ca làm: 08:00 → 17:00  (Ca sáng - Thu ngân: Thu Thảo)",
-            Font = AppTheme.FontBody,
-            ForeColor = AppTheme.TextSecondary,
-            Location = new Point(16, 92),
+            Text = $"🖥️ Trạm POS: {Environment.MachineName}  |  Thu ngân: {CurrentSession.FullName}",
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.Primary,
+            Location = new Point(16, 88),
             AutoSize = true
         };
 
-        var lblDivider1 = new Panel { Location = new Point(16, 122), Size = new Size(pnlLeftCard.Width - 32, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        lblShiftTime = new Label
+        {
+            Text = "Thời gian ca: Chưa ghi nhận phiên làm việc",
+            Font = AppTheme.FontBody,
+            ForeColor = AppTheme.TextSecondary,
+            Location = new Point(16, 112),
+            AutoSize = true
+        };
 
+        var divider1 = new Panel { Location = new Point(16, 138), Size = new Size(pnlLeftCard.Width - 32, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+
+        // 1. Tiền mặt đầu ca
         var lblInitCashTitle = new Label
         {
-            Text = "💵 Tiền Mặt Đầu Ca (VNĐ):",
+            Text = "💵 Tiền Mặt Đầu Ca Bàn Giao (Floating Cash):",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(16, 135),
+            Location = new Point(16, 148),
             AutoSize = true
         };
 
         numInitialCash = new NumericUpDown
         {
-            Location = new Point(16, 162),
-            Size = new Size(280, 32),
+            Location = new Point(16, 174),
+            Size = new Size(320, 32),
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
             Maximum = 100000000,
             Minimum = 0,
-            Value = 0,
+            Value = 2000000, // 2 triệu tiền mặt tiền lẻ mặc định
             ThousandsSeparator = true,
             DecimalPlaces = 0
         };
         numInitialCash.ValueChanged += (s, e) => RecalculateDifference();
 
+        // 2. Tiền mặt thực tế đếm cuối ca
         var lblActualCashTitle = new Label
         {
-            Text = "💰 Tiền Mặt Kiểm Thực Tế Cuối Ca (VNĐ):",
+            Text = "💰 Tiền Mặt Kiểm Đếm Thực Tế Cuối Ca Nộp Lại:",
             Font = AppTheme.FontBodyBold,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(16, 212),
+            Location = new Point(16, 220),
             AutoSize = true
         };
 
         numActualCash = new NumericUpDown
         {
-            Location = new Point(16, 238),
-            Size = new Size(280, 32),
+            Location = new Point(16, 246),
+            Size = new Size(320, 32),
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
             Maximum = 500000000,
             Minimum = 0,
-            Value = 0,
+            Value = 2000000,
             ThousandsSeparator = true,
             DecimalPlaces = 0
         };
         numActualCash.ValueChanged += (s, e) => RecalculateDifference();
 
+        // 3. Kết quả đối soát chênh lệch
         var lblDiffTitle = new Label
         {
-            Text = "Chênh lệch tiền mặt thực tế vs sổ sách:",
+            Text = "Kết quả đối soát tiền mặt (Thực tế vs Sổ sách ca):",
             Font = AppTheme.FontBody,
             ForeColor = AppTheme.TextSecondary,
-            Location = new Point(16, 285),
+            Location = new Point(16, 290),
             AutoSize = true
         };
 
@@ -180,149 +243,263 @@ public class StaffShiftView : UserControl
             Text = "0 VNĐ (Khớp tiền bàn giao)",
             Font = new Font("Segoe UI", 13f, FontStyle.Bold),
             ForeColor = AppTheme.Success,
-            Location = new Point(16, 310),
+            Location = new Point(16, 314),
             AutoSize = true
         };
 
-        var pnlShiftButtons = new FlowLayoutPanel
+        // 4. Khối bắt buộc giải trình khi chênh lệch != 0
+        pnlDiscrepancyBox = new Panel
         {
-            Location = new Point(16, 360),
-            Size = new Size(Math.Max(300, pnlLeftCard.Width - 32), 95),
+            Location = new Point(16, 348),
+            Size = new Size(pnlLeftCard.Width - 32, 130),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = true,
+            BackColor = Color.FromArgb(255, 245, 245),
+            Padding = new Padding(12),
+            Visible = false
+        };
+        pnlDiscrepancyBox.Paint += (s, e) =>
+        {
+            using var p = new Pen(Color.FromArgb(239, 68, 68), 1);
+            e.Graphics.DrawRectangle(p, 0, 0, pnlDiscrepancyBox.Width - 1, pnlDiscrepancyBox.Height - 1);
+        };
+
+        var lblDiscWarn = new Label
+        {
+            Text = "⚠️ BẮT BUỘC GIẢI TRÌNH CHÊNH LỆCH KÉT TIỀN:",
+            Font = AppTheme.FontCaptionBold,
+            ForeColor = Color.FromArgb(185, 28, 28),
+            Location = new Point(10, 8),
+            AutoSize = true
+        };
+
+        cbDiscrepancyReason = new ComboBox
+        {
+            Location = new Point(10, 30),
+            Size = new Size(pnlDiscrepancyBox.Width - 20, 28),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Font = AppTheme.FontBody
+        };
+        cbDiscrepancyReason.Items.AddRange(new object[]
+        {
+            "Làm tròn tiền lẻ trả khách (bớt lẻ dưới 1.000đ)",
+            "Khách hàng quên nhận tiền thối",
+            "Thu ngân thối nhầm mệnh giá tiền mặt",
+            "Bán hàng không xuất hóa đơn / Nhập sót",
+            "Hao hụt tiền mặt chưa rõ nguyên nhân (chờ rà soát lại camera)",
+            "Lý do khác"
+        });
+        cbDiscrepancyReason.SelectedIndex = 0;
+
+        txtDiscrepancyNote = new TextBox
+        {
+            Location = new Point(10, 64),
+            Size = new Size(pnlDiscrepancyBox.Width - 20, 54),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            Multiline = true,
+            Font = AppTheme.FontCaption,
+            PlaceholderText = "Nhập nội dung giải trình chi tiết về khoản chênh lệch..."
+        };
+
+        pnlDiscrepancyBox.Controls.Add(lblDiscWarn);
+        pnlDiscrepancyBox.Controls.Add(cbDiscrepancyReason);
+        pnlDiscrepancyBox.Controls.Add(txtDiscrepancyNote);
+
+        // 2. Hướng dẫn quy trình chốt ca
+        var pnlShiftHint = new Panel
+        {
+            Location = new Point(16, 222),
+            Size = new Size(pnlLeftCard.Width - 32, 72),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = Color.FromArgb(241, 245, 249),
+            Padding = new Padding(12)
+        };
+        pnlShiftHint.Paint += (s, e) =>
+        {
+            using var p = new Pen(AppTheme.BorderLight, 1);
+            e.Graphics.DrawRectangle(p, 0, 0, pnlShiftHint.Width - 1, pnlShiftHint.Height - 1);
+        };
+        var lblShiftHint = new Label
+        {
+            Text = "📋 Quy trình chốt ca:\nKhi kết thúc ca làm việc, bấm 'Chốt & Đóng Ca' bên dưới. Hệ thống sẽ mở bảng kiểm đếm két tiền, đối soát chênh lệch, checklist đơn hàng và xác thực PIN quản lý.",
+            Font = AppTheme.FontCaption,
+            ForeColor = AppTheme.TextSecondary,
+            Dock = DockStyle.Fill
+        };
+        pnlShiftHint.Controls.Add(lblShiftHint);
+
+        // 3. Nút điều khiển ca trực
+        var pnlButtons = new FlowLayoutPanel
+        {
+            Location = new Point(16, 310),
+            Size = new Size(pnlLeftCard.Width - 32, 90),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             BackColor = Color.Transparent
         };
 
         btnOpenShift = new Button
         {
             Text = "🔓 Mở Ca Trực Mới",
-            Size = new Size(170, 36),
-            Margin = new Padding(0, 0, 8, 8)
+            Size = new Size(180, 38),
+            Margin = new Padding(0, 0, 10, 8),
+            Cursor = Cursors.Hand
         };
-        AppTheme.ApplySecondaryButton(btnOpenShift);
-        btnOpenShift.Click += (s, e) =>
-        {
-            _isShiftOpen = true;
-            lblShiftStatus.Text = "🟢 Trạng thái: ĐANG MỞ CA";
-            pnlShiftBadge.BackColor = AppTheme.SuccessSubtle;
-            lblShiftStatus.ForeColor = AppTheme.Success;
-            AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã ghi nhận mở ca trực mới thành công.");
-        };
+        AppTheme.ApplyPrimaryButton(btnOpenShift, radius: 6);
+        btnOpenShift.Click += async (s, e) => await OpenShiftAsync();
 
         btnCloseShift = new Button
         {
-            Text = "🔒 Chốt & Đóng Ca Trực",
-            Size = new Size(180, 36),
-            Margin = new Padding(0, 0, 8, 8)
+            Text = "🔒 Chốt & Đóng Ca",
+            Size = new Size(180, 38),
+            Margin = new Padding(0, 0, 10, 8),
+            Cursor = Cursors.Hand
         };
-        AppTheme.ApplyDangerButton(btnCloseShift);
-        btnCloseShift.Click += (s, e) =>
-        {
-            var res = MessageBox.Show(
-                "Bạn có chắc chắn muốn CHỐT và ĐÓNG CA bán hàng hiện tại?\n\nHệ thống sẽ in phiếu bàn giao tiền mặt và khóa phiên làm việc.",
-                "Xác nhận đóng ca", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-            if (res == DialogResult.Yes)
-            {
-                _isShiftOpen = false;
-                lblShiftStatus.Text = "🔴 Trạng thái: ĐÃ ĐÓNG CA";
-                pnlShiftBadge.BackColor = AppTheme.DangerSubtle;
-                lblShiftStatus.ForeColor = AppTheme.Danger;
-                AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã đóng ca thành công. Vui lòng in biên bản bàn giao!");
-            }
-        };
+        AppTheme.ApplyDangerButton(btnCloseShift, radius: 6);
+        btnCloseShift.Click += async (s, e) => await CloseShiftAsync();
 
         btnPrintReport = new Button
         {
-            Text = "🖨️ In Báo Cáo Bàn Giao Ca (F10)",
-            Size = new Size(358, 36),
-            Margin = new Padding(0)
+            Text = "🖨️ In Báo Cáo Bàn Giao Ca (Z-Report)",
+            Size = new Size(370, 38),
+            Margin = new Padding(0),
+            Cursor = Cursors.Hand
         };
-        AppTheme.ApplyPrimaryButton(btnPrintReport);
-        btnPrintReport.Click += (s, e) =>
-        {
-            MessageBox.Show(
-                $"================ BÁO CÁO KẾT CA BÁN HÀNG ================\n" +
-                $"Siêu Thị: Smart SuperMarket - Phân Hệ POS Thu Ngân\n" +
-                $"Thu ngân: Thu Thảo  |  Mã ca: SHIFT-2026-01\n" +
-                $"Thời gian: {DateTime.Now:dd/MM/yyyy HH:mm:ss}\n" +
-                $"---------------------------------------------------------\n" +
-                $"• Số lượng đơn bán: 152 hóa đơn\n" +
-                $"• Tiền mặt đầu ca: {numInitialCash.Value:N0} VNĐ\n" +
-                $"• Doanh thu Tiền mặt: 12,000,000 VNĐ\n" +
-                $"• Doanh thu VietQR: 10,000,000 VNĐ\n" +
-                $"• Doanh thu Thẻ POS: 3,000,000 VNĐ\n" +
-                $"---------------------------------------------------------\n" +
-                $"TỔNG DOANH THU CA: 25,000,000 VNĐ\n" +
-                $"Tiền mặt thực tế: {numActualCash.Value:N0} VNĐ\n" +
-                $"Chênh lệch: {lblCashDifference.Text}\n" +
-                $"=========================================================\n" +
-                $"Đã gửi lệnh in tới máy in nhiệt hóa đơn POS-80!",
-                "In báo cáo bàn giao", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        };
+        AppTheme.ApplySecondaryButton(btnPrintReport, radius: 6);
+        btnPrintReport.Click += (s, e) => PrintZReport();
 
-        pnlShiftButtons.Controls.Add(btnOpenShift);
-        pnlShiftButtons.Controls.Add(btnCloseShift);
-        pnlShiftButtons.Controls.Add(btnPrintReport);
+        pnlButtons.Controls.Add(btnOpenShift);
+        pnlButtons.Controls.Add(btnCloseShift);
+        pnlButtons.Controls.Add(btnPrintReport);
 
-        pnlLeftCard.Controls.Add(lblLeftCardTitle);
+        pnlLeftCard.Controls.Add(lblLeftTitle);
         pnlLeftCard.Controls.Add(pnlShiftBadge);
+        pnlLeftCard.Controls.Add(lblWorkstation);
         pnlLeftCard.Controls.Add(lblShiftTime);
-        pnlLeftCard.Controls.Add(lblDivider1);
+        pnlLeftCard.Controls.Add(divider1);
         pnlLeftCard.Controls.Add(lblInitCashTitle);
         pnlLeftCard.Controls.Add(numInitialCash);
-        pnlLeftCard.Controls.Add(lblActualCashTitle);
-        pnlLeftCard.Controls.Add(numActualCash);
-        pnlLeftCard.Controls.Add(lblDiffTitle);
-        pnlLeftCard.Controls.Add(lblCashDifference);
-        pnlLeftCard.Controls.Add(pnlShiftButtons);
+        pnlLeftCard.Controls.Add(pnlShiftHint);
+        pnlLeftCard.Controls.Add(pnlButtons);
 
-        // RIGHT CARD: Báo cáo tài chính ca
+        // ==========================================
+        // CỘT PHẢI: BÁO CÁO DOANH THU & PHÂN BỔ PHƯƠNG THỨC
+        // ==========================================
         var pnlRightCard = new Panel
         {
             Dock = DockStyle.Fill,
             BackColor = AppTheme.SurfaceWhite,
             Padding = new Padding(20),
-            Margin = new Padding(10, 8, 0, 0)
+            Margin = new Padding(10, 8, 0, 0),
+            AutoScroll = true
         };
         AppTheme.ApplyCardPanel(pnlRightCard);
 
-        var lblRightCardTitle = new Label
+        var lblRightTitle = new Label
         {
-            Text = "📊 DOANH THU & PHÂN BỔ THANH TOÁN CA",
+            Text = "📊 DOANH THU CA & PHÂN BỔ THANH TOÁN REALTIME",
             Font = AppTheme.FontH2,
             ForeColor = AppTheme.TextPrimary,
-            Location = new Point(16, 16),
+            Location = new Point(16, 14),
             AutoSize = true
         };
 
-        // Orders stat
-        var lblOrdersTitle = new Label { Text = "Tổng hóa đơn đã lập:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(16, 60), AutoSize = true };
-        lblTotalOrdersVal = new Label { Text = "0 hóa đơn", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(220, 60), AutoSize = true };
+        var lblOrdersTitle = new Label { Text = "Tổng số hóa đơn đã xuất:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(16, 55), AutoSize = true };
+        lblTotalOrdersVal = new Label { Text = "0 hóa đơn", Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(230, 55), AutoSize = true };
 
-        // Revenue total
-        var lblRevTitle = new Label { Text = "Tổng doanh thu ca:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(16, 95), AutoSize = true };
-        lblTotalRevenueVal = new Label { Text = "0 VNĐ", Font = new Font("Segoe UI", 14f, FontStyle.Bold), ForeColor = AppTheme.Primary, Location = new Point(218, 92), AutoSize = true };
+        var lblRevTitle = new Label { Text = "Tổng doanh thu ca trực:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextSecondary, Location = new Point(16, 88), AutoSize = true };
+        lblTotalRevenueVal = new Label { Text = "0 VNĐ", Font = new Font("Segoe UI", 14f, FontStyle.Bold), ForeColor = AppTheme.Primary, Location = new Point(228, 85), AutoSize = true };
 
-        var lblDivider2 = new Panel { Location = new Point(16, 130), Size = new Size(pnlRightCard.Width - 32, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        var divider2 = new Panel { Location = new Point(16, 122), Size = new Size(pnlRightCard.Width - 32, 1), BackColor = AppTheme.BorderLight, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
 
-        // Method 1: Tiền mặt
-        var pnlPayCash = CreatePaymentStatRow("💵 Tiền Mặt (Cash)", "0 VNĐ", "Chiếm 0.0%", AppTheme.Success, 145);
-        // Method 2: VietQR
-        var pnlPayQr = CreatePaymentStatRow("📱 Quét mã VietQR", "0 VNĐ", "Chiếm 0.0%", AppTheme.Primary, 215);
-        // Method 3: Thẻ POS
-        var pnlPayCard = CreatePaymentStatRow("💳 Quẹt thẻ ngân hàng POS", "0 VNĐ", "Chiếm 0.0%", AppTheme.Warning, 285);
+        // 3 dòng phân bổ thanh toán
+        var pnlPayCash = CreatePaymentStatRow("💵 Tiền Mặt (Cash - Nộp Két)", out lblCashAmountVal, out lblCashPercentVal, AppTheme.Success, 138);
+        var pnlPayQr = CreatePaymentStatRow("📱 Quét Mã VietQR Chuyển Khoản", out lblQrAmountVal, out lblQrPercentVal, AppTheme.Primary, 208);
+        var pnlPayCard = CreatePaymentStatRow("💳 Quẹt Thẻ Ngân Hàng POS", out lblCardAmountVal, out lblCardPercentVal, AppTheme.Warning, 278);
 
-        pnlRightCard.Controls.Add(lblRightCardTitle);
+        // Tiền mặt sổ sách kỳ vọng
+        var pnlExpectedCard = new Panel
+        {
+            Location = new Point(16, 358),
+            Size = new Size(pnlRightCard.Width - 32, 75),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            BackColor = Color.FromArgb(240, 249, 255),
+            Padding = new Padding(14)
+        };
+        pnlExpectedCard.Paint += (s, e) =>
+        {
+            using var p = new Pen(AppTheme.Primary, 1);
+            e.Graphics.DrawRectangle(p, 0, 0, pnlExpectedCard.Width - 1, pnlExpectedCard.Height - 1);
+        };
+
+        var lblExpTitle = new Label
+        {
+            Text = "📌 TIỀN MẶT SỔ SÁCH KỲ VỌNG TRONG KÉT (Đầu ca + Doanh thu mặt):",
+            Font = AppTheme.FontCaptionBold,
+            ForeColor = AppTheme.Primary,
+            Location = new Point(12, 10),
+            AutoSize = true
+        };
+
+        lblExpectedCashVal = new Label
+        {
+            Text = "2,000,000 VNĐ",
+            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+            ForeColor = AppTheme.Primary,
+            Location = new Point(12, 34),
+            AutoSize = true
+        };
+        pnlExpectedCard.Controls.Add(lblExpTitle);
+        pnlExpectedCard.Controls.Add(lblExpectedCashVal);
+
+        pnlRightCard.Controls.Add(lblRightTitle);
         pnlRightCard.Controls.Add(lblOrdersTitle);
         pnlRightCard.Controls.Add(lblTotalOrdersVal);
         pnlRightCard.Controls.Add(lblRevTitle);
         pnlRightCard.Controls.Add(lblTotalRevenueVal);
-        pnlRightCard.Controls.Add(lblDivider2);
+        pnlRightCard.Controls.Add(divider2);
         pnlRightCard.Controls.Add(pnlPayCash);
         pnlRightCard.Controls.Add(pnlPayQr);
         pnlRightCard.Controls.Add(pnlPayCard);
+        pnlRightCard.Controls.Add(pnlExpectedCard);
+
+        var lblOrdersGridTitle = new Label
+        {
+            Text = "📋 ĐƠN HÀNG ĐÃ BÁN TRONG CA TRỰC",
+            Font = AppTheme.FontBodyBold,
+            ForeColor = AppTheme.TextPrimary,
+            Location = new Point(16, 445),
+            AutoSize = true
+        };
+
+        _dgvOrdersInShift = new DataGridView
+        {
+            Location = new Point(16, 475),
+            Size = new Size(pnlRightCard.Width - 32, 220),
+            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+            BackgroundColor = Color.White,
+            BorderStyle = BorderStyle.None,
+            RowHeadersVisible = false,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            ReadOnly = true,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            MultiSelect = false,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            EnableHeadersVisualStyles = false
+        };
+        _dgvOrdersInShift.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(241, 245, 249);
+        _dgvOrdersInShift.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(51, 65, 85);
+        _dgvOrdersInShift.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        _dgvOrdersInShift.ColumnHeadersHeight = 32;
+        _dgvOrdersInShift.RowTemplate.Height = 28;
+
+        _dgvOrdersInShift.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Mã đơn", DataPropertyName = "OrderNumber", FillWeight = 25 });
+        _dgvOrdersInShift.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Giờ tạo", DataPropertyName = "CreatedAt", FillWeight = 20 });
+        _dgvOrdersInShift.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Thanh toán", DataPropertyName = "PaymentMethod", FillWeight = 25 });
+        _dgvOrdersInShift.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Tổng tiền", DataPropertyName = "TotalAmount", FillWeight = 30 });
+
+        pnlRightCard.Controls.Add(lblOrdersGridTitle);
+        pnlRightCard.Controls.Add(_dgvOrdersInShift);
 
         pnlMain.Controls.Add(pnlLeftCard, 0, 0);
         pnlMain.Controls.Add(pnlRightCard, 1, 0);
@@ -331,12 +508,12 @@ public class StaffShiftView : UserControl
         this.Controls.Add(pnlHeader);
     }
 
-    private Panel CreatePaymentStatRow(string name, string amount, string percent, Color accent, int y)
+    private Panel CreatePaymentStatRow(string title, out Label lblAmount, out Label lblPercent, Color accent, int y)
     {
         var p = new Panel
         {
             Location = new Point(16, y),
-            Size = new Size(420, 58),
+            Size = new Size(420, 60),
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             BackColor = AppTheme.BackgroundGray
         };
@@ -346,36 +523,342 @@ public class StaffShiftView : UserControl
             e.Graphics.FillRectangle(b, 0, 0, 4, p.Height);
         };
 
-        var lblN = new Label { Text = name, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 8), AutoSize = true };
-        var lblA = new Label { Text = amount, Font = AppTheme.FontBodyBold, ForeColor = accent, Location = new Point(14, 30), AutoSize = true };
-        var lblP = new Label { Text = percent, Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(320, 18), AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+        var lblT = new Label { Text = title, Font = AppTheme.FontBodyBold, ForeColor = AppTheme.TextPrimary, Location = new Point(14, 8), AutoSize = true };
+        lblAmount = new Label { Text = "0 VNĐ", Font = AppTheme.FontBodyBold, ForeColor = accent, Location = new Point(14, 32), AutoSize = true };
+        lblPercent = new Label { Text = "0.0%", Font = AppTheme.FontCaption, ForeColor = AppTheme.TextSecondary, Location = new Point(320, 20), AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right };
 
-        p.Controls.Add(lblN);
-        p.Controls.Add(lblA);
-        p.Controls.Add(lblP);
+        p.Controls.Add(lblT);
+        p.Controls.Add(lblAmount);
+        p.Controls.Add(lblPercent);
         return p;
+    }
+
+    private async Task LoadCurrentSessionAsync()
+    {
+        btnRefreshData.Enabled = false;
+        try
+        {
+            int empId = CurrentSession.UserId;
+            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/shifts/sessions/current?employeeId={empId}&branchId=1");
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("data", out var data))
+                {
+                    _currentSessionId = data.GetProperty("sessionId").GetInt32();
+                    CurrentSession.ShiftSessionId = _currentSessionId;
+                    _isShiftOpen = true;
+                    _shiftStartTime = data.GetProperty("startTime").GetDateTime().ToLocalTime();
+                    decimal initCash = data.GetProperty("initialCash").GetDecimal();
+                    _ordersCount = data.GetProperty("totalOrdersCount").GetInt32();
+                    _cashSales = data.GetProperty("cashSalesAmount").GetDecimal();
+                    _qrSales = data.GetProperty("qrSalesAmount").GetDecimal();
+                    _cardSales = data.GetProperty("cardSalesAmount").GetDecimal();
+                    _totalSales = data.GetProperty("totalRevenue").GetDecimal();
+
+                    numInitialCash.Value = initCash;
+                    numInitialCash.Enabled = false; // Đã mở ca thì khóa tiền đầu ca
+                    btnOpenShift.Enabled = false;
+                    btnCloseShift.Enabled = true;
+
+                    lblShiftStatus.Text = "🟢 Trạng thái: ĐANG MỞ CA";
+                    pnlShiftBadge.BackColor = AppTheme.SuccessSubtle;
+                    lblShiftStatus.ForeColor = AppTheme.Success;
+                    lblShiftTime.Text = $"Bắt đầu lúc: {_shiftStartTime:dd/MM/yyyy HH:mm:ss}";
+
+                    UpdateFinancialUI();
+                    await LoadSessionOrdersAsync(_currentSessionId);
+                    return;
+                }
+            }
+
+            // Chưa mở ca hoặc phiên đã đóng
+            ResetShiftFormState();
+        }
+        catch
+        {
+            // Fallback demo mode
+        }
+        finally
+        {
+            btnRefreshData.Enabled = true;
+        }
+    }
+
+    private async Task LoadSessionOrdersAsync(int sessionId)
+    {
+        try
+        {
+            var res = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/shifts/sessions/{sessionId}/orders");
+            if (res.IsSuccessStatusCode)
+            {
+                var json = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                var dataEl = root.TryGetProperty("data", out var d) ? d : root;
+
+                if (dataEl.ValueKind == JsonValueKind.Array)
+                {
+                    var list = new List<ShiftOrderViewModel>();
+                    foreach (var item in dataEl.EnumerateArray())
+                    {
+                        string code = item.TryGetProperty("orderCode", out var c) ? (c.GetString() ?? "") : "";
+                        string cust = item.TryGetProperty("customerName", out var cn) ? (cn.GetString() ?? "") : "Khách Lẻ";
+                        string payMethod = item.TryGetProperty("paymentMethodName", out var pm) ? (pm.GetString() ?? "") : "💵 Tiền mặt";
+                        string status = item.TryGetProperty("status", out var st) ? (st.GetString() ?? "") : "Hoàn Thành";
+                        decimal amount = item.TryGetProperty("finalAmount", out var fa) ? fa.GetDecimal() : (item.TryGetProperty("totalAmount", out var ta) ? ta.GetDecimal() : 0);
+                        DateTime dt = item.TryGetProperty("orderDate", out var od) ? od.GetDateTime().ToLocalTime() : DateTime.Now;
+
+                        list.Add(new ShiftOrderViewModel
+                        {
+                            OrderNumber = code,
+                            CreatedAt = dt.ToString("HH:mm:ss"),
+                            CustomerName = cust,
+                            PaymentMethod = payMethod,
+                            TotalAmount = $"{amount:N0} đ",
+                            Status = status
+                        });
+                    }
+
+                    if (list.Count == 0 && DataStore.Orders.Count > 0)
+                    {
+                        var todayLocal = DataStore.Orders
+                            .Where(o => o.OrderDate.Date == DateTime.Today)
+                            .OrderByDescending(o => o.OrderDate)
+                            .ToList();
+
+                        if (todayLocal.Count > 0)
+                        {
+                            decimal lCash = 0, lQr = 0, lCard = 0;
+                            foreach (var o in todayLocal)
+                            {
+                                string pMethod = o.PaymentMethod;
+                                string icon = pMethod.Contains("mặt", StringComparison.OrdinalIgnoreCase) ? "💵 Tiền mặt"
+                                    : pMethod.Contains("VietQR", StringComparison.OrdinalIgnoreCase) ? "📱 VietQR"
+                                    : "💳 Thẻ POS";
+
+                                if (pMethod.Contains("mặt", StringComparison.OrdinalIgnoreCase)) lCash += o.GrandTotal;
+                                else if (pMethod.Contains("VietQR", StringComparison.OrdinalIgnoreCase)) lQr += o.GrandTotal;
+                                else lCard += o.GrandTotal;
+
+                                list.Add(new ShiftOrderViewModel
+                                {
+                                    OrderNumber = string.IsNullOrEmpty(o.OrderCode) ? $"ORD-{o.OrderId:D5}" : o.OrderCode,
+                                    CreatedAt = o.OrderDate.ToString("HH:mm:ss"),
+                                    CustomerName = o.CustomerName,
+                                    PaymentMethod = icon,
+                                    TotalAmount = $"{o.GrandTotal:N0} đ",
+                                    Status = "Hoàn Thành"
+                                });
+                            }
+
+                            if (_ordersCount == 0)
+                            {
+                                _cashSales = lCash;
+                                _qrSales = lQr;
+                                _cardSales = lCard;
+                                _totalSales = lCash + lQr + lCard;
+                                _ordersCount = list.Count;
+                                UpdateFinancialUI();
+                            }
+                        }
+                    }
+
+                    if (_dgvOrdersInShift != null)
+                    {
+                        _dgvOrdersInShift.DataSource = list;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading orders for shift view: {ex.Message}");
+        }
+    }
+
+    private void ResetShiftFormState()
+    {
+        _currentSessionId = 0;
+        CurrentSession.ShiftSessionId = null;
+        _isShiftOpen = false;
+        numInitialCash.Value = 0;
+        numInitialCash.Enabled = true;
+        numActualCash.Value = 0;
+        btnOpenShift.Enabled = true;
+        btnCloseShift.Enabled = false;
+        lblShiftStatus.Text = "🔴 Trạng thái: CHƯA MỞ CA";
+        pnlShiftBadge.BackColor = AppTheme.DangerSubtle;
+        lblShiftStatus.ForeColor = AppTheme.Danger;
+        lblShiftTime.Text = "Thời gian ca: Vui lòng nhập tiền đầu ca và bấm Mở Ca Trực";
+        pnlDiscrepancyBox.Visible = false;
+        lblCashDifference.Text = "0 VNĐ (Khớp tiền bàn giao)";
+        lblCashDifference.ForeColor = AppTheme.Success;
+
+        _cashSales = 0;
+        _qrSales = 0;
+        _cardSales = 0;
+        _totalSales = 0;
+        _ordersCount = 0;
+        UpdateFinancialUI();
+
+        if (_dgvOrdersInShift != null)
+        {
+            _dgvOrdersInShift.DataSource = null;
+        }
+    }
+
+    private void UpdateFinancialUI()
+    {
+        lblTotalOrdersVal.Text = $"{_ordersCount} hóa đơn";
+        lblTotalRevenueVal.Text = $"{_totalSales:N0} VNĐ";
+
+        decimal pctCash = _totalSales > 0 ? (_cashSales / _totalSales) * 100m : 0;
+        decimal pctQr = _totalSales > 0 ? (_qrSales / _totalSales) * 100m : 0;
+        decimal pctCard = _totalSales > 0 ? (_cardSales / _totalSales) * 100m : 0;
+
+        lblCashAmountVal.Text = $"{_cashSales:N0} VNĐ";
+        lblCashPercentVal.Text = $"{pctCash:F1}%";
+
+        lblQrAmountVal.Text = $"{_qrSales:N0} VNĐ";
+        lblQrPercentVal.Text = $"{pctQr:F1}%";
+
+        lblCardAmountVal.Text = $"{_cardSales:N0} VNĐ";
+        lblCardPercentVal.Text = $"{pctCard:F1}%";
+
+        decimal expectedCash = numInitialCash.Value + _cashSales;
+        lblExpectedCashVal.Text = $"{expectedCash:N0} VNĐ";
+
+        RecalculateDifference();
     }
 
     private void RecalculateDifference()
     {
-        decimal expectedCash = numInitialCash.Value;
+        decimal expectedCash = numInitialCash.Value + _cashSales;
         decimal actualCash = numActualCash.Value;
         decimal diff = actualCash - expectedCash;
 
         if (diff == 0)
         {
-            lblCashDifference.Text = "0 VNĐ (Khớp tiền bàn giao)";
+            lblCashDifference.Text = "0 VNĐ (Khớp tiền bàn giao 100%)";
             lblCashDifference.ForeColor = AppTheme.Success;
+            pnlDiscrepancyBox.Visible = false;
         }
         else if (diff > 0)
         {
-            lblCashDifference.Text = $"+{diff:N0} VNĐ (Thừa tiền bàn giao)";
+            lblCashDifference.Text = $"+{diff:N0} VNĐ (⚠️ THỪA TIỀN KÉT)";
             lblCashDifference.ForeColor = AppTheme.Success;
+            pnlDiscrepancyBox.Visible = true;
         }
         else
         {
-            lblCashDifference.Text = $"-{Math.Abs(diff):N0} VNĐ (⚠️ Thiếu hụt tiền mặt)";
+            lblCashDifference.Text = $"-{Math.Abs(diff):N0} VNĐ (⚠️ THIẾU HỤT TIỀN KÉT)";
             lblCashDifference.ForeColor = AppTheme.Danger;
+            pnlDiscrepancyBox.Visible = true;
         }
+    }
+
+    private async Task OpenShiftAsync()
+    {
+        if (numInitialCash.Value < 0)
+        {
+            MessageBox.Show("Tiền mặt đầu ca không hợp lệ!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var payload = new
+        {
+            employeeId = CurrentSession.UserId,
+            branchId = 1,
+            workstationName = Environment.MachineName,
+            initialCash = numInitialCash.Value
+        };
+
+        try
+        {
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var res = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/shifts/sessions/open", content);
+            if (res.IsSuccessStatusCode)
+            {
+                AntdUI.Message.success(this.FindForm() ?? new Form(), "Đã ghi nhận MỞ CA TRỰC mới thành công!");
+                await LoadCurrentSessionAsync();
+            }
+            else
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                MessageBox.Show($"Không thể mở ca trực: {body}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi kết nối máy chủ: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task CloseShiftAsync()
+    {
+        if (_currentSessionId <= 0)
+        {
+            MessageBox.Show("Hiện không có ca trực nào đang mở!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        // Tải dữ liệu tài chính mới nhất trước khi mở dialog chốt ca
+        await LoadCurrentSessionAsync();
+
+        // Mở popup đối soát doanh thu & kiểm đếm chốt ca chuyên biệt
+        using var dlg = new ShiftCloseSummaryDialog(
+            _currentSessionId,
+            CurrentSession.FullName,
+            Environment.MachineName,
+            numInitialCash.Value,
+            _cashSales,
+            _qrSales,
+            _cardSales,
+            _ordersCount
+        );
+
+        if (dlg.ShowDialog(this.FindForm()) == DialogResult.OK && dlg.IsClosedSuccessfully)
+        {
+            numActualCash.Value = dlg.FinalActualCash;
+            PrintZReport();
+            ResetShiftFormState();
+            await LoadCurrentSessionAsync();
+        }
+    }
+
+    private void PrintZReport()
+    {
+        decimal expectedCash = numInitialCash.Value + _cashSales;
+        decimal actualCash = numActualCash.Value;
+        decimal diff = actualCash - expectedCash;
+        string diffStr = diff == 0 ? "0 VNĐ (KHỚP TIỀN BÀN GIAO)" : (diff > 0 ? $"+{diff:N0} VNĐ (THỪA TIỀN)" : $"-{Math.Abs(diff):N0} VNĐ (THIẾU TIỀN)");
+
+        string report = 
+            "=================== BÁO CÁO KẾT CA BÁN HÀNG (Z-REPORT) ===================\n" +
+            "HỆ THỐNG SIÊU THỊ THÔNG MINH SMART SUPERMARKET\n" +
+            $"Trạm POS: {Environment.MachineName}  |  Mã phiên ca: #{_currentSessionId}\n" +
+            $"Thu ngân: {CurrentSession.FullName} (Mã NV: NV-{CurrentSession.UserId:D4})\n" +
+            $"Thời gian bắt đầu: {_shiftStartTime:dd/MM/yyyy HH:mm:ss}\n" +
+            $"Thời gian kết ca: {DateTime.Now:dd/MM/yyyy HH:mm:ss}\n" +
+            "--------------------------------------------------------------------------\n" +
+            $"1. Tổng số hóa đơn đã xuất:   {_ordersCount} hóa đơn\n" +
+            $"2. Tiền mặt đầu ca (Float):    {numInitialCash.Value:N0} VNĐ\n" +
+            $"3. Doanh thu Tiền mặt (Cash):  {_cashSales:N0} VNĐ\n" +
+            $"4. Doanh thu VietQR:           {_qrSales:N0} VNĐ\n" +
+            $"5. Doanh thu Thẻ POS:          {_cardSales:N0} VNĐ\n" +
+            "--------------------------------------------------------------------------\n" +
+            $"TỔNG DOANH THU CA:             {_totalSales:N0} VNĐ\n" +
+            $"TIỀN MẶT SỔ SÁCH KỲ VỌNG:      {expectedCash:N0} VNĐ\n" +
+            $"TIỀN MẶT THỰC TẾ KIỂM ĐẾM:     {actualCash:N0} VNĐ\n" +
+            $"CHÊNH LỆCH KÉT TIỀN:           {diffStr}\n" +
+            (diff != 0 ? $"Lý do giải trình:              {cbDiscrepancyReason.SelectedItem} - {txtDiscrepancyNote.Text}\n" : "") +
+            "==========================================================================\n" +
+            "KÝ TÊN BÀN GIAO:\n\n" +
+            "   [Thu ngân ca trực]                       [Quản lý duyệt chốt ca]\n" +
+            $"   {CurrentSession.FullName}                                   Đã duyệt qua PIN\n";
+
+        MessageBox.Show(report, "In phiếu bàn giao ca (Z-Report)", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 }

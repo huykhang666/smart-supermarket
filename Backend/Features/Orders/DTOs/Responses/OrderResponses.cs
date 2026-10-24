@@ -20,6 +20,10 @@ public class OrderDto
     public decimal FinalAmount { get; set; }
     public OrderStatus Status { get; set; }
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public int? ShiftSessionId { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public string? CancelReason { get; set; }
+    public string? ManagerApprovedByName { get; set; }
     public List<OrderDetailDto> OrderDetails { get; set; } = new();
     public List<OrderPromotionDto> AppliedPromotions { get; set; } = new();
     public List<PaymentDto> Payments { get; set; } = new();

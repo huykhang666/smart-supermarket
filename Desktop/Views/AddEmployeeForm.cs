@@ -167,18 +167,13 @@ public class AddEmployeeForm : Form
             }
             else
             {
-                // Fallback demo for successful UI when API is not fully implemented
-                MessageBox.Show("Mô phỏng: Cấp tài khoản nhân viên thành công! (API trả về lỗi hoặc chưa Code logic POST)", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                this.DialogResult = DialogResult.OK;
-                this.Close();
+                var body = await response.Content.ReadAsStringAsync();
+                MessageBox.Show($"Không thể tạo nhân viên.\nChi tiết: {body}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         catch (Exception ex)
         {
-            // Fallback for API Offline
-            MessageBox.Show($"Mô phỏng: Tạo thành công do API Offline ({ex.Message})", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            this.DialogResult = DialogResult.OK;
-            this.Close();
+            MessageBox.Show($"Lỗi kết nối máy chủ: {ex.Message}", "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

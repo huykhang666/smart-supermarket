@@ -7,4 +7,5 @@ public static class CurrentSession
     public static string FullName { get; set; } = "Quản trị viên";
     public static string Role { get; set; } = "Admin";
     public static string? Token { get; set; }
+    public static int? ShiftSessionId { get; set; }
 }

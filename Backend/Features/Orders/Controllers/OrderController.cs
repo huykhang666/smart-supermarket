@@ -69,11 +69,14 @@ public class OrderController : ControllerBase
     }
 
     [HttpPost("{id:int}/cancel")]
-    public async Task<ActionResult<ApiResult<bool>>> Cancel(int id, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ApiResult<bool>>> Cancel(
+        int id,
+        [FromBody] CancelOrderRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var success = await _orderService.CancelOrderAsync(id, cancellationToken);
+            var success = await _orderService.CancelOrderAsync(id, request, cancellationToken);
             return Ok(ApiResult<bool>.Success(success, "Hủy đơn hàng thành công"));
         }
         catch (KeyNotFoundException ex)

@@ -108,6 +108,28 @@ public static class DbInitializer
             });
         }
 
+        // Đảm bảo tài khoản Manager & Admin có ManagerPin phục vụ duyệt nhạy cảm
+        var adminUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+        if (adminUser != null && string.IsNullOrEmpty(adminUser.ManagerPin))
+        {
+            adminUser.ManagerPin = "123456";
+        }
+        var mgrUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Username == "manager");
+        if (mgrUser != null && string.IsNullOrEmpty(mgrUser.ManagerPin))
+        {
+            mgrUser.ManagerPin = "123456";
+        }
+
+        // Seed danh mục ca trực mẫu (Shifts) nếu chưa có
+        if (!await dbContext.Shifts.AnyAsync())
+        {
+            await dbContext.Shifts.AddRangeAsync(
+                new Shift { Code = "S1", Name = "Ca Sáng (06:00 - 14:00)", StartTime = TimeSpan.FromHours(6), EndTime = TimeSpan.FromHours(14), BreakMinute = 30, Status = "Active" },
+                new Shift { Code = "S2", Name = "Ca Chiều (14:00 - 22:00)", StartTime = TimeSpan.FromHours(14), EndTime = TimeSpan.FromHours(22), BreakMinute = 30, Status = "Active" },
+                new Shift { Code = "S3", Name = "Ca Hành Chính (08:00 - 17:00)", StartTime = TimeSpan.FromHours(8), EndTime = TimeSpan.FromHours(17), BreakMinute = 60, Status = "Active" }
+            );
+        }
+
         await dbContext.SaveChangesAsync();
 
         // 3. Seed 10 Categories lookup catalog
@@ -364,6 +386,26 @@ public static class DbInitializer
             await dbContext.SaveChangesAsync();
         }
 
+        // 5c. Đảm bảo toàn bộ sản phẩm đều có bản ghi tồn kho Inventories tại chi nhánh 1
+        var allProducts = await dbContext.Products.ToListAsync();
+        var existingInvProductIds = await dbContext.Inventories.Where(i => i.BranchId == 1).Select(i => i.ProductId).ToListAsync();
+        var missingInvProducts = allProducts.Where(p => !existingInvProductIds.Contains(p.ProductId)).ToList();
+        if (missingInvProducts.Any())
+        {
+            foreach (var p in missingInvProducts)
+            {
+                await dbContext.Inventories.AddAsync(new Inventory
+                {
+                    ProductId = p.ProductId,
+                    BranchId = 1,
+                    QuantityOnHand = 100,
+                    MinStockLevel = 10,
+                    LastUpdated = DateTime.UtcNow
+                });
+            }
+            await dbContext.SaveChangesAsync();
+        }
+
         // 6. Seed Promotions
         if (!await dbContext.Promotions.AnyAsync())
         {
@@ -488,6 +530,20 @@ public static class DbInitializer
         {
             await SeedSampleOrdersAndBatchesAsync(dbContext);
         }
+
+        // 9. Dọn dẹp các đơn mẫu vô tình bị gán giờ ở tương lai trong ngày hôm nay (ShiftSessionId == null)
+        var futureSampleOrders = await dbContext.Orders
+            .Where(o => o.OrderDate > DateTime.UtcNow && o.ShiftSessionId == null)
+            .ToListAsync();
+        if (futureSampleOrders.Any())
+        {
+            foreach (var ord in futureSampleOrders)
+            {
+                ord.OrderDate = ord.OrderDate.AddDays(-1);
+                ord.CreatedAt = ord.CreatedAt.AddDays(-1);
+            }
+            await dbContext.SaveChangesAsync();
+        }
     }
 
     private static async Task SeedSampleOrdersAndBatchesAsync(AppDbContext dbContext)
@@ -521,6 +577,10 @@ public static class DbInitializer
                 };
                 int minute = rng.Next(5, 55);
                 var orderTimeVn = targetDay.AddHours(hour).AddMinutes(minute);
+                if (orderTimeVn > vnNow)
+                {
+                    continue; // Không sinh đơn hàng ở tương lai
+                }
                 var orderTimeUtc = orderTimeVn.AddHours(-7);
 
                 int cashierId = (oIdx % 2 == 0) ? staffId : adminId;
@@ -1032,6 +1092,53 @@ public static class DbInitializer
                     ""UnitPrice"" DECIMAL(18,2) NOT NULL DEFAULT 0,
                     ""LossReason"" VARCHAR(100) NULL,
                     ""Notes"" TEXT NULL
+                );
+
+                -- =========================================================================
+                -- PHAN HE 8: NHAN VIEN, CA TRUC, KET TIEN & GIAM SAT TRAM POS
+                -- (STAFF, CASH BALANCING, WORKSTATION LIVE MONITORING & VOID CONTROL)
+                -- =========================================================================
+
+                -- 1. Bo sung truong giam sat nhan vien Online & Ma PIN Quan ly vao bang Users
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""IsOnline"" BOOLEAN NOT NULL DEFAULT FALSE;
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastLoginAt"" TIMESTAMPTZ NULL;
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastActiveAt"" TIMESTAMPTZ NULL;
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CurrentMachineName"" VARCHAR(100) NULL;
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""CurrentIpAddress"" VARCHAR(50) NULL;
+                ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""ManagerPin"" VARCHAR(20) DEFAULT '123456';
+
+                -- 2. Bo sung truong lien ket ca truc & kiem soat duyet huy vao bang Orders
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""ShiftSessionId"" INT NULL;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""CancelledAt"" TIMESTAMPTZ NULL;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""CancelledByUserId"" INT NULL;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""ManagerApprovedByUserId"" INT NULL;
+                ALTER TABLE ""Orders"" ADD COLUMN IF NOT EXISTS ""CancelReason"" VARCHAR(255) NULL;
+
+                -- 3. Tao bang ShiftSessions (Quan ly phien ca truc, kiem dem ket tien, doi soat chenh lech Thua/Thieu)
+                CREATE TABLE IF NOT EXISTS ""ShiftSessions"" (
+                    ""SessionId"" SERIAL PRIMARY KEY,
+                    ""ShiftId"" INT NULL,
+                    ""EmployeeId"" INT NOT NULL,
+                    ""BranchId"" INT NOT NULL DEFAULT 1,
+                    ""WorkstationName"" VARCHAR(100) NOT NULL,
+                    ""IpAddress"" VARCHAR(50) NULL,
+                    ""StartTime"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""EndTime"" TIMESTAMPTZ NULL,
+                    ""InitialCash"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""TotalOrdersCount"" INT NOT NULL DEFAULT 0,
+                    ""CashSalesAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""QrSalesAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""CardSalesAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""TotalRevenue"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""ExpectedCash"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""ActualCash"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""DifferenceAmount"" DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    ""DiscrepancyReason"" TEXT NULL,
+                    ""Status"" VARCHAR(50) NOT NULL DEFAULT 'Open',
+                    ""ManagerApprovedByUserId"" INT NULL,
+                    ""ManagerNote"" TEXT NULL,
+                    ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    ""UpdatedAt"" TIMESTAMPTZ NULL
                 );
             ";
 

@@ -85,6 +85,26 @@ public class StockAuditService : IStockAuditService
         return await GetAuditAsync(auditId);
     }
 
+    public async Task<StockAuditDTO> DeleteAuditDetailAsync(Guid auditId, string barcode)
+    {
+        var audit = await _context.StockAudits
+            .Include(a => a.Details)
+            .FirstOrDefaultAsync(a => a.Id == auditId);
+
+        if (audit == null) throw new KeyNotFoundException("Không tìm thấy biên bản kiểm kê.");
+        if (audit.Status == "Completed" || audit.Status == "Reconciled")
+            throw new InvalidOperationException($"Biên bản kiểm kê đang ở trạng thái '{audit.Status}', không thể chỉnh sửa.");
+
+        var detail = audit.Details.FirstOrDefault(d => d.Barcode == barcode);
+        if (detail != null)
+        {
+            _context.StockAuditDetails.Remove(detail);
+            await _context.SaveChangesAsync();
+        }
+
+        return await GetAuditAsync(auditId);
+    }
+
 
     public async Task<StockAuditDTO> CompleteAuditAsync(Guid auditId)
     {

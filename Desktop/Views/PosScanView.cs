@@ -64,6 +64,7 @@ public class PosScanView : UserControl
     private TableLayoutPanel pnlChangeRow = null!;
     private Label lblChangeVal = null!;
     private Button btnCheckout = null!;
+    private bool _isProcessingCheckout = false;
 
     private readonly PaymentService _paymentService = new();
     private readonly HttpClient _httpClient = new();
@@ -300,7 +301,7 @@ public class PosScanView : UserControl
         AppTheme.ApplySecondaryButton(btnClearCart, radius: 4);
         btnClearCart.Padding = new Padding(0);
         btnClearCart.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
-        btnClearCart.Click += (s, e) => { _cart.Clear(); RefreshCartGrid(); };
+        btnClearCart.Click += (s, e) => ClearCartWithAuth();
 
         // Row 1: Nghiệp vụ POS F6, F7, K80
         btnParkOrder = new Button { Text = "Tạm giữ (F6)", Dock = DockStyle.Fill, Margin = new Padding(2), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
@@ -1083,8 +1084,14 @@ public class PosScanView : UserControl
         int idx = dgvCart.CurrentRow.Index;
         if (idx >= 0 && idx < _cart.Count)
         {
+            if (delta < 0 && _cart[idx].Quantity <= 1)
+            {
+                // Giảm về 0 tương đương với xóa món -> Kích hoạt quy trình duyệt của Quản lý
+                RemoveSelectedItem();
+                return;
+            }
+
             _cart[idx].Quantity += delta;
-            if (_cart[idx].Quantity <= 0) _cart.RemoveAt(idx);
             RefreshCartGrid();
         }
     }
@@ -1095,9 +1102,68 @@ public class PosScanView : UserControl
         int idx = dgvCart.CurrentRow.Index;
         if (idx >= 0 && idx < _cart.Count)
         {
+            var item = _cart[idx];
+            bool isStaff = string.Equals(CurrentSession.Role, "Staff", StringComparison.OrdinalIgnoreCase);
+
+            if (isStaff)
+            {
+                using var authDialog = new ManagerApprovalDialog(
+                    "DUYỆT XÓA MÓN HÀNG KHỎI HÓA ĐƠN",
+                    $"Nhân viên Thu ngân không có quyền tự ý xóa món.\nVui lòng yêu cầu Quản lý nhập mã PIN duyệt để xóa: '{item.Name}' (SL: {item.Quantity}, Tiền: {(item.Price * item.Quantity):N0} đ).",
+                    _httpClient,
+                    _apiBaseUrl);
+
+                if (authDialog.ShowDialog(this.FindForm()) != DialogResult.OK || !authDialog.IsApproved)
+                {
+                    return; // Quản lý từ chối hoặc người dùng hủy dialog
+                }
+
+                AntdUI.Message.info(this.FindForm() ?? new Form(), $"Quản lý đã duyệt xóa món '{item.Name}'. Lý do: {authDialog.SelectedReason}");
+            }
+            else
+            {
+                var confirm = MessageBox.Show(
+                    $"Bạn có chắc chắn muốn xóa món '{item.Name}' khỏi giỏ hàng?",
+                    "Xác nhận xóa món", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (confirm != DialogResult.Yes) return;
+            }
+
             _cart.RemoveAt(idx);
             RefreshCartGrid();
         }
+    }
+
+    private void ClearCartWithAuth()
+    {
+        if (_cart.Count == 0) return;
+
+        bool isStaff = string.Equals(CurrentSession.Role, "Staff", StringComparison.OrdinalIgnoreCase);
+        if (isStaff)
+        {
+            decimal grandTotal = _cart.Sum(i => i.Price * i.Quantity);
+            using var authDialog = new ManagerApprovalDialog(
+                "DUYỆT HỦY TOÀN BỘ GIỎ HÀNG CHỜ",
+                $"Nhân viên Thu ngân không có quyền tự ý hủy giỏ hàng.\nYêu cầu Quản lý nhập mã PIN duyệt để hủy toàn bộ {_cart.Count} sản phẩm (Tổng giá trị: {grandTotal:N0} đ).",
+                _httpClient,
+                _apiBaseUrl);
+
+            if (authDialog.ShowDialog(this.FindForm()) != DialogResult.OK || !authDialog.IsApproved)
+            {
+                return;
+            }
+
+            AntdUI.Message.info(this.FindForm() ?? new Form(), $"Quản lý đã duyệt hủy cả giỏ hàng. Lý do: {authDialog.SelectedReason}");
+        }
+        else
+        {
+            var confirm = MessageBox.Show(
+                "Bạn có chắc chắn muốn HỦY TOÀN BỘ GIỎ HÀNG hiện tại?",
+                "Xác nhận hủy giỏ hàng", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (confirm != DialogResult.Yes) return;
+        }
+
+        _cart.Clear();
+        RefreshCartGrid();
     }
 
     private void BtnScan_Click(object? sender, EventArgs e)
@@ -1611,11 +1677,11 @@ public class PosScanView : UserControl
     {
         if (keyData == Keys.F9)
         {
-            if (btnCheckout != null && btnCheckout.Enabled)
+            if (!_isProcessingCheckout && btnCheckout != null && btnCheckout.Enabled)
             {
                 _ = CheckoutAsync();
-                return true;
             }
+            return true;
         }
         else if (keyData == Keys.F6)
         {
@@ -1649,8 +1715,20 @@ public class PosScanView : UserControl
 
     private async Task CheckoutAsync()
     {
+        if (_isProcessingCheckout) return;
+        _isProcessingCheckout = true;
+
         try
         {
+            if (btnCheckout != null)
+            {
+                btnCheckout.Enabled = false;
+                btnCheckout.Text = "⏳ ĐANG XỬ LÝ THANH TOÁN...";
+            }
+            if (pnlCol3 != null) pnlCol3.Enabled = false;
+            this.Cursor = Cursors.WaitCursor;
+
+            // Bước 1: Kiểm tra giỏ hàng (TỔNG TIỀN PHẢI THU > 0, có ít nhất 1 sản phẩm)
             if (_cart.Count == 0)
             {
                 MessageBox.Show("Giỏ hàng đang trống! Vui lòng thêm sản phẩm.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1714,6 +1792,7 @@ public class PosScanView : UserControl
 
                 await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "Tiền mặt", numCashPaid.Value, changeAmount);
             }
+            // Bước 2B: Nếu phương thức là VIETQR / CHUYỂN KHOẢN
             else if (_selectedPaymentMethod == 2)
             {
                 DialogResult qrResult;
@@ -1732,33 +1811,89 @@ public class PosScanView : UserControl
                     return;
                 }
             }
-            else
+            // Bước 2C: Nếu phương thức là THẺ NGÂN HÀNG / QUẸT MÁY POS
+            else if (_selectedPaymentMethod == 3)
             {
                 var cardConfirm = MessageBox.Show(
-                    $"Quẹt thẻ ngân hàng máy POS:\n\n• Mã hóa đơn: {maHoaDon}\n• Số tiền: {grandTotal:N0} VNĐ\n\nVui lòng thao tác trên máy quẹt thẻ và bấm [Yes] khi giao dịch POS đã thành công.",
-                    "Thanh toán Thẻ POS",
+                    $"💳 Vui lòng quẹt/chạm thẻ trên thiết bị máy POS ngân hàng.\n\n" +
+                    $"• Số tiền cần thanh toán: {grandTotal:N0} VNĐ\n" +
+                    $"• Mã giao dịch đơn: {maHoaDon}\n\n" +
+                    $"Quý khách đã quẹt thẻ và máy POS đã in biên lai thành công?",
+                    "Xác nhận thanh toán Thẻ POS",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question);
 
-                if (cardConfirm == DialogResult.Yes)
+                if (cardConfirm != DialogResult.Yes)
                 {
-                    await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "Thẻ POS", grandTotal, 0);
-                }
-                else
-                {
-                    MessageBox.Show("Chưa hoàn tất giao dịch thẻ!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Chưa nhận được xác nhận thanh toán thẻ! Vui lòng thử lại hoặc chọn phương thức khác.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
+
+                // Lưu PaymentTransaction cho Thẻ POS
+                string cardTransCode = PaymentService.GenerateTransactionCode();
+                var cardTransaction = new PaymentTransactionModel
+                {
+                    TransactionCode = cardTransCode,
+                    InvoiceId = maHoaDon,
+                    PaymentMethod = PaymentMethod.CreditCard,
+                    Amount = grandTotal,
+                    GivenAmount = grandTotal,
+                    ChangeAmount = 0,
+                    TransferContent = $"Thanh toan the POS {maHoaDon}",
+                    BankCode = "POS-TERMINAL",
+                    Status = PaymentStatus.Success,
+                    CreatedDate = DateTime.Now,
+                    CompletedDate = DateTime.Now,
+                    CashierId = cashierId
+                };
+
+                try
+                {
+                    _paymentService.CreateTransaction(cardTransaction);
+                }
+                catch (Exception dbEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PosScanView] Error saving card transaction: {dbEx.Message}");
+                }
+
+                // Tiến hành Lưu Hóa đơn -> Trừ kho -> In Bill -> Xóa giỏ hàng
+                await CompleteOrderAsync(maHoaDon, grandTotal, netSubTotal, vatTotal, "Thẻ POS", grandTotal, 0);
             }
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Lỗi trong quá trình thanh toán: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+        finally
+        {
+            if (pnlCol3 != null) pnlCol3.Enabled = true;
+            if (btnCheckout != null)
+            {
+                btnCheckout.Enabled = true;
+                btnCheckout.Text = "⚡ HOÀN TẤT THANH TOÁN (F9)";
+            }
+            this.Cursor = Cursors.Default;
+            _isProcessingCheckout = false;
+        }
     }
 
     private async Task CompleteOrderAsync(string maHoaDon, decimal grandTotal, decimal netSubTotal, decimal vatTotal, string methodStr, decimal cashGiven, decimal changeDue)
     {
+        if (_cart.Count == 0) return;
+
+        // Snapshot giỏ hàng ngay lập tức và làm rỗng giỏ hàng để ngăn chặn hoàn toàn việc thanh toán 2 lần
+        var cartSnapshot = _cart.Select(c => new
+        {
+            ProductId = c.ProductId > 0 ? c.ProductId : 1,
+            Barcode = c.Barcode,
+            Name = c.Name,
+            Price = c.Price,
+            Quantity = c.Quantity
+        }).ToList();
+        _cart.Clear();
+        RefreshCartGrid();
+
+        // 1. Record POS Order in DataStore (Lưu Hóa đơn & Quản lý đơn hàng)
         var orderRecord = new PosOrderRecord
         {
             OrderId = Random.Shared.Next(1000, 9999),
@@ -1770,7 +1905,7 @@ public class PosScanView : UserControl
             DiscountTotal = _appliedDiscountAmount,
             GrandTotal = grandTotal,
             PaymentMethod = methodStr,
-            Items = _cart.Select(c => new PosOrderItem
+            Items = cartSnapshot.Select(c => new PosOrderItem
             {
                 ProductId = c.ProductId,
                 Barcode = c.Barcode,
@@ -1787,21 +1922,49 @@ public class PosScanView : UserControl
             {
                 EmployeeId = CurrentSession.UserId,
                 BranchId = 1,
+                ShiftSessionId = CurrentSession.ShiftSessionId,
                 PaymentMethod = _selectedPaymentMethod,
                 PromotionCode = _appliedVoucherCode,
-                Items = _cart.Select(c => new
+                Payments = new[]
                 {
-                    ProductId = c.ProductId > 0 ? c.ProductId : 1,
+                    new
+                    {
+                        PaymentMethod = _selectedPaymentMethod,
+                        AmountPaid = grandTotal
+                    }
+                },
+                Items = cartSnapshot.Select(c => new
+                {
+                    ProductId = c.ProductId,
                     Quantity = c.Quantity,
                     UnitPrice = c.Price
                 }).ToList()
             };
             string jsonBody = JsonSerializer.Serialize(reqObj);
             using var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/orders", content);
+            var res = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/orders", content);
+            if (res.IsSuccessStatusCode)
+            {
+                var resContent = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(resContent);
+                var root = doc.RootElement;
+                var data = root.TryGetProperty("data", out var d) ? d : root;
+                if (data.TryGetProperty("orderId", out var oid))
+                {
+                    int realOrderId = oid.GetInt32();
+                    orderRecord.OrderId = realOrderId;
+                    orderRecord.OrderCode = $"ORD-{realOrderId:D5}";
+                }
+            }
+            else
+            {
+                var errBody = await res.Content.ReadAsStringAsync();
+                MessageBox.Show($"Cảnh báo: Không thể đồng bộ hóa đơn lên máy chủ Backend.\nChi tiết: {errBody}", "Cảnh báo lưu đơn Backend", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[PosScanView] Order post error: {ex.Message}");
         }
 
         var invoiceModel = new InvoicePrintModel
@@ -1818,7 +1981,7 @@ public class PosScanView : UserControl
             PaymentMethod = methodStr,
             CashGiven = cashGiven,
             ChangeDue = changeDue,
-            Items = _cart.Select(c => new InvoicePrintItem
+            Items = cartSnapshot.Select(c => new InvoicePrintItem
             {
                 ProductName = c.Name,
                 Barcode = c.Barcode,
@@ -1862,7 +2025,7 @@ public class PosScanView : UserControl
             $"👉 Bạn có muốn chuyển sang màn hình 'Quản Lý Đơn Hàng' không?",
             "Thanh toán thành công", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
 
-        _cart.Clear();
+        // 4. Xóa trạng thái voucher & tiền thừa về 0 VNĐ
         _appliedDiscountAmount = 0m;
         _appliedVoucherCode = null;
         numCashPaid.Value = 0;
