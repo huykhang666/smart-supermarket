@@ -7,7 +7,7 @@
     <Grid Margin="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="520" />
-            <ColumnDefinition Width="380" />
+            <ColumnDefinition Width="390" />
         </Grid.ColumnDefinitions>
 
         <!-- LEFT COLUMN: Product Catalog Grid -->
@@ -95,12 +95,16 @@
                 <StackPanel Grid.Row="0" Margin="0,0,0,10">
                     <Grid Margin="0,0,0,8">
                         <TextBlock Text="GIỎ HÀNG THU NGÂN" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
-                        <ui:Button Content="Xóa hết" Appearance="Transparent" HorizontalAlignment="Right" Click="BtnClearCart_Click" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button x:Name="BtnParkOrder" Content="Lưu đơn" Appearance="Secondary" Height="28" Padding="6,0,6,0" Margin="0,0,4,0" Click="BtnParkOrder_Click" />
+                            <ui:Button x:Name="BtnResumeParked" Content="Đơn tạm (0)" Appearance="Secondary" Height="28" Padding="6,0,6,0" Margin="0,0,4,0" Click="BtnResumeParked_Click" />
+                            <ui:Button Content="Xóa" Appearance="Transparent" Height="28" Padding="6,0,6,0" Click="BtnClearCart_Click" />
+                        </StackPanel>
                     </Grid>
 
                     <ui:TextBox x:Name="TxtCustomerPhone" PlaceholderText="Nhập SĐT khách hàng tích điểm..."
-                                Margin="0,0,0,4" Height="36" />
-                    <TextBlock x:Name="TxtCustomerLoyaltyInfo" Text="Khách Lẻ • Điểm tích lũy: 0"
+                                Margin="0,0,0,4" Height="34" TextChanged="TxtCustomerPhone_TextChanged" />
+                    <TextBlock x:Name="TxtCustomerLoyaltyInfo" Text="Khách Lẻ • Điểm tích lũy: 0 điểm"
                                FontSize="11.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
 
@@ -136,12 +140,26 @@
 
                 <!-- Billing & Checkout Action Panel -->
                 <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                    <!-- Voucher Input -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox Grid.Column="0" x:Name="TxtVoucherCode" PlaceholderText="Nhập mã Voucher..." Height="32" Margin="0,0,6,0" />
+                        <ui:Button Grid.Column="1" Content="Áp dụng" Height="32" Click="BtnApplyVoucher_Click" />
+                    </Grid>
+
                     <Separator Margin="0,0,0,10" />
 
                     <!-- Calculation lines -->
                     <Grid Margin="0,2,0,2">
                         <TextBlock Text="Tạm tính:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         <TextBlock x:Name="TxtSubTotal" Text="0 đ" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                    </Grid>
+                    <Grid Margin="0,2,0,2">
+                        <TextBlock Text="Thuế VAT (8%):" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="TxtVat" Text="0 đ" HorizontalAlignment="Right" />
                     </Grid>
                     <Grid Margin="0,2,0,2">
                         <TextBlock Text="Giảm giá / Voucher:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
