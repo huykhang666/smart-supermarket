@@ -14,10 +14,10 @@ public partial class LoginWindow : FluentWindow
 {
     private readonly AuthService _authService = new();
 
-    private readonly SolidColorBrush _defaultBorderBrush = new((Color)ColorConverter.ConvertFromString("#3564748B"));
-    private readonly SolidColorBrush _activeBorderBrush = new((Color)ColorConverter.ConvertFromString("#9038BDF8"));
-    private readonly SolidColorBrush _defaultBgBrush = new((Color)ColorConverter.ConvertFromString("#250F1D30"));
-    private readonly SolidColorBrush _activeBgBrush = new((Color)ColorConverter.ConvertFromString("#350F233C"));
+    private readonly SolidColorBrush _defaultBorderBrush = new((Color)ColorConverter.ConvertFromString("#334155"));
+    private readonly SolidColorBrush _activeBorderBrush = new((Color)ColorConverter.ConvertFromString("#38BDF8"));
+    private readonly SolidColorBrush _defaultBgBrush = new((Color)ColorConverter.ConvertFromString("#251E293B"));
+    private readonly SolidColorBrush _activeBgBrush = new((Color)ColorConverter.ConvertFromString("#351E293B"));
 
     public LoginWindow()
     {
