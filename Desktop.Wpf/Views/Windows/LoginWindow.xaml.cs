@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using SmartSupermarket.POS.Services;
 using Wpf.Ui.Controls;
@@ -16,20 +17,47 @@ public partial class LoginWindow : FluentWindow
         InitializeComponent();
     }
 
-    private void BtnQuickAdmin_Click(object sender, MouseButtonEventArgs e)
+    private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        TxtUsername.Text = "admin";
-        TxtPassword.Password = "admin123";
-        TxtStatus.Text = "Đã chọn tài khoản Quản Trị Viên (Admin).";
-        TxtStatus.Foreground = System.Windows.Media.Brushes.LightSkyBlue;
+        if (e.ChangedButton == MouseButton.Left)
+        {
+            this.DragMove();
+        }
     }
 
-    private void BtnQuickStaff_Click(object sender, MouseButtonEventArgs e)
+    private void BtnMinimize_Click(object sender, RoutedEventArgs e)
     {
-        TxtUsername.Text = "nhanvien";
-        TxtPassword.Password = "nhanvien123";
-        TxtStatus.Text = "Đã chọn tài khoản Thu Ngân (Staff).";
-        TxtStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
+        this.WindowState = WindowState.Minimized;
+    }
+
+    private void BtnMaximize_Click(object sender, RoutedEventArgs e)
+    {
+        this.WindowState = this.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e)
+    {
+        this.Close();
+    }
+
+    private void TxtUsername_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (PlaceholderUsername != null)
+        {
+            PlaceholderUsername.Visibility = string.IsNullOrEmpty(TxtUsername.Text)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+    }
+
+    private void TxtPassword_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (PlaceholderPassword != null)
+        {
+            PlaceholderPassword.Visibility = string.IsNullOrEmpty(TxtPassword.Password)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
     }
 
     private void LinkForgotPassword_Click(object sender, MouseButtonEventArgs e)
@@ -47,8 +75,9 @@ public partial class LoginWindow : FluentWindow
             "Smart Supermarket POS Workstation v2.0\n" +
             "Hỗ trợ kỹ thuật: support@smartsupermarket.local\n" +
             "Hotline hỗ trợ ca: 1900-8888\n\n" +
-            "• Tài khoản Quản trị: admin / admin123\n" +
-            "• Tài khoản Thu ngân: nhanvien / nhanvien123",
+            "Hệ thống tự động điều hướng theo phân quyền tài khoản:\n" +
+            "• Tài khoản Quản trị viên (Admin) -> Trạm Quản Trị ERP\n" +
+            "• Tài khoản Thu ngân (Staff/Cashier) -> Trạm Bán Hàng POS",
             "Trợ giúp hệ thống",
             System.Windows.MessageBoxButton.OK,
             MessageBoxImage.Information);
@@ -61,7 +90,7 @@ public partial class LoginWindow : FluentWindow
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            TxtStatus.Text = "Vui lòng nhập đầy đủ Username và Password.";
+            TxtStatus.Text = "Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu.";
             TxtStatus.Foreground = System.Windows.Media.Brushes.OrangeRed;
             return;
         }
@@ -77,7 +106,7 @@ public partial class LoginWindow : FluentWindow
             TxtStatus.Text = "✓ " + result.Message;
             TxtStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
 
-            // Short smooth delay
+            // Short smooth delay to show success
             await Task.Delay(350);
 
             if (result.Role.Equals("Staff", StringComparison.OrdinalIgnoreCase) ||

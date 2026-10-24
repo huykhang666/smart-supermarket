@@ -9,6 +9,106 @@
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="None">
 
+    <Window.Resources>
+        <!-- Custom transparent TextBox Template to prevent solid white highlight when focused -->
+        <Style x:Key="GlassInputTextStyle" TargetType="TextBox">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="CaretBrush" Value="#38BDF8" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="SelectionBrush" Value="#38BDF8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="Transparent" BorderThickness="0">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Custom transparent PasswordBox Template -->
+        <Style x:Key="GlassInputPasswordStyle" TargetType="PasswordBox">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="CaretBrush" Value="#38BDF8" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="SelectionBrush" Value="#38BDF8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border Background="Transparent" BorderThickness="0">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Window Action Button Styles for TitleBar (Minimize, Maximize, Close) -->
+        <Style x:Key="TitleBarActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bgBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#25FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#40FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Close Button (Red on Hover) -->
+        <Style x:Key="TitleBarCloseActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bgBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#E11D48" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#BE123C" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <!-- Background Supermarket Gourmet Poster -->
         <Image Source="pack://application:,,,/Assets/Images/pos_login_poster.jpg"
@@ -16,14 +116,14 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <!-- Atmospheric Vignette / Lighting Overlay for enhanced contrast -->
+        <!-- Atmospheric Vignette Overlay -->
         <Rectangle>
             <Rectangle.Fill>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Color="#20000000" Offset="0.0" />
+                    <GradientStop Color="#25000000" Offset="0.0" />
                     <GradientStop Color="#10000000" Offset="0.45" />
-                    <GradientStop Color="#45030712" Offset="0.75" />
-                    <GradientStop Color="#7502050B" Offset="1.0" />
+                    <GradientStop Color="#50030712" Offset="0.75" />
+                    <GradientStop Color="#8502050B" Offset="1.0" />
                 </LinearGradientBrush>
             </Rectangle.Fill>
         </Rectangle>
@@ -31,24 +131,53 @@
         <!-- Main Window Container -->
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="38" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Custom Modern TitleBar -->
-            <ui:TitleBar Grid.Row="0"
-                         Title="KATQ SMART SUPERMARKET POS &amp; ERP WORKSTATION"
-                         Foreground="#CBD5E1"
-                         Height="40" />
+            <!-- Custom Crystal-Clear TitleBar with Visible Controls -->
+            <Grid Grid.Row="0" Background="#30000000" MouseDown="TitleBar_MouseDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-            <!-- 2-Column Content Split: Left (Art Presentation) & Right (Glassmorphic Login Card) -->
+                <!-- Left Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <ui:SymbolIcon Symbol="ShoppingBag24" FontSize="16" Foreground="#38BDF8" Margin="0,0,8,0" />
+                    <TextBlock Text="KATQ SMART SUPERMARKET POS &amp; ERP WORKSTATION"
+                               Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Center Drag Region -->
+                <Rectangle Grid.Column="1" Fill="Transparent" />
+
+                <!-- Right Window Control Buttons (Minimize, Maximize, Close) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- Minimize -->
+                    <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMinimize_Click" ToolTip="Thu nhỏ">
+                        <ui:SymbolIcon Symbol="Subtract16" FontSize="14" Foreground="#E2E8F0" />
+                    </Button>
+                    <!-- Maximize / Restore -->
+                    <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMaximize_Click" ToolTip="Phóng to / Thu nhỏ">
+                        <ui:SymbolIcon Symbol="Maximize16" FontSize="14" Foreground="#E2E8F0" />
+                    </Button>
+                    <!-- Close -->
+                    <Button Style="{StaticResource TitleBarCloseActionBtn}" Click="BtnClose_Click" ToolTip="Đóng">
+                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="#FFFFFF" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- 2-Column Split: Left (Visual Art) & Right (Glassmorphic Login Card) -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.15*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Left Column: Elegant Brand Tagline & Supermarket Identity -->
+                <!-- Left Column: Brand Branding Artwork Overlay -->
                 <Grid Grid.Column="0" Margin="48,0,0,40" VerticalAlignment="Bottom">
                     <StackPanel>
                         <!-- Brand Pill Badge -->
@@ -84,7 +213,7 @@
 
                 <!-- Right Column: Glassmorphic Floating Login Card -->
                 <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,10,60,20">
-                    <StackPanel Width="390">
+                    <StackPanel Width="400">
 
                         <!-- Top Title above Card -->
                         <TextBlock Text="RETAIL POS SYSTEM"
@@ -110,7 +239,7 @@
                             <!-- Frosted Glass Card Body -->
                             <Border CornerRadius="24"
                                     BorderThickness="1.5"
-                                    Padding="32,28,32,24">
+                                    Padding="34,30,34,30">
                                 <!-- Border Gradient -->
                                 <Border.BorderBrush>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -131,9 +260,9 @@
                                 </Border.Background>
 
                                 <Grid>
-                                    <!-- Top-Left Cyan Ribbon Accent Graphic -->
+                                    <!-- Top-Left Cyan Ribbon Graphic -->
                                     <Path HorizontalAlignment="Left" VerticalAlignment="Top"
-                                          Margin="-32,-28,0,0"
+                                          Margin="-34,-30,0,0"
                                           Width="64" Height="64"
                                           Data="M 0,24 C 0,10.7 10.7,0 24,0 L 46,0 C 24,5 9,20 5,44 Z"
                                           Fill="#4000F0FF" IsHitTestVisible="False">
@@ -142,9 +271,9 @@
                                         </Path.Effect>
                                     </Path>
 
-                                    <!-- Bottom-Right Cyan Ribbon Accent Graphic -->
+                                    <!-- Bottom-Right Cyan Ribbon Graphic -->
                                     <Path HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                          Margin="0,0,-32,-24"
+                                          Margin="0,0,-34,-30"
                                           Width="64" Height="64"
                                           Data="M 64,40 C 64,53.3 53.3,64 40,64 L 18,64 C 40,59 55,44 59,20 Z"
                                           Fill="#4000F0FF" IsHitTestVisible="False">
@@ -153,7 +282,7 @@
                                         </Path.Effect>
                                     </Path>
 
-                                    <!-- Form Controls -->
+                                    <!-- Form Elements Inside Card -->
                                     <StackPanel>
                                         <!-- Header: SIGN IN -->
                                         <TextBlock Text="SIGN IN"
@@ -172,7 +301,7 @@
                                                 CornerRadius="34"
                                                 BorderThickness="2"
                                                 HorizontalAlignment="Center"
-                                                Margin="0,0,0,22">
+                                                Margin="0,0,0,24">
                                             <Border.BorderBrush>
                                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                                     <GradientStop Color="#00F0FF" Offset="0.0" />
@@ -193,53 +322,61 @@
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
 
-                                        <!-- Username Pill Input -->
-                                        <Border CornerRadius="22" Height="44"
-                                                Background="#351E293B"
-                                                BorderThickness="1"
-                                                BorderBrush="#4564748B"
-                                                Margin="0,0,0,14"
-                                                Padding="14,0">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <ui:SymbolIcon Grid.Column="0" Symbol="Person20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
-                                                <TextBox x:Name="TxtUsername"
-                                                         Grid.Column="1"
-                                                         Text="admin"
-                                                         FontSize="13.5"
-                                                         Foreground="#FFFFFF"
-                                                         CaretBrush="#38BDF8"
-                                                         Background="Transparent"
-                                                         BorderThickness="0"
-                                                         VerticalContentAlignment="Center" />
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Password Pill Input -->
-                                        <Border CornerRadius="22" Height="44"
+                                        <!-- Username Input Container (Width matches button) -->
+                                        <Border CornerRadius="12" Height="48"
                                                 Background="#351E293B"
                                                 BorderThickness="1"
                                                 BorderBrush="#4564748B"
                                                 Margin="0,0,0,16"
                                                 Padding="14,0">
-                                            <Grid>
+                                            <Grid VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <ui:SymbolIcon Grid.Column="0" Symbol="Person20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
+                                                <Grid Grid.Column="1">
+                                                    <!-- Placeholder Text -->
+                                                    <TextBlock x:Name="PlaceholderUsername"
+                                                               Text="Nhập tài khoản (Username)..."
+                                                               Foreground="#64748B"
+                                                               FontSize="13.5"
+                                                               VerticalAlignment="Center"
+                                                               IsHitTestVisible="False" />
+                                                    <!-- Input Box with Glass Style -->
+                                                    <TextBox x:Name="TxtUsername"
+                                                             Style="{StaticResource GlassInputTextStyle}"
+                                                             TextChanged="TxtUsername_TextChanged" />
+                                                </Grid>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Password Input Container (Width matches button) -->
+                                        <Border CornerRadius="12" Height="48"
+                                                Background="#351E293B"
+                                                BorderThickness="1"
+                                                BorderBrush="#4564748B"
+                                                Margin="0,0,0,16"
+                                                Padding="14,0">
+                                            <Grid VerticalAlignment="Center">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <ui:SymbolIcon Grid.Column="0" Symbol="LockClosed20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
-                                                <PasswordBox x:Name="TxtPassword"
-                                                             Grid.Column="1"
-                                                             Password="admin123"
-                                                             FontSize="13.5"
-                                                             Foreground="#FFFFFF"
-                                                             CaretBrush="#38BDF8"
-                                                             Background="Transparent"
-                                                             BorderThickness="0"
-                                                             VerticalContentAlignment="Center" />
+                                                <Grid Grid.Column="1">
+                                                    <!-- Placeholder Text -->
+                                                    <TextBlock x:Name="PlaceholderPassword"
+                                                               Text="Nhập mật khẩu (Password)..."
+                                                               Foreground="#64748B"
+                                                               FontSize="13.5"
+                                                               VerticalAlignment="Center"
+                                                               IsHitTestVisible="False" />
+                                                    <!-- Password Box with Glass Style -->
+                                                    <PasswordBox x:Name="TxtPassword"
+                                                                 Style="{StaticResource GlassInputPasswordStyle}"
+                                                                 PasswordChanged="TxtPassword_PasswordChanged" />
+                                                </Grid>
                                             </Grid>
                                         </Border>
 
@@ -248,19 +385,20 @@
                                                    FontSize="12" FontWeight="SemiBold"
                                                    Foreground="#38BDF8"
                                                    HorizontalAlignment="Center"
-                                                   Margin="0,0,0,10"
+                                                   Margin="0,0,0,12"
                                                    TextWrapping="Wrap" />
 
-                                        <!-- Electric Royal Blue LOGIN Button -->
+                                        <!-- LOGIN Button (Rectangular with rounded edges, spanning full width of input boxes) -->
                                         <Button x:Name="BtnLogin"
-                                                Height="44"
-                                                Margin="0,0,0,16"
+                                                HorizontalAlignment="Stretch"
+                                                Height="48"
+                                                Margin="0,0,0,18"
                                                 Click="BtnLogin_Click"
                                                 Cursor="Hand">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
                                                     <Border x:Name="btnBorder"
-                                                            CornerRadius="22"
+                                                            CornerRadius="12"
                                                             BorderThickness="1"
                                                             BorderBrush="#6093C5FD">
                                                         <Border.Background>
@@ -297,13 +435,13 @@
                                                 </ControlTemplate>
                                             </Button.Template>
                                             <TextBlock Text="LOGIN"
-                                                       FontSize="14"
+                                                       FontSize="14.5"
                                                        FontWeight="Bold"
                                                        Foreground="#FFFFFF" />
                                         </Button>
 
                                         <!-- Links: Forgot Password? & Need Help? -->
-                                        <Grid Margin="0,0,0,16">
+                                        <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="*" />
@@ -347,19 +485,6 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                         </Grid>
-
-                                        <!-- Quick Test Role Pills -->
-                                        <Border Background="#250F172A" CornerRadius="12" Padding="8,6" BorderThickness="1" BorderBrush="#20FFFFFF">
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <TextBlock Text="Demo:" FontSize="10.5" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                                <Border CornerRadius="10" Background="#3038BDF8" Padding="8,3" Margin="0,0,6,0" Cursor="Hand" MouseDown="BtnQuickAdmin_Click">
-                                                    <TextBlock Text="👑 Admin" FontSize="11" FontWeight="SemiBold" Foreground="#BAE6FD" />
-                                                </Border>
-                                                <Border CornerRadius="10" Background="#3010B981" Padding="8,3" Cursor="Hand" MouseDown="BtnQuickStaff_Click">
-                                                    <TextBlock Text="🛒 Thu Ngân" FontSize="11" FontWeight="SemiBold" Foreground="#A7F3D0" />
-                                                </Border>
-                                            </StackPanel>
-                                        </Border>
                                     </StackPanel>
                                 </Grid>
                             </Border>
