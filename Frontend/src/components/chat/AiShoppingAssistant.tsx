@@ -42,9 +42,9 @@ export const AiShoppingAssistant: React.FC = () => {
       id: 'welcome-1',
       role: 'assistant',
       content:
-        'Xin chào bạn! 👋 Em là **Đầu Bếp & Trợ Lý Đi Chợ Thông Minh** của Smart Supermarket.\n\n' +
-        'Em có thể tư vấn các món ăn ngon chuẩn vị Việt, bí quyết nấu nướng từ chuyên gia, hoặc gợi ý thực đơn theo ngân sách & số người ăn và tự động chọn mâm nguyên liệu tươi ngon đang có sẵn trong kho siêu thị.\n\n' +
-        'Hôm nay bạn muốn nấu món gì hay cần em tư vấn mâm cơm cho mấy người ăn ạ?',
+        'Xin chào bạn! 👋 Mình là **Đầu Bếp & Trợ Lý Đi Chợ Thông Minh** của Smart Supermarket.\n\n' +
+        'Mình có thể tư vấn các món ăn gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), bí quyết nấu nướng từ chuyên gia, hoặc gợi ý thực đơn theo ngân sách & số người ăn và tự động chọn mâm nguyên liệu tươi ngon đang có sẵn trong kho siêu thị.\n\n' +
+        'Hôm nay bạn muốn nấu món gì hay cần mình tư vấn mâm cơm cho mấy người ăn ạ?',
       timestamp: new Date(),
     },
   ]);
@@ -197,7 +197,7 @@ export const AiShoppingAssistant: React.FC = () => {
       const assistantMsg: ChatItem = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: response.assistantMessage || 'Em đã tìm thấy các nguyên liệu phù hợp với yêu cầu của bạn.',
+        content: response.assistantMessage || 'Mình đã tìm thấy các nguyên liệu phù hợp với yêu cầu của bạn.',
         mealData: response.hasMealSuggestion ? response : undefined,
         timestamp: new Date(),
       };
@@ -268,7 +268,7 @@ export const AiShoppingAssistant: React.FC = () => {
       {isOpen && (
         <div
           style={{
-            width: 530,
+            width: 540,
             maxWidth: 'calc(100vw - 32px)',
             height: 750,
             maxHeight: 'calc(100vh - 40px)',
@@ -308,10 +308,10 @@ export const AiShoppingAssistant: React.FC = () => {
               >
                 🤖
               </div>
-              <div>
+              <div style={{ textAlign: 'left' }}>
                 <strong style={{ fontSize: 16, display: 'block' }}>Đầu Bếp & Trợ Lý Đi Chợ AI</strong>
                 <div style={{ fontSize: 12, opacity: 0.9 }}>
-                  Tư vấn món ăn chuẩn vị • Mâm nguyên liệu từ kho siêu thị
+                  Tư vấn món ăn chuẩn vị Cookpad • Mâm nguyên liệu từ kho siêu thị
                 </div>
               </div>
             </div>
@@ -324,7 +324,7 @@ export const AiShoppingAssistant: React.FC = () => {
                       id: `welcome-${Date.now()}`,
                       role: 'assistant',
                       content:
-                        'Chào bạn! Mình có thể tư vấn món ăn ngon, bí quyết nấu nướng chuẩn vị, hoặc lên thực đơn với nguyên liệu từ kho siêu thị. Bạn muốn hỏi gì ạ?',
+                        'Chào bạn! Mình có thể tư vấn món ăn ngon, bí quyết nấu nướng chuẩn vị Cookpad, hoặc lên thực đơn với nguyên liệu từ kho siêu thị. Bạn muốn hỏi gì ạ?',
                       timestamp: new Date(),
                     },
                   ])
@@ -377,6 +377,7 @@ export const AiShoppingAssistant: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                textAlign: 'left',
               }}
             >
               <span>{toastMessage}</span>
@@ -405,12 +406,13 @@ export const AiShoppingAssistant: React.FC = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                  width: '100%',
                 }}
               >
-                {/* Bong bóng chat */}
+                {/* Bong bóng chat - CĂN LỀ TRÁI TOÀN BỘ */}
                 <div
                   style={{
-                    maxWidth: '88%',
+                    maxWidth: '90%',
                     backgroundColor: msg.role === 'user' ? '#0F5132' : '#ffffff',
                     color: msg.role === 'user' ? '#ffffff' : '#1e293b',
                     padding: '12px 16px',
@@ -420,14 +422,15 @@ export const AiShoppingAssistant: React.FC = () => {
                     fontSize: 13.5,
                     lineHeight: 1.6,
                     whiteSpace: 'pre-line',
+                    textAlign: 'left', // Căn lề trái tuyệt đối thay vì căn giữa
                   }}
                 >
                   {/* Nội dung tin nhắn */}
-                  <div>
+                  <div style={{ textAlign: 'left' }}>
                     {msg.content.split('\n').map((line, idx) => {
                       const parts = line.split(/(\*\*.*?\*\*)/g);
                       return (
-                        <div key={idx} style={{ minHeight: line.trim() ? undefined : 8 }}>
+                        <div key={idx} style={{ minHeight: line.trim() ? undefined : 8, textAlign: 'left' }}>
                           {parts.map((p, pIdx) => {
                             if (p.startsWith('**') && p.endsWith('**')) {
                               return <strong key={pIdx}>{p.slice(2, -2)}</strong>;
@@ -441,7 +444,7 @@ export const AiShoppingAssistant: React.FC = () => {
 
                   {/* Hiển thị các Option thực đơn kèm nút chọn mâm */}
                   {msg.mealData && msg.mealData.hasMealSuggestion && (
-                    <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
                       {/* Nếu có nhiều Option thì hiển thị từng Option */}
                       {msg.mealData.mealOptions && msg.mealData.mealOptions.length > 0 ? (
                         msg.mealData.mealOptions.map((opt: MealOption, optIdx: number) => (
@@ -453,9 +456,10 @@ export const AiShoppingAssistant: React.FC = () => {
                               borderRadius: 10,
                               border: optIdx === 0 ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
                               boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+                              textAlign: 'left',
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, textAlign: 'left' }}>
                               <strong style={{ fontSize: 13.5, color: '#0F5132' }}>
                                 {opt.optionName}
                               </strong>
@@ -474,22 +478,22 @@ export const AiShoppingAssistant: React.FC = () => {
                             </div>
 
                             {opt.description && (
-                              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8, fontStyle: 'italic' }}>
+                              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8, fontStyle: 'italic', textAlign: 'left' }}>
                                 {opt.description}
                               </div>
                             )}
 
                             {/* Gạch đầu dòng tóm tắt các món và giá tiền */}
-                            <div style={{ fontSize: 12, color: '#334155', marginBottom: 10, lineHeight: 1.5 }}>
-                              {opt.ingredients.slice(0, 4).map((ing, ingIdx) => (
-                                <div key={ingIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}>
+                            <div style={{ fontSize: 12, color: '#334155', marginBottom: 10, lineHeight: 1.5, textAlign: 'left' }}>
+                              {opt.ingredients.slice(0, 5).map((ing, ingIdx) => (
+                                <div key={ingIdx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0', textAlign: 'left' }}>
                                   <span>• {ing.productName} ({ing.quantityToBuy} {ing.unit}):</span>
                                   <strong>{(ing.finalPrice * ing.quantityToBuy).toLocaleString()} đ</strong>
                                 </div>
                               ))}
-                              {opt.ingredients.length > 4 && (
-                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                  + và {opt.ingredients.length - 4} nguyên liệu khác...
+                              {opt.ingredients.length > 5 && (
+                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2, textAlign: 'left' }}>
+                                  + và {opt.ingredients.length - 5} nguyên liệu khác...
                                 </div>
                               )}
                             </div>
@@ -534,9 +538,10 @@ export const AiShoppingAssistant: React.FC = () => {
                             backgroundColor: '#f0fdf4',
                             borderRadius: 10,
                             border: '1px solid #bbf7d0',
+                            textAlign: 'left',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, textAlign: 'left' }}>
                             <strong style={{ fontSize: 14, color: '#0F5132' }}>
                               🍽️ {msg.mealData.dishName}
                             </strong>
@@ -604,9 +609,9 @@ export const AiShoppingAssistant: React.FC = () => {
 
             {/* Trạng thái AI đang suy nghĩ */}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0F5132', fontSize: 13, padding: '4px 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0F5132', fontSize: 13, padding: '4px 8px', textAlign: 'left' }}>
                 <span style={{ fontSize: 18 }}>🤖</span>
-                <span>Đang tra cứu dữ liệu kho hàng & chuẩn bị công thức chuẩn vị...</span>
+                <span>Đang tra cứu dữ liệu kho hàng & chuẩn bị công thức chuẩn vị Cookpad...</span>
               </div>
             )}
 
@@ -675,6 +680,7 @@ export const AiShoppingAssistant: React.FC = () => {
                   border: '1px solid #cbd5e1',
                   fontSize: 13.5,
                   outline: 'none',
+                  textAlign: 'left',
                 }}
               />
               <button
@@ -745,6 +751,7 @@ export const AiShoppingAssistant: React.FC = () => {
               flexDirection: 'column',
               boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
               overflow: 'hidden',
+              textAlign: 'left',
             }}
           >
             {/* Modal Header */}
@@ -756,9 +763,10 @@ export const AiShoppingAssistant: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                textAlign: 'left',
               }}
             >
-              <div>
+              <div style={{ textAlign: 'left' }}>
                 <strong style={{ fontSize: 17, display: 'block' }}>
                   📋 Tùy Chỉnh Mâm Nguyên Liệu: {activeMealModal.dishName}
                 </strong>
@@ -790,6 +798,7 @@ export const AiShoppingAssistant: React.FC = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 fontSize: 13,
+                textAlign: 'left',
               }}
             >
               <div>
@@ -855,6 +864,7 @@ export const AiShoppingAssistant: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10,
+                textAlign: 'left',
               }}
             >
               {customizingItems.map(({ item, selected, quantity }) => (
@@ -872,6 +882,7 @@ export const AiShoppingAssistant: React.FC = () => {
                       : '1px solid #e2e8f0',
                     opacity: selected ? 1 : 0.6,
                     transition: 'all 0.15s ease',
+                    textAlign: 'left',
                   }}
                 >
                   {/* Checkbox */}
@@ -883,7 +894,7 @@ export const AiShoppingAssistant: React.FC = () => {
                   />
 
                   {/* Chi tiết sản phẩm */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                     <div style={{ fontWeight: 600, fontSize: 14, color: selected ? '#0f172a' : '#64748b' }}>
                       {item.productName}
                     </div>
@@ -971,12 +982,13 @@ export const AiShoppingAssistant: React.FC = () => {
                     padding: 12,
                     border: '1px solid #e2e8f0',
                     marginTop: 6,
+                    textAlign: 'left',
                   }}
                 >
-                  <strong style={{ fontSize: 13, color: '#0F5132', display: 'block', marginBottom: 4 }}>
-                    👨‍🍳 Mẹo nấu nhanh từ Đầu Bếp:
+                  <strong style={{ fontSize: 13, color: '#0F5132', display: 'block', marginBottom: 4, textAlign: 'left' }}>
+                    👨‍🍳 Mẹo nấu nhanh từ Đầu Bếp (Cookpad):
                   </strong>
-                  <div style={{ fontSize: 12, color: '#475569', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: '#475569', whiteSpace: 'pre-line', lineHeight: 1.5, textAlign: 'left' }}>
                     {activeMealModal.cookingTips}
                   </div>
                 </div>

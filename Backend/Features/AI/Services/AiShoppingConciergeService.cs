@@ -42,9 +42,9 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         {
             return new MealPlanChatResponse
             {
-                AssistantMessage = "Chào bạn! Em là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket 🛒. " +
-                                   "Em có thể tư vấn các món ngon chuẩn vị Việt, mẹo nấu nướng từ chuyên gia, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu từ kho siêu thị. " +
-                                   "Hôm nay bạn muốn nấu món gì, hay cần em gợi ý mâm cơm ngon cho gia đình ạ?",
+                AssistantMessage = "Chào bạn! Mình là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket 🛒.\n\n" +
+                                   "Mình có thể gợi ý các mâm cơm gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), tư vấn bí quyết chế biến ngon bất bại, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu tươi mới từ kho siêu thị.\n\n" +
+                                   "Hôm nay bạn muốn nấu món gì hay cần mình gợi ý mâm cơm ngon cho gia đình ạ?",
                 HasMealSuggestion = false,
                 DishName = string.Empty,
                 Servings = servings,
@@ -95,7 +95,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 g => g.Key,
                 g => new ProductBatchSummary(g.Sum(x => x.Quantity), g.Min(x => x.ExpiryDate)));
 
-        // Xây dựng 2 đến 3 Option thực đơn khác nhau để khách hàng lựa chọn
+        // Xây dựng 2 đến 3 Option thực đơn chuẩn vị Cookpad để khách hàng lựa chọn
         var mealOptions = BuildMealOptions(mainDishTheme, dbProducts, batchLookup, servings, targetBudget, request.PrioritizePromotions);
 
         var primaryOption = mealOptions.FirstOrDefault() ?? new MealOptionDto
@@ -135,7 +135,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
 
         if (theme.Contains("Lẩu"))
         {
-            // Option 1: Lẩu Tiêu Chuẩn (Vừa vặn ngân sách, tươi ngon)
+            // Option 1: Lẩu Tiêu Chuẩn (Vừa vặn ngân sách, tươi ngon chuẩn vị Cookpad)
             var opt1Keywords = new List<(string Keyword, int DefaultQty)>
             {
                 ("bò", servings >= 4 ? 1 : 1),
@@ -211,7 +211,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         }
         else if (theme.Contains("Kho Tàu"))
         {
-            // Option 1: Mâm Cơm Kho Tàu Tiêu Chuẩn
             var opt1Keywords = new List<(string Keyword, int DefaultQty)>
             {
                 ("ba chỉ", servings >= 4 ? 2 : 1),
@@ -233,7 +232,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 CookingTips = GenerateCookingTips("Kho Tàu")
             });
 
-            // Option 2: Mâm Cơm Gia Đình Đầy Đặn (Thêm Sườn Hoặc Đậu Phụ)
             var opt2Keywords = new List<(string Keyword, int DefaultQty)>
             {
                 ("ba chỉ", servings >= 4 ? 2 : 1),
@@ -283,7 +281,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         }
         else
         {
-            // Mâm cơm gia đình đa dạng
             var opt1Keywords = new List<(string Keyword, int DefaultQty)>
             {
                 ("sườn", servings >= 4 ? 2 : 1),
@@ -400,7 +397,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         List<MealOptionDto> options)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Dạ, với yêu cầu của bạn, em đã lên **{options.Count} lựa chọn thực đơn** phù hợp cho **{servings} người ăn** (ngân sách dự kiến: {targetBudget:N0} đ):\n");
+        sb.AppendLine($"Dạ, với yêu cầu của bạn, mình đã lên **{options.Count} lựa chọn thực đơn** phù hợp cho **{servings} người ăn** (ngân sách dự kiến: {targetBudget:N0} đ):\n");
 
         for (int i = 0; i < options.Count; i++)
         {
@@ -455,7 +452,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
 
         if (p.Contains("rau muống") || p.Contains("luộc rau"))
         {
-            return "🥬 **Bí quyết luộc rau muống xanh mướt, giòn ngọt chuẩn đầu bếp:**\n\n" +
+            return "🥬 **Bí quyết luộc rau muống xanh mướt, giòn ngọt chuẩn đầu bếp (Cẩm nang Cookpad):**\n\n" +
                    "1. **Lửa lớn, nước ngập:** Nấu nước thật sôi bùng trên lửa lớn, lượng nước phải ngập hoàn toàn rau.\n" +
                    "2. **Thêm muối hạt:** Cho 1/2 thìa cà phê muối vào nước sôi để giữ sắc tố diệp lục tươi tắn.\n" +
                    "3. **Không đậy nắp vung:** Thả rau vào dùng đũa dìm ngập nước ngay, giữ lửa lớn và mở nắp để rau thoát nhiệt tốt.\n" +
@@ -465,29 +462,30 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
 
         if (p.Contains("thịt bò") || p.Contains("không bị dai") || p.Contains("ướp bò"))
         {
-            return "🥩 **Bí quyết ướp & xào thịt bò mềm mọng, không bị dai:**\n\n" +
+            return "🥩 **Bí quyết ướp & xào thịt bò mềm mọng, không bị dai (Cẩm nang Cookpad):**\n\n" +
                    "1. **Cắt ngang thớ:** Nhìn rõ đường thớ thịt và dùng dao sắc thái lát mỏng ngang thớ. Thái dọc thớ thịt sẽ bị dai cứng.\n" +
-                   "2. **Khóa ẩm bằng dầu & bột năng:** Ướp thịt bò với 1 thìa cà phê dầu ăn, 1/2 thìa bột bắp (hoặc bột năng), tỏi băm, tiêu và hạt nêm. Tránh ướp nhiều muối hay nước mắm sớm vì muối sẽ hút nước khiến thịt bị khô.\n" +
+                   "2. **Khóa ẩm bằng dầu & bột bắp:** Ướp thịt bò với 1 thìa cà phê dầu ăn, 1/2 thìa bột bắp (hoặc bột năng), tỏi băm, tiêu và hạt nêm. Tránh ướp nhiều muối hay nước mắm sớm vì muối sẽ hút nước khiến thịt bị khô.\n" +
                    "3. **Xào lửa cực đại:** Đun chảo thật nóng, cho dầu vào phi tỏi thơm rồi trút thịt bò vào đảo nhanh tay 1-2 phút vừa chín tái thì tắt bếp ngay.";
         }
 
         if (p.Contains("mực") || p.Contains("cá") || p.Contains("không bị tanh") || p.Contains("khử mùi"))
         {
-            return "🐟 **Bí quyết khử tanh hải sản & giữ trọn độ tươi giòn:**\n\n" +
+            return "🐟 **Bí quyết khử tanh hải sản & giữ trọn độ tươi giòn (Cẩm nang Cookpad):**\n\n" +
                    "1. **Với cá tươi:** Rửa sạch màng đen trong bụng, xoa muối hạt và một chút rượu trắng hoặc nước cốt chanh lên thân cá trong 3 phút rồi rửa lại bằng nước sạch.\n" +
                    "2. **Với mực ống:** Bóc túi mực và mắt, khía vảy rồng mặt trong. Chần nhanh mực qua nước sôi có pha vài lát gừng đập dập trong 15 giây rồi vớt ra xả nước lạnh để mực giòn sần sật và không ra nước khi xào.";
         }
 
         if (p.Contains("sườn") || p.Contains("kho tàu"))
         {
-            return "🍖 **Bí quyết ướp sườn & thịt kho tàu đậm đà, màu đẹp óng ánh:**\n\n" +
+            return "🍖 **Bí quyết ướp sườn & thịt kho tàu chuẩn vị Cookpad:**\n\n" +
                    "1. **Chần sơ nước sôi:** Chần sườn hoặc thịt qua nước sôi có thả nhánh gừng đập dập và củ hành tím để sạch bọt cặn và thơm thịt.\n" +
                    "2. **Thắng đường caramen chuẩn:** Cho 1 thìa dầu ăn và 1.5 thìa đường vào chảo, đun lửa nhỏ đến khi đường sôi bọt khí li ti và chuyển sang màu cánh gián thì cho hành tỏi vào phi thơm rồi đổ thịt vào đảo đều.\n" +
-                   "3. **Kho với nước dừa tươi:** Nước dừa giúp thịt mềm rục, mỡ trong veo béo ngậy mà không hề ngấy.";
+                   "3. **Kho với nước dừa tươi:** Nước dừa giúp thịt mềm rục, mỡ trong veo béo ngậy mà không hề ngấy.\n" +
+                   "4. **Tỷ lệ sốt sườn chua ngọt vàng:** 2 thìa nước mắm : 2 thìa đường : 2 thìa giấm gạo : 1 thìa tương cà.";
         }
 
-        return "👨‍🍳 **Mẹo ẩm thực từ chuyên gia:**\n" +
-               "Khi chế biến món ăn Việt, sự cân bằng ngũ vị (chua - cay - mặn - ngọt - đắng) và độ tươi ngon của nguyên liệu là yếu tố then chốt. " +
+        return "👨‍🍳 **Mẹo ẩm thực hàng ngày từ Cookpad:**\n" +
+               "Khi chế biến món ăn Việt hàng ngày, sự cân bằng ngũ vị (chua - cay - mặn - ngọt - đắng) và độ tươi ngon của nguyên liệu là yếu tố then chốt. " +
                "Tại Smart Supermarket, toàn bộ thịt tươi, hải sản và rau củ đều được kiểm định nguồn gốc mỗi sáng. " +
                "Nếu bạn cần lên thực đơn chi tiết cho bữa cơm gia đình hôm nay, hãy nhắn số người ăn hoặc món bạn muốn nấu nhé!";
     }
