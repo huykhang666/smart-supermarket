@@ -145,7 +145,14 @@
 
                 <!-- Left Title -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                    <ui:SymbolIcon Symbol="ShoppingBag24" FontSize="16" Foreground="#38BDF8" Margin="0,0,8,0" />
+                    <Viewbox Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M 1,1 L 4,1 L 6.68,13.4 C 6.8,14 7.3,14.5 8,14.5 L 18.5,14.5 C 19.2,14.5 19.7,14 19.85,13.4 L 22,4.5 L 5.5,4.5"
+                                  Stroke="#38BDF8" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                            <Ellipse Canvas.Left="7" Canvas.Top="17.5" Width="3" Height="3" Fill="#38BDF8" />
+                            <Ellipse Canvas.Left="17" Canvas.Top="17.5" Width="3" Height="3" Fill="#38BDF8" />
+                        </Canvas>
+                    </Viewbox>
                     <TextBlock Text="KATQ Supermarket"
                                Foreground="#CBD5E1" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </StackPanel>
@@ -210,19 +217,45 @@
                         <StackPanel>
                             <!-- Card Header: Brand Logo & Title moved inside the card -->
                             <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
-                                <!-- Modern Brand Icon Squircle -->
-                                <Border Width="56" Height="56"
-                                        CornerRadius="16"
-                                        Background="#1E293B"
-                                        BorderBrush="#38BDF8"
-                                        BorderThickness="1.5"
+                                <!-- Modern Luxury Retail App Icon Badge -->
+                                <Border Width="60" Height="60"
+                                        CornerRadius="18"
+                                        BorderThickness="1.2"
                                         HorizontalAlignment="Center"
                                         Margin="0,0,0,12">
+                                    <!-- Smooth Specular Glass Top Highlight -->
+                                    <Border.BorderBrush>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#C0BFDBFE" Offset="0.0" />
+                                            <GradientStop Color="#4060A5FA" Offset="0.5" />
+                                            <GradientStop Color="#101D4ED8" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.BorderBrush>
+                                    <!-- Rich Royal Blue to Slate Gradient -->
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#3B82F6" Offset="0.0" />
+                                            <GradientStop Color="#1D4ED8" Offset="0.55" />
+                                            <GradientStop Color="#0F172A" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <!-- Soft Natural Elevation Glow -->
                                     <Border.Effect>
-                                        <DropShadowEffect Color="#0284C7" BlurRadius="18" ShadowDepth="0" Opacity="0.45" />
+                                        <DropShadowEffect Color="#2563EB" BlurRadius="22" ShadowDepth="4" Opacity="0.55" Direction="270" />
                                     </Border.Effect>
-                                    <ui:SymbolIcon Symbol="ShoppingBag24" FontSize="28" Foreground="#38BDF8"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                                    <!-- Clean Vector Shopping Cart with Fresh Sparkle -->
+                                    <Viewbox Width="30" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="M 1,1 L 4,1 L 6.68,13.4 C 6.8,14 7.3,14.5 8,14.5 L 18.5,14.5 C 19.2,14.5 19.7,14 19.85,13.4 L 22,4.5 L 5.5,4.5"
+                                                  Stroke="#FFFFFF" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                            <Ellipse Canvas.Left="7" Canvas.Top="17.5" Width="3" Height="3" Fill="#FFFFFF" />
+                                            <Ellipse Canvas.Left="17" Canvas.Top="17.5" Width="3" Height="3" Fill="#FFFFFF" />
+                                            <!-- Fresh Diamond Sparkle inside basket -->
+                                            <Path Data="M 13.5,6.5 L 14.5,8.5 L 16.5,9.5 L 14.5,10.5 L 13.5,12.5 L 12.5,10.5 L 10.5,9.5 L 12.5,8.5 Z"
+                                                  Fill="#93C5FD" />
+                                        </Canvas>
+                                    </Viewbox>
                                 </Border>
 
                                 <!-- Brand Name -->
