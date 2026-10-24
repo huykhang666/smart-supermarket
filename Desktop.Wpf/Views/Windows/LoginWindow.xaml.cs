@@ -15,7 +15,7 @@ public partial class LoginWindow : FluentWindow
     private readonly AuthService _authService = new();
 
     private readonly SolidColorBrush _defaultBorderBrush = new((Color)ColorConverter.ConvertFromString("#334155"));
-    private readonly SolidColorBrush _activeBorderBrush = new((Color)ColorConverter.ConvertFromString("#94A3B8"));
+    private readonly SolidColorBrush _activeBorderBrush = new((Color)ColorConverter.ConvertFromString("#38BDF8"));
     private readonly SolidColorBrush _defaultBgBrush = new((Color)ColorConverter.ConvertFromString("#251E293B"));
     private readonly SolidColorBrush _activeBgBrush = new((Color)ColorConverter.ConvertFromString("#351E293B"));
 
@@ -47,7 +47,7 @@ public partial class LoginWindow : FluentWindow
         this.Close();
     }
 
-    // Dynamic Focus Effects for input fields (Subtle, easy on the eyes)
+    // Dynamic Focus Effects for input fields (Soothing Sky-Cyan light)
     private void InputBox_GotFocus(object sender, RoutedEventArgs e)
     {
         if (BorderUsername != null)
@@ -56,10 +56,10 @@ public partial class LoginWindow : FluentWindow
             BorderUsername.Background = _activeBgBrush;
             BorderUsername.Effect = new DropShadowEffect
             {
-                Color = (Color)ColorConverter.ConvertFromString("#FFFFFF"),
-                BlurRadius = 8,
+                Color = (Color)ColorConverter.ConvertFromString("#0284C7"),
+                BlurRadius = 12,
                 ShadowDepth = 0,
-                Opacity = 0.15
+                Opacity = 0.4
             };
         }
     }
@@ -82,10 +82,10 @@ public partial class LoginWindow : FluentWindow
             BorderPassword.Background = _activeBgBrush;
             BorderPassword.Effect = new DropShadowEffect
             {
-                Color = (Color)ColorConverter.ConvertFromString("#FFFFFF"),
-                BlurRadius = 8,
+                Color = (Color)ColorConverter.ConvertFromString("#0284C7"),
+                BlurRadius = 12,
                 ShadowDepth = 0,
-                Opacity = 0.15
+                Opacity = 0.4
             };
         }
     }
