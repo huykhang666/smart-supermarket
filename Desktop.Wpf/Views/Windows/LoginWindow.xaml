@@ -10,7 +10,7 @@
         WindowBackdropType="None">
 
     <Window.Resources>
-        <!-- Custom transparent TextBox Template to prevent solid white highlight when focused -->
+        <!-- Glassmorphic Transparent TextBox Template -->
         <Style x:Key="GlassInputTextStyle" TargetType="TextBox">
             <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="CaretBrush" Value="#38BDF8" />
@@ -33,7 +33,7 @@
             </Setter>
         </Style>
 
-        <!-- Custom transparent PasswordBox Template -->
+        <!-- Glassmorphic Transparent PasswordBox Template -->
         <Style x:Key="GlassInputPasswordStyle" TargetType="PasswordBox">
             <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="CaretBrush" Value="#38BDF8" />
@@ -56,7 +56,7 @@
             </Setter>
         </Style>
 
-        <!-- Window Action Button Styles for TitleBar (Minimize, Maximize, Close) -->
+        <!-- TitleBar Action Buttons (Minimize, Maximize, Close) -->
         <Style x:Key="TitleBarActionBtn" TargetType="Button">
             <Setter Property="Width" Value="46" />
             <Setter Property="Height" Value="36" />
@@ -82,7 +82,7 @@
             </Setter>
         </Style>
 
-        <!-- Close Button (Red on Hover) -->
+        <!-- Close Button (Red Glow on Hover) -->
         <Style x:Key="TitleBarCloseActionBtn" TargetType="Button">
             <Setter Property="Width" Value="46" />
             <Setter Property="Height" Value="36" />
@@ -116,14 +116,14 @@
                HorizontalAlignment="Center"
                VerticalAlignment="Center" />
 
-        <!-- Atmospheric Vignette Overlay -->
+        <!-- Atmospheric Vignette Overlay for Depth & High Readability -->
         <Rectangle>
             <Rectangle.Fill>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Color="#25000000" Offset="0.0" />
-                    <GradientStop Color="#10000000" Offset="0.45" />
-                    <GradientStop Color="#50030712" Offset="0.75" />
-                    <GradientStop Color="#8502050B" Offset="1.0" />
+                    <GradientStop Color="#15000000" Offset="0.0" />
+                    <GradientStop Color="#05000000" Offset="0.45" />
+                    <GradientStop Color="#40030712" Offset="0.72" />
+                    <GradientStop Color="#8002050B" Offset="1.0" />
                 </LinearGradientBrush>
             </Rectangle.Fill>
         </Rectangle>
@@ -135,8 +135,8 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Custom Crystal-Clear TitleBar with Visible Controls -->
-            <Grid Grid.Row="0" Background="#30000000" MouseDown="TitleBar_MouseDown">
+            <!-- Custom TitleBar with High-Contrast Visible Controls -->
+            <Grid Grid.Row="0" Background="#35000000" MouseDown="TitleBar_MouseDown">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -153,31 +153,28 @@
                 <!-- Center Drag Region -->
                 <Rectangle Grid.Column="1" Fill="Transparent" />
 
-                <!-- Right Window Control Buttons (Minimize, Maximize, Close) -->
+                <!-- Right Window Control Buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <!-- Minimize -->
                     <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMinimize_Click" ToolTip="Thu nhỏ">
                         <ui:SymbolIcon Symbol="Subtract16" FontSize="14" Foreground="#E2E8F0" />
                     </Button>
-                    <!-- Maximize / Restore -->
                     <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMaximize_Click" ToolTip="Phóng to / Thu nhỏ">
                         <ui:SymbolIcon Symbol="Maximize16" FontSize="14" Foreground="#E2E8F0" />
                     </Button>
-                    <!-- Close -->
                     <Button Style="{StaticResource TitleBarCloseActionBtn}" Click="BtnClose_Click" ToolTip="Đóng">
                         <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="#FFFFFF" />
                     </Button>
                 </StackPanel>
             </Grid>
 
-            <!-- 2-Column Split: Left (Visual Art) & Right (Glassmorphic Login Card) -->
+            <!-- 2-Column Split: Left (Brand Art Presentation) & Right (Glassmorphism Login Card) -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.15*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Left Column: Brand Branding Artwork Overlay -->
+                <!-- Left Column: Elegant Brand Tagline & Supermarket Identity -->
                 <Grid Grid.Column="0" Margin="48,0,0,40" VerticalAlignment="Bottom">
                     <StackPanel>
                         <!-- Brand Pill Badge -->
@@ -215,278 +212,260 @@
                 <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,10,60,20">
                     <StackPanel Width="400">
 
-                        <!-- Top Title above Card -->
+                        <!-- Top Title above Card: RETAIL POS SYSTEM -->
                         <TextBlock Text="RETAIL POS SYSTEM"
-                                   FontSize="14"
+                                   FontSize="13.5"
                                    FontWeight="Bold"
-                                   Foreground="#E0F2FE"
+                                   Foreground="#38BDF8"
                                    HorizontalAlignment="Center"
                                    Margin="0,0,0,16">
                             <TextBlock.Effect>
-                                <DropShadowEffect Color="#38BDF8" BlurRadius="14" ShadowDepth="0" Opacity="0.85" />
+                                <DropShadowEffect Color="#00F0FF" BlurRadius="16" ShadowDepth="0" Opacity="0.9" />
                             </TextBlock.Effect>
                         </TextBlock>
 
-                        <!-- Glassmorphic Card Container -->
+                        <!-- Premium Glassmorphism Card Container -->
                         <Grid>
-                            <!-- Glow Shadow Underlay -->
-                            <Border CornerRadius="26" Background="#150284C7" Margin="-3">
+                            <!-- Ambient Glow Halo Underlay -->
+                            <Border CornerRadius="28" Background="#1200F0FF" Margin="-4">
                                 <Border.Effect>
-                                    <DropShadowEffect Color="#0284C7" BlurRadius="45" ShadowDepth="0" Opacity="0.55" />
+                                    <DropShadowEffect Color="#0284C7" BlurRadius="55" ShadowDepth="0" Opacity="0.55" />
                                 </Border.Effect>
                             </Border>
 
-                            <!-- Frosted Glass Card Body -->
-                            <Border CornerRadius="24"
+                            <!-- Glass Card Frame with Specular Highlight Border -->
+                            <Border CornerRadius="26"
                                     BorderThickness="1.5"
-                                    Padding="34,30,34,30">
-                                <!-- Border Gradient -->
+                                    Padding="34,32,34,30">
+                                <!-- Multi-stop Specular Glass Light Border -->
                                 <Border.BorderBrush>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#A038BDF8" Offset="0.0" />
-                                        <GradientStop Color="#300284C7" Offset="0.35" />
-                                        <GradientStop Color="#15FFFFFF" Offset="0.7" />
-                                        <GradientStop Color="#8006B6D4" Offset="1.0" />
+                                        <GradientStop Color="#C038BDF8" Offset="0.0" />
+                                        <GradientStop Color="#40FFFFFF" Offset="0.25" />
+                                        <GradientStop Color="#1538BDF8" Offset="0.65" />
+                                        <GradientStop Color="#9006B6D4" Offset="1.0" />
                                     </LinearGradientBrush>
                                 </Border.BorderBrush>
 
-                                <!-- Frosted Glass Semi-Transparent Deep Background -->
+                                <!-- Frosted Acrylic Translucent Dark Glass -->
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                        <GradientStop Color="#90091322" Offset="0.0" />
-                                        <GradientStop Color="#95070E1A" Offset="0.6" />
-                                        <GradientStop Color="#9803060E" Offset="1.0" />
+                                        <GradientStop Color="#450F1E32" Offset="0.0" />
+                                        <GradientStop Color="#550A1424" Offset="0.5" />
+                                        <GradientStop Color="#75030812" Offset="1.0" />
                                     </LinearGradientBrush>
                                 </Border.Background>
 
-                                <Grid>
-                                    <!-- Top-Left Cyan Ribbon Graphic -->
-                                    <Path HorizontalAlignment="Left" VerticalAlignment="Top"
-                                          Margin="-34,-30,0,0"
-                                          Width="64" Height="64"
-                                          Data="M 0,24 C 0,10.7 10.7,0 24,0 L 46,0 C 24,5 9,20 5,44 Z"
-                                          Fill="#4000F0FF" IsHitTestVisible="False">
-                                        <Path.Effect>
-                                            <DropShadowEffect Color="#00F0FF" BlurRadius="18" ShadowDepth="0" Opacity="0.9" />
-                                        </Path.Effect>
-                                    </Path>
+                                <StackPanel>
+                                    <!-- Header: SIGN IN -->
+                                    <TextBlock Text="SIGN IN"
+                                               FontSize="22"
+                                               FontWeight="Bold"
+                                               Foreground="#FFFFFF"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,0,0,18">
+                                        <TextBlock.Effect>
+                                            <DropShadowEffect Color="#38BDF8" BlurRadius="12" ShadowDepth="0" Opacity="0.7" />
+                                        </TextBlock.Effect>
+                                    </TextBlock>
 
-                                    <!-- Bottom-Right Cyan Ribbon Graphic -->
-                                    <Path HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                          Margin="0,0,-34,-30"
-                                          Width="64" Height="64"
-                                          Data="M 64,40 C 64,53.3 53.3,64 40,64 L 18,64 C 40,59 55,44 59,20 Z"
-                                          Fill="#4000F0FF" IsHitTestVisible="False">
-                                        <Path.Effect>
-                                            <DropShadowEffect Color="#00F0FF" BlurRadius="18" ShadowDepth="0" Opacity="0.9" />
-                                        </Path.Effect>
-                                    </Path>
+                                    <!-- Circular Profile Medallion / Avatar Icon -->
+                                    <Border Width="72" Height="72"
+                                            CornerRadius="36"
+                                            BorderThickness="2"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,0,0,26">
+                                        <Border.BorderBrush>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#00F0FF" Offset="0.0" />
+                                                <GradientStop Color="#38BDF8" Offset="0.45" />
+                                                <GradientStop Color="#2563EB" Offset="1.0" />
+                                            </LinearGradientBrush>
+                                        </Border.BorderBrush>
+                                        <Border.Background>
+                                            <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                                                <GradientStop Color="#3500F0FF" Offset="0.0" />
+                                                <GradientStop Color="#15000000" Offset="1.0" />
+                                            </RadialGradientBrush>
+                                        </Border.Background>
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="#00F0FF" BlurRadius="18" ShadowDepth="0" Opacity="0.8" />
+                                        </Border.Effect>
+                                        <ui:SymbolIcon Symbol="Person24" FontSize="36" Foreground="#FFFFFF"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
 
-                                    <!-- Form Elements Inside Card -->
-                                    <StackPanel>
-                                        <!-- Header: SIGN IN -->
-                                        <TextBlock Text="SIGN IN"
-                                                   FontSize="20"
-                                                   FontWeight="Bold"
-                                                   Foreground="#FFFFFF"
-                                                   HorizontalAlignment="Center"
-                                                   Margin="0,0,0,16">
-                                            <TextBlock.Effect>
-                                                <DropShadowEffect Color="#38BDF8" BlurRadius="10" ShadowDepth="0" Opacity="0.65" />
-                                            </TextBlock.Effect>
-                                        </TextBlock>
-
-                                        <!-- Circular Profile Avatar Badge -->
-                                        <Border Width="68" Height="68"
-                                                CornerRadius="34"
-                                                BorderThickness="2"
-                                                HorizontalAlignment="Center"
-                                                Margin="0,0,0,24">
-                                            <Border.BorderBrush>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                    <GradientStop Color="#00F0FF" Offset="0.0" />
-                                                    <GradientStop Color="#38BDF8" Offset="0.5" />
-                                                    <GradientStop Color="#0284C7" Offset="1.0" />
-                                                </LinearGradientBrush>
-                                            </Border.BorderBrush>
-                                            <Border.Background>
-                                                <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                                                    <GradientStop Color="#2500F0FF" Offset="0.0" />
-                                                    <GradientStop Color="#10000000" Offset="1.0" />
-                                                </RadialGradientBrush>
-                                            </Border.Background>
-                                            <Border.Effect>
-                                                <DropShadowEffect Color="#00F0FF" BlurRadius="16" ShadowDepth="0" Opacity="0.75" />
-                                            </Border.Effect>
-                                            <ui:SymbolIcon Symbol="Person24" FontSize="36" Foreground="#E0F2FE"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
-
-                                        <!-- Username Input Container (Width matches button) -->
-                                        <Border CornerRadius="12" Height="48"
-                                                Background="#351E293B"
-                                                BorderThickness="1"
-                                                BorderBrush="#4564748B"
-                                                Margin="0,0,0,16"
-                                                Padding="14,0">
-                                            <Grid VerticalAlignment="Center">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <ui:SymbolIcon Grid.Column="0" Symbol="Person20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
-                                                <Grid Grid.Column="1">
-                                                    <!-- Placeholder Text -->
-                                                    <TextBlock x:Name="PlaceholderUsername"
-                                                               Text="Nhập tài khoản (Username)..."
-                                                               Foreground="#64748B"
-                                                               FontSize="13.5"
-                                                               VerticalAlignment="Center"
-                                                               IsHitTestVisible="False" />
-                                                    <!-- Input Box with Glass Style -->
-                                                    <TextBox x:Name="TxtUsername"
-                                                             Style="{StaticResource GlassInputTextStyle}"
-                                                             TextChanged="TxtUsername_TextChanged" />
-                                                </Grid>
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Password Input Container (Width matches button) -->
-                                        <Border CornerRadius="12" Height="48"
-                                                Background="#351E293B"
-                                                BorderThickness="1"
-                                                BorderBrush="#4564748B"
-                                                Margin="0,0,0,16"
-                                                Padding="14,0">
-                                            <Grid VerticalAlignment="Center">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <ui:SymbolIcon Grid.Column="0" Symbol="LockClosed20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
-                                                <Grid Grid.Column="1">
-                                                    <!-- Placeholder Text -->
-                                                    <TextBlock x:Name="PlaceholderPassword"
-                                                               Text="Nhập mật khẩu (Password)..."
-                                                               Foreground="#64748B"
-                                                               FontSize="13.5"
-                                                               VerticalAlignment="Center"
-                                                               IsHitTestVisible="False" />
-                                                    <!-- Password Box with Glass Style -->
-                                                    <PasswordBox x:Name="TxtPassword"
-                                                                 Style="{StaticResource GlassInputPasswordStyle}"
-                                                                 PasswordChanged="TxtPassword_PasswordChanged" />
-                                                </Grid>
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Alert / Status Text -->
-                                        <TextBlock x:Name="TxtStatus" Text=""
-                                                   FontSize="12" FontWeight="SemiBold"
-                                                   Foreground="#38BDF8"
-                                                   HorizontalAlignment="Center"
-                                                   Margin="0,0,0,12"
-                                                   TextWrapping="Wrap" />
-
-                                        <!-- LOGIN Button (Rectangular with rounded edges, spanning full width of input boxes) -->
-                                        <Button x:Name="BtnLogin"
-                                                HorizontalAlignment="Stretch"
-                                                Height="48"
-                                                Margin="0,0,0,18"
-                                                Click="BtnLogin_Click"
-                                                Cursor="Hand">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="btnBorder"
-                                                            CornerRadius="12"
-                                                            BorderThickness="1"
-                                                            BorderBrush="#6093C5FD">
-                                                        <Border.Background>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                                <GradientStop Color="#1D4ED8" Offset="0.0" />
-                                                                <GradientStop Color="#2563EB" Offset="0.5" />
-                                                                <GradientStop Color="#3B82F6" Offset="1.0" />
-                                                            </LinearGradientBrush>
-                                                        </Border.Background>
-                                                        <Border.Effect>
-                                                            <DropShadowEffect Color="#2563EB" BlurRadius="22" ShadowDepth="0" Opacity="0.8" />
-                                                        </Border.Effect>
-                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="btnBorder" Property="Background">
-                                                                <Setter.Value>
-                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                                        <GradientStop Color="#2563EB" Offset="0.0" />
-                                                                        <GradientStop Color="#3B82F6" Offset="0.5" />
-                                                                        <GradientStop Color="#60A5FA" Offset="1.0" />
-                                                                    </LinearGradientBrush>
-                                                                </Setter.Value>
-                                                            </Setter>
-                                                        </Trigger>
-                                                        <Trigger Property="IsPressed" Value="True">
-                                                            <Setter TargetName="btnBorder" Property="Opacity" Value="0.88" />
-                                                        </Trigger>
-                                                        <Trigger Property="IsEnabled" Value="False">
-                                                            <Setter TargetName="btnBorder" Property="Opacity" Value="0.5" />
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                            <TextBlock Text="LOGIN"
-                                                       FontSize="14.5"
-                                                       FontWeight="Bold"
-                                                       Foreground="#FFFFFF" />
-                                        </Button>
-
-                                        <!-- Links: Forgot Password? & Need Help? -->
-                                        <Grid>
+                                    <!-- Username Input Pill Capsule (Bo góc viên thuốc sang trọng) -->
+                                    <Border x:Name="BorderUsername"
+                                            CornerRadius="24" Height="48"
+                                            Background="#250F1D30"
+                                            BorderThickness="1.2"
+                                            BorderBrush="#3564748B"
+                                            Margin="0,0,0,16"
+                                            Padding="18,0">
+                                        <Grid VerticalAlignment="Center">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-
-                                            <TextBlock Grid.Column="0"
-                                                       Text="Forgot Password?"
-                                                       FontSize="12"
-                                                       Foreground="#94A3B8"
-                                                       HorizontalAlignment="Left"
-                                                       Cursor="Hand"
-                                                       MouseDown="LinkForgotPassword_Click">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Style.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Foreground" Value="#38BDF8" />
-                                                                <Setter Property="TextDecorations" Value="Underline" />
-                                                            </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-
-                                            <TextBlock Grid.Column="1"
-                                                       Text="Need Help?"
-                                                       FontSize="12"
-                                                       Foreground="#94A3B8"
-                                                       HorizontalAlignment="Right"
-                                                       Cursor="Hand"
-                                                       MouseDown="LinkNeedHelp_Click">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Style.Triggers>
-                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Foreground" Value="#38BDF8" />
-                                                                <Setter Property="TextDecorations" Value="Underline" />
-                                                            </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                            <ui:SymbolIcon Grid.Column="0" Symbol="Person20" FontSize="18" Foreground="#38BDF8" Margin="0,0,12,0" />
+                                            <Grid Grid.Column="1">
+                                                <!-- Watermark Placeholder Text -->
+                                                <TextBlock x:Name="PlaceholderUsername"
+                                                           Text="Nhập tài khoản (Username)..."
+                                                           Foreground="#64748B"
+                                                           FontSize="13.5"
+                                                           VerticalAlignment="Center"
+                                                           IsHitTestVisible="False" />
+                                                <!-- Glass Input Box -->
+                                                <TextBox x:Name="TxtUsername"
+                                                         Style="{StaticResource GlassInputTextStyle}"
+                                                         GotFocus="InputBox_GotFocus"
+                                                         LostFocus="InputBox_LostFocus"
+                                                         TextChanged="TxtUsername_TextChanged" />
+                                            </Grid>
                                         </Grid>
-                                    </StackPanel>
-                                </Grid>
+                                    </Border>
+
+                                    <!-- Password Input Pill Capsule -->
+                                    <Border x:Name="BorderPassword"
+                                            CornerRadius="24" Height="48"
+                                            Background="#250F1D30"
+                                            BorderThickness="1.2"
+                                            BorderBrush="#3564748B"
+                                            Margin="0,0,0,18"
+                                            Padding="18,0">
+                                        <Grid VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <ui:SymbolIcon Grid.Column="0" Symbol="LockClosed20" FontSize="18" Foreground="#38BDF8" Margin="0,0,12,0" />
+                                            <Grid Grid.Column="1">
+                                                <!-- Watermark Placeholder Text -->
+                                                <TextBlock x:Name="PlaceholderPassword"
+                                                           Text="Nhập mật khẩu (Password)..."
+                                                           Foreground="#64748B"
+                                                           FontSize="13.5"
+                                                           VerticalAlignment="Center"
+                                                           IsHitTestVisible="False" />
+                                                <!-- Glass Password Box -->
+                                                <PasswordBox x:Name="TxtPassword"
+                                                             Style="{StaticResource GlassInputPasswordStyle}"
+                                                             GotFocus="PasswordBox_GotFocus"
+                                                             LostFocus="PasswordBox_LostFocus"
+                                                             PasswordChanged="TxtPassword_PasswordChanged" />
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Status / Alert Message -->
+                                    <TextBlock x:Name="TxtStatus" Text=""
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="#38BDF8"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,0,0,12"
+                                               TextWrapping="Wrap" />
+
+                                    <!-- Modern Pill LOGIN Button with Specular Glass Light & Rich Bloom -->
+                                    <Button x:Name="BtnLogin"
+                                            HorizontalAlignment="Stretch"
+                                            Height="48"
+                                            Margin="0,0,0,20"
+                                            Click="BtnLogin_Click"
+                                            Cursor="Hand">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder"
+                                                        CornerRadius="24"
+                                                        BorderThickness="1"
+                                                        BorderBrush="#6093C5FD">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                            <GradientStop Color="#1E40AF" Offset="0.0" />
+                                                            <GradientStop Color="#2563EB" Offset="0.45" />
+                                                            <GradientStop Color="#3B82F6" Offset="1.0" />
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <Border.Effect>
+                                                        <DropShadowEffect Color="#2563EB" BlurRadius="26" ShadowDepth="0" Opacity="0.85" />
+                                                    </Border.Effect>
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="btnBorder" Property="Background">
+                                                            <Setter.Value>
+                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                    <GradientStop Color="#2563EB" Offset="0.0" />
+                                                                    <GradientStop Color="#3B82F6" Offset="0.5" />
+                                                                    <GradientStop Color="#60A5FA" Offset="1.0" />
+                                                                </LinearGradientBrush>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Setter TargetName="btnBorder" Property="BorderBrush" Value="#A0BFDBFE" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter TargetName="btnBorder" Property="Opacity" Value="0.88" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="btnBorder" Property="Opacity" Value="0.5" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <TextBlock Text="LOGIN"
+                                                   FontSize="14.5"
+                                                   FontWeight="Bold"
+                                                   Foreground="#FFFFFF" />
+                                    </Button>
+
+                                    <!-- Footer Links: Forgot Password? & Need Help? -->
+                                    <Grid Margin="4,0,4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Forgot Password?"
+                                                   FontSize="12"
+                                                   Foreground="#94A3B8"
+                                                   HorizontalAlignment="Left"
+                                                   Cursor="Hand"
+                                                   MouseDown="LinkForgotPassword_Click">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Foreground" Value="#38BDF8" />
+                                                            <Setter Property="TextDecorations" Value="Underline" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <TextBlock Grid.Column="1"
+                                                   Text="Need Help?"
+                                                   FontSize="12"
+                                                   Foreground="#94A3B8"
+                                                   HorizontalAlignment="Right"
+                                                   Cursor="Hand"
+                                                   MouseDown="LinkNeedHelp_Click">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Foreground" Value="#38BDF8" />
+                                                            <Setter Property="TextDecorations" Value="Underline" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </StackPanel>
                             </Border>
                         </Grid>
                     </StackPanel>

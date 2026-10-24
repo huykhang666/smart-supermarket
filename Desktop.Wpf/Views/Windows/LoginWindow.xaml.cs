@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
 using SmartSupermarket.POS.Services;
 using Wpf.Ui.Controls;
 
@@ -11,6 +13,11 @@ namespace SmartSupermarket.POS.Views.Windows;
 public partial class LoginWindow : FluentWindow
 {
     private readonly AuthService _authService = new();
+
+    private readonly SolidColorBrush _defaultBorderBrush = new((Color)ColorConverter.ConvertFromString("#3564748B"));
+    private readonly SolidColorBrush _activeBorderBrush = new((Color)ColorConverter.ConvertFromString("#9038BDF8"));
+    private readonly SolidColorBrush _defaultBgBrush = new((Color)ColorConverter.ConvertFromString("#250F1D30"));
+    private readonly SolidColorBrush _activeBgBrush = new((Color)ColorConverter.ConvertFromString("#350F233C"));
 
     public LoginWindow()
     {
@@ -38,6 +45,59 @@ public partial class LoginWindow : FluentWindow
     private void BtnClose_Click(object sender, RoutedEventArgs e)
     {
         this.Close();
+    }
+
+    // Dynamic Focus Effects for input pills
+    private void InputBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (BorderUsername != null)
+        {
+            BorderUsername.BorderBrush = _activeBorderBrush;
+            BorderUsername.Background = _activeBgBrush;
+            BorderUsername.Effect = new DropShadowEffect
+            {
+                Color = (Color)ColorConverter.ConvertFromString("#38BDF8"),
+                BlurRadius = 14,
+                ShadowDepth = 0,
+                Opacity = 0.5
+            };
+        }
+    }
+
+    private void InputBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (BorderUsername != null)
+        {
+            BorderUsername.BorderBrush = _defaultBorderBrush;
+            BorderUsername.Background = _defaultBgBrush;
+            BorderUsername.Effect = null;
+        }
+    }
+
+    private void PasswordBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (BorderPassword != null)
+        {
+            BorderPassword.BorderBrush = _activeBorderBrush;
+            BorderPassword.Background = _activeBgBrush;
+            BorderPassword.Effect = new DropShadowEffect
+            {
+                Color = (Color)ColorConverter.ConvertFromString("#38BDF8"),
+                BlurRadius = 14,
+                ShadowDepth = 0,
+                Opacity = 0.5
+            };
+        }
+    }
+
+    private void PasswordBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (BorderPassword != null)
+        {
+            BorderPassword.BorderBrush = _defaultBorderBrush;
+            BorderPassword.Background = _defaultBgBrush;
+            BorderPassword.Effect = null;
+        }
     }
 
     private void TxtUsername_TextChanged(object sender, TextChangedEventArgs e)
@@ -76,8 +136,8 @@ public partial class LoginWindow : FluentWindow
             "Hỗ trợ kỹ thuật: support@smartsupermarket.local\n" +
             "Hotline hỗ trợ ca: 1900-8888\n\n" +
             "Hệ thống tự động điều hướng theo phân quyền tài khoản:\n" +
-            "• Tài khoản Quản trị viên (Admin) -> Trạm Quản Trị ERP\n" +
-            "• Tài khoản Thu ngân (Staff/Cashier) -> Trạm Bán Hàng POS",
+            "• Quản trị viên (admin / admin123) -> Trạm Quản Trị ERP\n" +
+            "• Thu ngân (nhanvien / nhanvien123) -> Trạm Bán Hàng POS",
             "Trợ giúp hệ thống",
             System.Windows.MessageBoxButton.OK,
             MessageBoxImage.Information);
@@ -106,7 +166,6 @@ public partial class LoginWindow : FluentWindow
             TxtStatus.Text = "✓ " + result.Message;
             TxtStatus.Foreground = System.Windows.Media.Brushes.LightGreen;
 
-            // Short smooth delay to show success
             await Task.Delay(350);
 
             if (result.Role.Equals("Staff", StringComparison.OrdinalIgnoreCase) ||
