@@ -217,40 +217,30 @@
                         <StackPanel>
                             <!-- Card Header: Brand Logo & Title moved inside the card -->
                             <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
-                                <!-- Modern Luxury Retail App Icon Badge -->
-                                <Border Width="60" Height="60"
+                                <!-- Clean Modern Frosted Dark Glass Badge (No harsh saturated blue) -->
+                                <Border Width="58" Height="58"
                                         CornerRadius="18"
-                                        BorderThickness="1.2"
+                                        BorderThickness="1"
+                                        BorderBrush="#35FFFFFF"
                                         HorizontalAlignment="Center"
-                                        Margin="0,0,0,12">
-                                    <!-- Smooth Specular Glass Top Highlight -->
-                                    <Border.BorderBrush>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                            <GradientStop Color="#C0BFDBFE" Offset="0.0" />
-                                            <GradientStop Color="#4060A5FA" Offset="0.5" />
-                                            <GradientStop Color="#101D4ED8" Offset="1.0" />
-                                        </LinearGradientBrush>
-                                    </Border.BorderBrush>
-                                    <!-- Rich Royal Blue to Slate Gradient -->
+                                        Margin="0,0,0,14">
                                     <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#3B82F6" Offset="0.0" />
-                                            <GradientStop Color="#1D4ED8" Offset="0.55" />
-                                            <GradientStop Color="#0F172A" Offset="1.0" />
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#301E293B" Offset="0.0" />
+                                            <GradientStop Color="#150F172A" Offset="1.0" />
                                         </LinearGradientBrush>
                                     </Border.Background>
-                                    <!-- Soft Natural Elevation Glow -->
                                     <Border.Effect>
-                                        <DropShadowEffect Color="#2563EB" BlurRadius="22" ShadowDepth="4" Opacity="0.55" Direction="270" />
+                                        <DropShadowEffect Color="#000000" BlurRadius="18" ShadowDepth="4" Opacity="0.45" Direction="270" />
                                     </Border.Effect>
 
                                     <!-- Clean Vector Shopping Cart -->
-                                    <Viewbox Width="30" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Viewbox Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Canvas Width="24" Height="24">
                                             <Path Data="M 1,2 L 4,2 L 6.8,14 C 6.95,14.6 7.45,15 8.1,15 L 18.5,15 C 19.15,15 19.65,14.6 19.8,14 L 22,5 L 5.2,5"
-                                                  Stroke="#FFFFFF" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
-                                            <Ellipse Canvas.Left="7.2" Canvas.Top="18" Width="2.8" Height="2.8" Fill="#FFFFFF" />
-                                            <Ellipse Canvas.Left="17" Canvas.Top="18" Width="2.8" Height="2.8" Fill="#FFFFFF" />
+                                                  Stroke="#F8FAFC" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                            <Ellipse Canvas.Left="7.2" Canvas.Top="18" Width="2.8" Height="2.8" Fill="#F8FAFC" />
+                                            <Ellipse Canvas.Left="17" Canvas.Top="18" Width="2.8" Height="2.8" Fill="#F8FAFC" />
                                         </Canvas>
                                     </Viewbox>
                                 </Border>
@@ -348,7 +338,7 @@
                                        Margin="0,0,0,12"
                                        TextWrapping="Wrap" />
 
-                            <!-- Primary Action Button: ĐĂNG NHẬP -->
+                            <!-- Primary Action Button: ĐĂNG NHẬP (Crisp High-Contrast Minimalist White) -->
                             <Button x:Name="BtnLogin"
                                     HorizontalAlignment="Stretch"
                                     Height="46"
@@ -360,16 +350,15 @@
                                         <Border x:Name="btnBorder"
                                                 CornerRadius="12"
                                                 BorderThickness="1"
-                                                BorderBrush="#5093C5FD">
+                                                BorderBrush="#FFFFFF">
                                             <Border.Background>
-                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                    <GradientStop Color="#1D4ED8" Offset="0.0" />
-                                                    <GradientStop Color="#2563EB" Offset="0.5" />
-                                                    <GradientStop Color="#3B82F6" Offset="1.0" />
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Color="#FFFFFF" Offset="0.0" />
+                                                    <GradientStop Color="#F1F5F9" Offset="1.0" />
                                                 </LinearGradientBrush>
                                             </Border.Background>
                                             <Border.Effect>
-                                                <DropShadowEffect Color="#2563EB" BlurRadius="18" ShadowDepth="3" Opacity="0.45" Direction="270" />
+                                                <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="4" Opacity="0.3" Direction="270" />
                                             </Border.Effect>
                                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
@@ -377,17 +366,15 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="btnBorder" Property="Background">
                                                     <Setter.Value>
-                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                            <GradientStop Color="#2563EB" Offset="0.0" />
-                                                            <GradientStop Color="#3B82F6" Offset="0.5" />
-                                                            <GradientStop Color="#60A5FA" Offset="1.0" />
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                            <GradientStop Color="#F1F5F9" Offset="0.0" />
+                                                            <GradientStop Color="#E2E8F0" Offset="1.0" />
                                                         </LinearGradientBrush>
                                                     </Setter.Value>
                                                 </Setter>
-                                                <Setter TargetName="btnBorder" Property="BorderBrush" Value="#90BFDBFE" />
                                             </Trigger>
                                             <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="btnBorder" Property="Opacity" Value="0.88" />
+                                                <Setter TargetName="btnBorder" Property="Background" Value="#CBD5E1" />
                                             </Trigger>
                                             <Trigger Property="IsEnabled" Value="False">
                                                 <Setter TargetName="btnBorder" Property="Opacity" Value="0.5" />
@@ -398,7 +385,7 @@
                                 <TextBlock Text="ĐĂNG NHẬP"
                                            FontSize="14"
                                            FontWeight="Bold"
-                                           Foreground="#FFFFFF" />
+                                           Foreground="#0F172A" />
                             </Button>
 
                             <!-- Footer Links: Quên mật khẩu? & Hỗ trợ kỹ thuật -->
