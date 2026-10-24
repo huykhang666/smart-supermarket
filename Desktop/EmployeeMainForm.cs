@@ -50,6 +50,7 @@ public class EmployeeMainForm : Form
         {
             SelectNavButton(defaultNavBtn, _posScanView);
         }
+        StartHeartbeat();
     }
 
     private void InitializeComponent()
@@ -641,5 +642,30 @@ public class EmployeeMainForm : Form
 
         _notificationPopup = popup;
         popup.Show(this);
+    }
+
+    private void StartHeartbeat()
+    {
+        var timer = new System.Windows.Forms.Timer { Interval = 60000 };
+        timer.Tick += async (s, e) => await SendHeartbeatAsync();
+        timer.Start();
+        this.FormClosed += (s, e) => timer.Stop();
+        _ = SendHeartbeatAsync();
+    }
+
+    private async Task SendHeartbeatAsync()
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+            var payload = new
+            {
+                userId = CurrentSession.UserId,
+                workstationName = Environment.MachineName
+            };
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+            await client.PostAsync($"{AppTheme.ApiBaseUrl}/api/v1/shifts/sessions/heartbeat", content);
+        }
+        catch { }
     }
 }

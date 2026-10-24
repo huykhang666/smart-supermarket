@@ -16,6 +16,16 @@ public class Order
     public OrderStatus Status { get; set; } = OrderStatus.Completed;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Liên kết với phiên ca trực (ShiftSession) để đối soát doanh thu két tiền chính xác
+    public int? ShiftSessionId { get; set; }
+    public ShiftSession? ShiftSession { get; set; }
+
+    // Thông tin kiểm soát khi hủy hóa đơn (Void Order)
+    public DateTime? CancelledAt { get; set; }
+    public int? CancelledByUserId { get; set; }
+    public int? ManagerApprovedByUserId { get; set; }
+    public string? CancelReason { get; set; }
+
     public User? Employee { get; set; }
     public Customer? Customer { get; set; }
     public List<OrderDetail> OrderDetails { get; set; } = new();

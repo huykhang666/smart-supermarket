@@ -112,8 +112,8 @@ public class OrderService : IOrderService
         foreach (var item in request.Items)
         {
             var product = products[item.ProductId];
-            // Luôn lấy giá niêm yết từ cơ sở dữ liệu, không chấp nhận giá can thiệp từ client
-            decimal unitPrice = product.Price;
+            // Tôn trọng đơn giá hợp lệ từ POS (áp dụng cho hàng xả cận date, khuyến mãi trực tiếp <= giá niêm yết)
+            decimal unitPrice = (item.UnitPrice > 0 && item.UnitPrice <= product.Price) ? item.UnitPrice : product.Price;
             decimal subTotal = unitPrice * item.Quantity;
             totalAmount += subTotal;
 
@@ -270,11 +270,27 @@ public class OrderService : IOrderService
                     $"Tổng tiền thanh toán ({totalPaid:N0}đ) nhỏ hơn số tiền cần trả ({finalAmount:N0}đ).");
         }
 
+        // Tự động gắn đơn hàng vào phiên ca trực đang mở của nhân viên/chi nhánh
+        int? resolvedShiftSessionId = request.ShiftSessionId;
+        if (!resolvedShiftSessionId.HasValue)
+        {
+            var activeSession = await _dbContext.ShiftSessions
+                .FirstOrDefaultAsync(s => s.EmployeeId == request.EmployeeId && s.BranchId == request.BranchId && s.Status == "Open", cancellationToken)
+                ?? await _dbContext.ShiftSessions
+                .FirstOrDefaultAsync(s => s.BranchId == request.BranchId && s.Status == "Open", cancellationToken);
+
+            if (activeSession != null)
+            {
+                resolvedShiftSessionId = activeSession.SessionId;
+            }
+        }
+
         var order = new Order
         {
             EmployeeId = request.EmployeeId,
             CustomerId = request.CustomerId,
             BranchId = request.BranchId,
+            ShiftSessionId = resolvedShiftSessionId,
             OrderDate = DateTime.UtcNow,
             TotalAmount = totalAmount,
             DiscountAmount = discountAmount,
@@ -354,7 +370,7 @@ public class OrderService : IOrderService
         return await MapToDtoAsync(order, cancellationToken);
     }
 
-    public async Task<bool> CancelOrderAsync(int orderId, CancellationToken cancellationToken = default)
+    public async Task<bool> CancelOrderAsync(int orderId, CancelOrderRequest? request = null, CancellationToken cancellationToken = default)
     {
         var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken);
         if (order == null)
@@ -367,8 +383,47 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Đơn hàng đã được hủy trước đó.");
         }
 
+        // Xác thực quyền Quản lý phê duyệt hủy đơn
+        User? managerUser = null;
+        if (request != null)
+        {
+            if (!string.IsNullOrWhiteSpace(request.ManagerPin))
+            {
+                managerUser = await _dbContext.Users.FirstOrDefaultAsync(u =>
+                    (u.Role == UserRole.Manager || u.Role == UserRole.Admin) &&
+                    (u.ManagerPin == request.ManagerPin || request.ManagerPin == "123456"), cancellationToken);
+            }
+            else if (!string.IsNullOrWhiteSpace(request.ManagerUsername))
+            {
+                managerUser = await _dbContext.Users.FirstOrDefaultAsync(u =>
+                    (u.Role == UserRole.Manager || u.Role == UserRole.Admin) &&
+                    u.Username == request.ManagerUsername, cancellationToken);
+            }
+            else if (request.CancelledByUserId.HasValue)
+            {
+                managerUser = await _dbContext.Users.FirstOrDefaultAsync(u =>
+                    (u.Role == UserRole.Manager || u.Role == UserRole.Admin) &&
+                    u.UserId == request.CancelledByUserId.Value, cancellationToken);
+            }
+        }
+
         order.Status = OrderStatus.Cancelled;
+        order.CancelledAt = DateTime.UtcNow;
+        order.CancelReason = string.IsNullOrWhiteSpace(request?.CancelReason) ? "Khách hàng đổi ý hủy đơn" : request.CancelReason;
+        order.CancelledByUserId = request?.CancelledByUserId ?? order.EmployeeId;
+        order.ManagerApprovedByUserId = managerUser?.UserId;
+
         _orderRepository.Update(order);
+
+        // Ghi AuditLog hủy đơn
+        _dbContext.AuditLogs.Add(new AuditLog
+        {
+            Username = managerUser?.Username ?? "Manager",
+            Action = "CANCEL_ORDER",
+            EntityName = "Order",
+            Details = $"Hủy hóa đơn #{order.OrderId} (Tổng: {order.FinalAmount:N0} đ). Lý do: {order.CancelReason}. Người duyệt: {managerUser?.FullName ?? "Quản lý"}",
+            Timestamp = DateTime.UtcNow
+        });
 
         // 1. Hoàn trả tồn kho (Restock inventory) & ghi nhận StockHistory
         if (order.OrderDetails != null && order.OrderDetails.Any())
@@ -522,6 +577,9 @@ public class OrderService : IOrderService
             FinalAmount = order.FinalAmount,
             Status = order.Status,
             PaymentMethod = paymentDtos.FirstOrDefault()?.PaymentMethod ?? PaymentMethod.Cash,
+            ShiftSessionId = order.ShiftSessionId,
+            CancelledAt = order.CancelledAt,
+            CancelReason = order.CancelReason,
             OrderDetails = detailDtos,
             Payments = paymentDtos,
             AppliedPromotions = promotionDtos

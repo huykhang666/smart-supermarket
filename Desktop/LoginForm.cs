@@ -447,11 +447,12 @@ public class LoginForm : Form
         if ((username.Equals("admin", StringComparison.OrdinalIgnoreCase) && password == "admin123") ||
             (username.Equals("quanly", StringComparison.OrdinalIgnoreCase)))
         {
-            CurrentSession.UserId = 1;
-            CurrentSession.Username = "admin";
-            CurrentSession.FullName = "Quản trị viên Hệ thống";
-            CurrentSession.Role = "Admin";
-            CurrentSession.Token = await TryAuthenticateWithBackendAsync("admin", "AdminPassword123!");
+            var auth = await TryAuthenticateWithBackendAsync("admin", "AdminPassword123!");
+            CurrentSession.UserId = auth?.UserId ?? 1;
+            CurrentSession.Username = auth?.Username ?? "admin";
+            CurrentSession.FullName = auth?.FullName ?? "Quản trị viên Hệ thống";
+            CurrentSession.Role = auth?.Role ?? "Admin";
+            CurrentSession.Token = auth?.Token;
 
             AntdUI.Message.success(this, "Đăng nhập thành công! Đang chuyển đến Trung Tâm Điều Hành Admin...");
 
@@ -468,11 +469,12 @@ public class LoginForm : Form
         }
         else if (username.Equals("nhanvien", StringComparison.OrdinalIgnoreCase) && password == "nhanvien123")
         {
-            CurrentSession.UserId = 2;
-            CurrentSession.Username = "staff";
-            CurrentSession.FullName = "Nhân viên Thu ngân";
-            CurrentSession.Role = "Staff";
-            CurrentSession.Token = await TryAuthenticateWithBackendAsync("staff", "StaffPassword123!");
+            var auth = await TryAuthenticateWithBackendAsync("staff", "StaffPassword123!");
+            CurrentSession.UserId = auth?.UserId ?? 2;
+            CurrentSession.Username = auth?.Username ?? "staff";
+            CurrentSession.FullName = auth?.FullName ?? "Nhân viên Thu ngân";
+            CurrentSession.Role = auth?.Role ?? "Staff";
+            CurrentSession.Token = auth?.Token;
 
             AntdUI.Message.success(this, "Đăng nhập thành công! Mở ca làm việc Thu Ngân...");
 
@@ -490,14 +492,14 @@ public class LoginForm : Form
         else
         {
             // Thử xác thực trực tiếp qua Backend API cho các tài khoản cơ sở dữ liệu
-            var token = await TryAuthenticateWithBackendAsync(username, password);
-            if (!string.IsNullOrEmpty(token))
+            var auth = await TryAuthenticateWithBackendAsync(username, password);
+            if (auth != null && !string.IsNullOrEmpty(auth.Token))
             {
-                CurrentSession.UserId = 1;
-                CurrentSession.Username = username;
-                CurrentSession.FullName = username;
-                CurrentSession.Role = "Admin";
-                CurrentSession.Token = token;
+                CurrentSession.UserId = auth.UserId;
+                CurrentSession.Username = auth.Username;
+                CurrentSession.FullName = auth.FullName;
+                CurrentSession.Role = auth.Role;
+                CurrentSession.Token = auth.Token;
 
                 AntdUI.Message.success(this, "Đăng nhập thành công!");
                 var timer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -505,9 +507,18 @@ public class LoginForm : Form
                 {
                     timer.Stop();
                     this.Hide();
-                    var mainForm = new MainForm();
-                    mainForm.FormClosed += (s2, ev2) => this.Close();
-                    mainForm.Show();
+                    if (string.Equals(auth.Role, "Staff", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var empForm = new EmployeeMainForm();
+                        empForm.FormClosed += (s2, ev2) => this.Close();
+                        empForm.Show();
+                    }
+                    else
+                    {
+                        var mainForm = new MainForm();
+                        mainForm.FormClosed += (s2, ev2) => this.Close();
+                        mainForm.Show();
+                    }
                 };
                 timer.Start();
                 return;
@@ -517,7 +528,16 @@ public class LoginForm : Form
         }
     }
 
-    public static async Task<string?> TryAuthenticateWithBackendAsync(string username, string password)
+    public class AuthResultInfo
+    {
+        public string Token { get; set; } = string.Empty;
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Role { get; set; } = "Staff";
+    }
+
+    public static async Task<AuthResultInfo?> TryAuthenticateWithBackendAsync(string username, string password)
     {
         try
         {
@@ -531,10 +551,25 @@ public class LoginForm : Form
                 using var doc = JsonDocument.Parse(body);
                 if (doc.RootElement.TryGetProperty("data", out var dataEl))
                 {
+                    string token = "";
                     if (dataEl.TryGetProperty("token", out var tokenEl))
-                        return tokenEl.GetString();
-                    if (dataEl.TryGetProperty("accessToken", out var accEl))
-                        return accEl.GetString();
+                        token = tokenEl.GetString() ?? "";
+                    else if (dataEl.TryGetProperty("accessToken", out var accEl))
+                        token = accEl.GetString() ?? "";
+
+                    int userId = dataEl.TryGetProperty("userId", out var uId) ? uId.GetInt32() : 1;
+                    string uName = dataEl.TryGetProperty("username", out var un) ? (un.GetString() ?? username) : username;
+                    string fullName = dataEl.TryGetProperty("fullName", out var fn) ? (fn.GetString() ?? uName) : uName;
+                    string role = dataEl.TryGetProperty("role", out var rl) ? (rl.GetString() ?? "Staff") : "Staff";
+
+                    return new AuthResultInfo
+                    {
+                        Token = token,
+                        UserId = userId,
+                        Username = uName,
+                        FullName = fullName,
+                        Role = role
+                    };
                 }
             }
         }

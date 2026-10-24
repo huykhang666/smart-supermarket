@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Desktop.Forms;
 using Desktop.Services;
 using Serilog;
 
@@ -34,6 +35,11 @@ public class OrdersView : UserControl
 
     // Store loaded order data for Excel export
     private readonly List<OrderExportRow> _loadedOrders = new();
+
+    public async Task RefreshOrdersAsync()
+    {
+        await LoadOrdersAsync();
+    }
 
     public OrdersView()
     {
@@ -100,10 +106,6 @@ public class OrdersView : UserControl
         AppTheme.ApplyPrimaryButton(btnExportPdf);
         btnExportPdf.Click += async (s, e) => await AppTheme.ExecuteWithLoadingAsync(btnExportPdf, "Đang tạo PDF...", () => ExportSelectedOrderPdfAsync());
 
-        btnExportExcel = new Button { Text = "📥 Xuất Excel", Size = new Size(120, 32), Margin = new Padding(0, 0, 8, 4) };
-        AppTheme.ApplySuccessButton(btnExportExcel);
-        btnExportExcel.Click += (s, e) => AppTheme.ExecuteWithLoading(btnExportExcel, "Đang xuất...", () => ExcelExportService.ExportDataGridViewToExcel(dgvOrders, "Lịch Sử Đơn Hàng POS", "LichSuDonHang"));
-
         btnExportExcel = new Button { Text = "📊 Xuất Excel", AutoSize = true, Margin = new Padding(0, 0, 6, 4) };
         AppTheme.ApplyPrimaryButton(btnExportExcel);
         btnExportExcel.Click += BtnExportExcel_Click;
@@ -130,18 +132,38 @@ public class OrdersView : UserControl
 
         // Date Filter controls inside Toolbar
         var lblFrom = new Label { Text = "  📅 Từ:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(12, 8, 4, 0) };
-        dtpFrom = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 130, Value = DateTime.Today.AddMonths(-3), Font = AppTheme.FontBody, Margin = new Padding(0, 3, 4, 0) };
+        dtpFrom = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 115, Value = DateTime.Today, Font = AppTheme.FontBody, Margin = new Padding(0, 3, 4, 0) };
         var lblTo = new Label { Text = "Đến:", Font = AppTheme.FontBody, ForeColor = AppTheme.TextPrimary, AutoSize = true, Margin = new Padding(6, 8, 4, 0) };
-        dtpTo = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 130, Value = DateTime.Today.AddDays(1), Font = AppTheme.FontBody, Margin = new Padding(0, 3, 4, 0) };
-        btnFilter = new Button { Text = "🔍 Lọc", AutoSize = true, Margin = new Padding(4, 0, 8, 4) };
+        dtpTo = new DateTimePicker { Format = DateTimePickerFormat.Short, Width = 115, Value = DateTime.Today, Font = AppTheme.FontBody, Margin = new Padding(0, 3, 4, 0) };
+        btnFilter = new Button { Text = "🔍 Lọc", AutoSize = true, Margin = new Padding(4, 0, 4, 4) };
         AppTheme.ApplySecondaryButton(btnFilter);
         btnFilter.Click += async (s, e) => await LoadOrdersAsync();
+
+        var btnToday = new Button { Text = "⚡ Hôm nay", AutoSize = true, Margin = new Padding(2, 0, 4, 4) };
+        AppTheme.ApplySecondaryButton(btnToday);
+        btnToday.Click += async (s, e) =>
+        {
+            dtpFrom.Value = DateTime.Today;
+            dtpTo.Value = DateTime.Today;
+            await LoadOrdersAsync();
+        };
+
+        var btnAll = new Button { Text = "🌐 Tất cả", AutoSize = true, Margin = new Padding(2, 0, 8, 4) };
+        AppTheme.ApplySecondaryButton(btnAll);
+        btnAll.Click += async (s, e) =>
+        {
+            dtpFrom.Value = DateTime.Today.AddMonths(-3);
+            dtpTo.Value = DateTime.Today;
+            await LoadOrdersAsync();
+        };
 
         pnlToolbar.Controls.Add(lblFrom);
         pnlToolbar.Controls.Add(dtpFrom);
         pnlToolbar.Controls.Add(lblTo);
         pnlToolbar.Controls.Add(dtpTo);
         pnlToolbar.Controls.Add(btnFilter);
+        pnlToolbar.Controls.Add(btnToday);
+        pnlToolbar.Controls.Add(btnAll);
         pnlToolbar.Controls.Add(lblStatus);
 
         // === PROGRESS BAR ===
@@ -266,7 +288,12 @@ public class OrdersView : UserControl
 
         try
         {
-            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/orders?page=1&pageSize=100");
+            var fromDate = dtpFrom?.Value.Date ?? DateTime.Today;
+            var toDate = (dtpTo?.Value.Date ?? DateTime.Today).AddDays(1).AddTicks(-1);
+            var startUtc = fromDate.ToUniversalTime();
+            var endUtc = toDate.ToUniversalTime();
+
+            var response = await _httpClient.GetAsync($"{_apiBaseUrl}/api/v1/orders?page=1&pageSize=500&startDate={startUtc:yyyy-MM-ddTHH:mm:ssZ}&endDate={endUtc:yyyy-MM-ddTHH:mm:ssZ}");
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -278,8 +305,6 @@ public class OrdersView : UserControl
                     var itemsProp = data.TryGetProperty("items", out var items) ? items : data;
                     if (itemsProp.ValueKind == JsonValueKind.Array)
                     {
-                        var fromDate = dtpFrom?.Value.Date ?? DateTime.MinValue;
-                        var toDate = (dtpTo?.Value.Date ?? DateTime.MaxValue).AddDays(1).AddTicks(-1);
 
                         foreach (var item in itemsProp.EnumerateArray())
                         {
@@ -336,11 +361,14 @@ public class OrdersView : UserControl
                 }
             }
 
-            // Fallback: If Backend DB has no orders or offline, load orders from POS DataStore
-            if (dgvOrders.Rows.Count == 0 && DataStore.Orders.Count > 0)
+            // Sync & Merge: Luôn bổ sung các đơn hàng từ DataStore (đơn vừa bán tại POS hoặc offline) nếu chưa có trong bảng
+            if (DataStore.Orders.Count > 0)
             {
-                var fromDate = dtpFrom?.Value.Date ?? DateTime.MinValue;
-                var toDate = (dtpTo?.Value.Date ?? DateTime.MaxValue).AddDays(1).AddTicks(-1);
+                var existingCodes = new HashSet<string>(
+                    _loadedOrders.Select(x => x.OrderCode).Where(c => !string.IsNullOrEmpty(c)),
+                    StringComparer.OrdinalIgnoreCase
+                );
+                var existingIds = new HashSet<int>(_loadedOrders.Select(x => x.OrderId));
 
                 foreach (var o in DataStore.Orders)
                 {
@@ -348,6 +376,9 @@ public class OrdersView : UserControl
                         continue;
 
                     string code = string.IsNullOrEmpty(o.OrderCode) ? $"ORD-{o.OrderId:D5}" : o.OrderCode;
+                    if (existingIds.Contains(o.OrderId) || existingCodes.Contains(code))
+                        continue;
+
                     string dateStr = o.OrderDate.ToString("dd/MM/yyyy HH:mm");
 
                     dgvOrders.Rows.Add(
@@ -675,22 +706,35 @@ public class OrdersView : UserControl
         int orderId = Convert.ToInt32(rawId);
         string maDon = dgvOrders.CurrentRow.Cells["OrderId"].Value?.ToString() ?? $"ORD-{orderId:D5}";
 
-        var confirm = MessageBox.Show(
-            $"Bạn có chắc chắn muốn HỦY đơn hàng {maDon}?\nHành động này không thể hoàn tác.",
-            "Xác nhận hủy đơn", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        // Yêu cầu xác thực Quản lý & nhập lý do hủy đơn
+        using var authDialog = new ManagerApprovalDialog(
+            $"XÁC THỰC HỦY ĐƠN HÀNG {maDon}",
+            $"Thao tác hủy hóa đơn đã thanh toán cần Quản lý phê duyệt.\nHệ thống sẽ hoàn trả tồn kho và thu hồi điểm tích lũy của khách.",
+            _httpClient,
+            _apiBaseUrl);
 
-        if (confirm != DialogResult.Yes) return;
+        if (authDialog.ShowDialog(this.FindForm()) != DialogResult.OK || !authDialog.IsApproved)
+        {
+            return;
+        }
 
         try
         {
             lblStatus.Text = $"Đang hủy {maDon}...";
+            var payload = new
+            {
+                managerPin = authDialog.ManagerPin,
+                cancelReason = authDialog.SelectedReason + (string.IsNullOrWhiteSpace(authDialog.Note) ? "" : $" - {authDialog.Note}"),
+                cancelledByUserId = CurrentSession.UserId
+            };
+
             var response = await _httpClient.PostAsync(
                 $"{_apiBaseUrl}/api/v1/orders/{orderId}/cancel",
-                new StringContent("{}", Encoding.UTF8, "application/json"));
+                new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
 
             if (response.IsSuccessStatusCode)
             {
-                MessageBox.Show($"✅ Đơn hàng {maDon} đã được hủy thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"✅ Đơn hàng {maDon} đã được hủy thành công.\nLý do: {authDialog.SelectedReason}", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 await LoadOrdersAsync();
             }
             else

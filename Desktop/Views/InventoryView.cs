@@ -388,7 +388,11 @@ public class InventoryView : UserControl
     {
         if (string.IsNullOrWhiteSpace(CurrentSession.Token))
         {
-            CurrentSession.Token = await LoginForm.TryAuthenticateWithBackendAsync("admin", "AdminPassword123!");
+            var auth = await LoginForm.TryAuthenticateWithBackendAsync("admin", "AdminPassword123!");
+            if (auth != null)
+            {
+                CurrentSession.Token = auth.Token;
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(CurrentSession.Token))

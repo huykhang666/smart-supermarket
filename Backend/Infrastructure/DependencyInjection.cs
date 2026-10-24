@@ -77,6 +77,9 @@ public static class DependencyInjection
         services.AddHttpClient<SmartSupermarket.Backend.Features.Payments.Services.IZaloPayService, SmartSupermarket.Backend.Features.Payments.Services.ZaloPayService>();
         services.AddScoped<SmartSupermarket.Backend.Features.Payments.Services.IPaymentService, SmartSupermarket.Backend.Features.Payments.Services.PaymentService>();
 
+        // Phân hệ 8: Nhân viên & Ca trực (ShiftSession & Cash Balancing)
+        services.AddScoped<SmartSupermarket.Backend.Features.Employees.Services.IShiftSessionService, SmartSupermarket.Backend.Features.Employees.Services.ShiftSessionService>();
+
         return services;
     }
 }

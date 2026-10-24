@@ -298,7 +298,11 @@ public class MainForm : Form
         btnNavInventory.Click += (s, e) => SelectNavButton(btnNavInventory, _inventoryView);
         btnNavStockAudit.Click += (s, e) => SelectNavButton(btnNavStockAudit, _stockAuditView);
         btnNavPosScan.Click += (s, e) => SelectNavButton(btnNavPosScan, _posScanView);
-        btnNavOrders.Click += (s, e) => SelectNavButton(btnNavOrders, _ordersView);
+        btnNavOrders.Click += (s, e) =>
+        {
+            SelectNavButton(btnNavOrders, _ordersView);
+            _ = _ordersView.RefreshOrdersAsync();
+        };
         btnNavCustomers.Click += (s, e) => SelectNavButton(btnNavCustomers, _customersView);
         btnNavPromotions.Click += (s, e) => SelectNavButton(btnNavPromotions, _promotionsView);
         btnNavAiCopilot.Click += (s, e) => SelectNavButton(btnNavAiCopilot, _aiCopilotView);
@@ -533,6 +537,7 @@ public class MainForm : Form
         if (btnNavOrders != null)
         {
             SelectNavButton(btnNavOrders, _ordersView);
+            _ = _ordersView.RefreshOrdersAsync();
         }
     }
 

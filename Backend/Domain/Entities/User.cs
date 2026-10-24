@@ -19,6 +19,16 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    // Giám sát trạm POS & Trạng thái Online của nhân viên
+    public bool IsOnline { get; set; } = false;
+    public DateTime? LastLoginAt { get; set; }
+    public DateTime? LastActiveAt { get; set; }
+    public string? CurrentMachineName { get; set; }
+    public string? CurrentIpAddress { get; set; }
+
+    // Mã PIN 4-6 số để Quản lý (Manager/Admin) duyệt nhanh các thao tác nhạy cảm tại POS
+    public string? ManagerPin { get; set; } = "123456";
+
     // Navigation property (1-1 relationship with Customer profile)
     public Customer? CustomerProfile { get; set; }
 }

@@ -17,6 +17,6 @@ public interface IOrderService
         int pageSize,
         CancellationToken cancellationToken = default);
     Task<OrderDto> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default);
-    Task<bool> CancelOrderAsync(int orderId, CancellationToken cancellationToken = default);
+    Task<bool> CancelOrderAsync(int orderId, CancelOrderRequest? request = null, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateInvoicePdfAsync(int orderId, CancellationToken cancellationToken = default);
 }

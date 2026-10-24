@@ -18,9 +18,23 @@ public class OrderDto
     public decimal FinalAmount { get; set; }
     public OrderStatus Status { get; set; }
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    public int? ShiftSessionId { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    public string? CancelReason { get; set; }
+    public string? ManagerApprovedByName { get; set; }
     public List<OrderDetailDto> OrderDetails { get; set; } = new();
     public List<OrderPromotionDto> AppliedPromotions { get; set; } = new();
     public List<PaymentDto> Payments { get; set; } = new();
+}
+
+public class CancelOrderRequest
+{
+    public string? ManagerPin { get; set; }
+    public string? ManagerUsername { get; set; }
+    public string? ManagerPassword { get; set; }
+    public string CancelReason { get; set; } = "Khách hàng đổi ý";
+    public string? Note { get; set; }
+    public int? CancelledByUserId { get; set; }
 }
 
 public class OrderDetailDto
@@ -62,6 +76,7 @@ public class CreateOrderRequest
     public int EmployeeId { get; set; }
     public int? CustomerId { get; set; }
     public int BranchId { get; set; } = 1;
+    public int? ShiftSessionId { get; set; }
     public int? VoucherId { get; set; }
     public string? PromotionCode { get; set; }
     public PaymentMethod? PaymentMethod { get; set; }

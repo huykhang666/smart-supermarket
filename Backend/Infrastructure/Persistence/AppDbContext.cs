@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
     // Modules 13 & 14 (Employee, ERP Inventory, Import, System)
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<ShiftSession> ShiftSessions => Set<ShiftSession>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
     public DbSet<InventoryBatch> InventoryBatches => Set<InventoryBatch>();
     public DbSet<ImportInvoice> ImportInvoices => Set<ImportInvoice>();
@@ -48,6 +49,8 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ShiftSession>().HasKey(s => s.SessionId);
 
         // Apply all IEntityTypeConfiguration classes from this assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
