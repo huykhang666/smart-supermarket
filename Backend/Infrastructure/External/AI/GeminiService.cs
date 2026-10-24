@@ -22,9 +22,7 @@ public class GeminiService : ILlmClient
         _httpClient.Timeout = TimeSpan.FromSeconds(60);
         _apiKey = configuration["Gemini:ApiKey"] ?? string.Empty;
         var modelConfig = configuration["Gemini:Model"];
-        _model = string.IsNullOrWhiteSpace(modelConfig) || modelConfig == "gemini-2.5-flash"
-            ? "gemini-1.5-flash"
-            : modelConfig;
+        _model = string.IsNullOrWhiteSpace(modelConfig) ? "gemini-2.5-flash" : modelConfig;
     }
 
     public async Task<string> GenerateAsync(string prompt, CancellationToken cancellationToken = default)
@@ -71,6 +69,19 @@ public class GeminiService : ILlmClient
         try
         {
             var response = await _httpClient.PostAsync(url, content, cancellationToken);
+
+            // Tự động thử fallback sang gemini-2.0-flash hoặc gemini-1.5-flash nếu model chưa phát hành chính thức
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                var fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_apiKey}";
+                response = await _httpClient.PostAsync(fallbackUrl, content, cancellationToken);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+                    response = await _httpClient.PostAsync(fallbackUrl, content, cancellationToken);
+                }
+            }
+
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
