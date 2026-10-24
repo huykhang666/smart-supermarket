@@ -57,10 +57,11 @@ public static class DependencyInjection
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICustomerService, CustomerService>();
-        services.AddSingleton<GeminiService>();
-        services.AddScoped<IAiService, AiService>();
+        services.AddHttpClient<GeminiService>();
         services.AddHttpClient<GroqClient>();
-        services.AddScoped<ILlmClient, GroqClient>();
+        services.AddScoped<ILlmClient, GeminiService>();
+        services.AddScoped<GeminiService>();
+        services.AddScoped<IAiService, AiService>();
         services.AddScoped<IAiRetailService, AiRetailService>();
         services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
         services.AddScoped<SmartSupermarket.Backend.Features.Inventory.Services.Interfaces.IShelfLifeProcessor, SmartSupermarket.Backend.Features.Inventory.Services.ShelfLifeProcessor>();

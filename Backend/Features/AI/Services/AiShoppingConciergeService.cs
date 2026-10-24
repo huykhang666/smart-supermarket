@@ -40,11 +40,31 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         // Nhận diện ý định: Chào hỏi, Hỏi mẹo nấu ăn thuần túy, hay Lên mâm cơm/mua sắm
         if (IsGreeting(prompt))
         {
+            string greetingMsg = "Chào bạn! Mình là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket 🛒.\n\n" +
+                                 "Mình có thể gợi ý các mâm cơm gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), tư vấn bí quyết chế biến ngon bất bại, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu tươi mới từ kho siêu thị.\n\n" +
+                                 "Hôm nay bạn muốn nấu món gì hay cần mình gợi ý mâm cơm ngon cho gia đình ạ?";
+
+            // Thử gọi Gemini chào hỏi tự nhiên nếu có cấu hình
+            try
+            {
+                string greetingPrompt = $"Khách hàng vừa chào: \"{prompt}\". Hãy đáp lại thân thiện bằng tiếng Việt, xưng là 'mình' và gọi 'bạn', giới thiệu bản thân là Trợ lý Đầu bếp Smart Supermarket và hỏi xem khách muốn nấu món gì hoặc cần mâm cơm cho mấy người ăn.";
+                var geminiGreeting = await _llmClient.GenerateAsync(greetingPrompt, null, false, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(geminiGreeting) &&
+                    !geminiGreeting.StartsWith("[Gemini API chưa") &&
+                    !geminiGreeting.StartsWith("[Lỗi Gemini API") &&
+                    !geminiGreeting.StartsWith("{\"error\":"))
+                {
+                    greetingMsg = geminiGreeting;
+                }
+            }
+            catch
+            {
+                // Fallback nếu mạng timeout hoặc API chưa sẵn sàng
+            }
+
             return new MealPlanChatResponse
             {
-                AssistantMessage = "Chào bạn! Mình là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket 🛒.\n\n" +
-                                   "Mình có thể gợi ý các mâm cơm gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), tư vấn bí quyết chế biến ngon bất bại, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu tươi mới từ kho siêu thị.\n\n" +
-                                   "Hôm nay bạn muốn nấu món gì hay cần mình gợi ý mâm cơm ngon cho gia đình ạ?",
+                AssistantMessage = greetingMsg,
                 HasMealSuggestion = false,
                 DishName = string.Empty,
                 Servings = servings,
@@ -60,6 +80,24 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         if (IsCulinaryAdviceOnly(prompt))
         {
             string culinaryAdvice = GenerateCulinaryKnowledgeAdvice(prompt);
+
+            // Gửi sang Gemini suy nghĩ câu trả lời ẩm thực sâu sắc
+            try
+            {
+                string adviceSystem = "Bạn là Đầu Bếp chuyên gia am hiểu cẩm nang nấu ăn hàng ngày của Cookpad Việt Nam. Bạn xưng 'mình' và gọi 'bạn'. Tư vấn mẹo nấu ăn chính xác, súc tích, gạch đầu dòng rõ ràng, không lan man.";
+                var llmAdvice = await _llmClient.GenerateAsync(prompt, adviceSystem, false, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(llmAdvice) &&
+                    !llmAdvice.StartsWith("[Gemini API chưa") &&
+                    !llmAdvice.StartsWith("[Lỗi Gemini API") &&
+                    !llmAdvice.StartsWith("{\"error\":"))
+                {
+                    culinaryAdvice = llmAdvice;
+                }
+            }
+            catch
+            {
+            }
+
             return new MealPlanChatResponse
             {
                 AssistantMessage = culinaryAdvice,
@@ -107,6 +145,36 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
 
         // Chuẩn bị thông điệp đầu bếp có liệt kê gạch đầu dòng rõ từng món và giá tiền
         string message = GenerateChefMealMessageWithMultiOptions(servings, targetBudget, mealOptions);
+
+        // Gọi trực tiếp Google Gemini qua ILlmClient để AI suy nghĩ và sinh phản hồi tự nhiên
+        string systemInstruction =
+            "Bạn là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket. " +
+            "Bạn xưng là 'mình' và gọi người dùng là 'bạn'. " +
+            "Hãy tham khảo công thức nấu ăn hàng ngày chuẩn vị từ Cookpad Việt Nam. " +
+            "Hãy phân tích yêu cầu của khách và gợi ý 2 đến 3 lựa chọn thực đơn rõ ràng, liệt kê các món ăn/nguyên liệu theo gạch đầu dòng kèm giá tiền ước tính. " +
+            "Không lan man, căn lề sạch sẽ và nhiệt tình.";
+
+        string aiPrompt = $"Khách hàng hỏi: \"{prompt}\". " +
+            $"Số người ăn: {servings} người, ngân sách: {targetBudget:N0} đ. " +
+            $"Chủ đề món ăn gợi ý: {mainDishTheme}. " +
+            $"Các nguyên liệu tiêu biểu trong kho siêu thị: {string.Join(", ", dbProducts.Take(12).Select(p => $"{p.ProductName} ({p.Price:N0} đ/{p.Unit})"))}. " +
+            "Hãy viết câu trả lời hoàn chỉnh để tư vấn cho khách.";
+
+        try
+        {
+            var llmResponse = await _llmClient.GenerateAsync(aiPrompt, systemInstruction, false, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(llmResponse) &&
+                !llmResponse.StartsWith("[Gemini API chưa") &&
+                !llmResponse.StartsWith("[Lỗi Gemini API") &&
+                !llmResponse.StartsWith("{\"error\":"))
+            {
+                message = llmResponse;
+            }
+        }
+        catch
+        {
+            // Fallback sang thông điệp Cookpad nội bộ nếu mạng timeout hoặc API chưa sẵn sàng
+        }
 
         return new MealPlanChatResponse
         {
