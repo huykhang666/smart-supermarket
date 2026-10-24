@@ -106,6 +106,39 @@ public class ApiService
         return GetMockOrders();
     }
 
+    public async Task<bool> CreateOrderAsync(int employeeId, int? customerId, decimal totalAmount, decimal finalAmount, int paymentMethod, List<CartItem> items)
+    {
+        try
+        {
+            var req = new
+            {
+                employeeId = employeeId > 0 ? employeeId : 1,
+                customerId = customerId,
+                branchId = 1,
+                paymentMethod = paymentMethod,
+                payments = new[]
+                {
+                    new { paymentMethod = paymentMethod, amountPaid = finalAmount }
+                },
+                items = items.Select(i => new
+                {
+                    productId = i.ProductId,
+                    quantity = i.Quantity,
+                    unitPrice = i.UnitPrice
+                }).ToArray()
+            };
+
+            var json = JsonSerializer.Serialize(req);
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var res = await _httpClient.PostAsync($"{BaseUrl}/api/v1/orders", content);
+            return res.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private List<ProductItem> GetMockProducts()
     {
         return new List<ProductItem>

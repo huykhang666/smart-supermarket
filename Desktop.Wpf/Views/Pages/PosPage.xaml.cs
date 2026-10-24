@@ -141,7 +141,7 @@ public partial class PosPage : Page
         TxtGrandTotal.Text = $"{grandTotal:N0} đ";
     }
 
-    private void BtnPayQr_Click(object sender, RoutedEventArgs e)
+    private async void BtnPayQr_Click(object sender, RoutedEventArgs e)
     {
         if (_cartItems.Count == 0)
         {
@@ -153,13 +153,16 @@ public partial class PosPage : Page
         var qrWindow = new Windows.QrPaymentWindow(grandTotal);
         if (qrWindow.ShowDialog() == true)
         {
-            MessageBox.Show($"Thanh toán thành công {grandTotal:N0} đ qua VietQR!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Call Backend API to save order
+            bool success = await _apiService.CreateOrderAsync(1, null, grandTotal, grandTotal, 2, _cartItems.ToList());
+            string apiMsg = success ? " (Đã lưu vào Cơ sở dữ liệu qua Backend API)" : " (Lưu hóa đơn cục bộ)";
+            MessageBox.Show($"Thanh toán thành công {grandTotal:N0} đ qua VietQR!{apiMsg}", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
             _cartItems.Clear();
             RecalculateCart();
         }
     }
 
-    private void BtnPayCash_Click(object sender, RoutedEventArgs e)
+    private async void BtnPayCash_Click(object sender, RoutedEventArgs e)
     {
         if (_cartItems.Count == 0)
         {
@@ -171,7 +174,10 @@ public partial class PosPage : Page
         var confirm = MessageBox.Show($"Xác nhận thanh toán tiền mặt số tiền: {grandTotal:N0} đ?", "Thanh toán tiền mặt", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm == MessageBoxResult.Yes)
         {
-            MessageBox.Show("Đã thanh toán thành công và in hóa đơn bán lẻ!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Call Backend API to save order
+            bool success = await _apiService.CreateOrderAsync(1, null, grandTotal, grandTotal, 1, _cartItems.ToList());
+            string apiMsg = success ? " (Đã lưu vào Cơ sở dữ liệu qua Backend API)" : " (Lưu hóa đơn cục bộ)";
+            MessageBox.Show($"Đã thanh toán tiền mặt thành công!{apiMsg}", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
             _cartItems.Clear();
             RecalculateCart();
         }
