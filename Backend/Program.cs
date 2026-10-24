@@ -9,6 +9,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // Configure Swagger with JWT Bearer Token support
 builder.Services.AddSwaggerGen(options =>
 {
@@ -72,6 +84,7 @@ using (var scope = app.Services.CreateScope())
 // Middleware Pipeline
 app.UseStaticFiles();
 app.UseRouting();
+app.UseCors();
 
 // Enable Swagger UI
 app.UseSwagger();

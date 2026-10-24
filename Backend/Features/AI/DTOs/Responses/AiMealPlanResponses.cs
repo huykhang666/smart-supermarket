@@ -10,6 +10,7 @@ public class MealPlanChatResponse
     public decimal TotalEstimatedCost { get; set; }
     public decimal TotalSavedAmount { get; set; }
     public bool IsWithinBudget { get; set; } = true;
+    public bool HasMealSuggestion { get; set; } = false;
     public List<MealIngredientItemDto> Ingredients { get; set; } = new();
     public string CookingTips { get; set; } = string.Empty;
 }

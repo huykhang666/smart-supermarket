@@ -6,7 +6,11 @@ import type {
   CreateOrderRequest,
 } from '../types';
 
-const BASE = API_CONFIG.BASE_URL;
+const getFullUrl = (endpoint: string): string => {
+  const base = API_CONFIG.BASE_URL.replace(/\/+$/, "");
+  const clean = endpoint.startsWith("/") ? endpoint : "/" + endpoint;
+  return clean.startsWith("/api") ? base + clean : base + "/api" + clean;
+};
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem('access_token');
@@ -14,7 +18,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-  const res = await fetch(`${BASE}${endpoint}`, { ...options, headers });
+  const res = await fetch(getFullUrl(endpoint), { ...options, headers });
   if (!res.ok) throw new Error(`API Error: ${res.status} ${res.statusText}`);
   return res.json();
 }
@@ -55,13 +59,13 @@ export const orderApi = {
     }),
 
   getInvoicePdfUrl: (id: number, download = false) => {
-    return `${BASE}/v1/orders/${id}/invoice-pdf${download ? '?download=true' : ''}`;
+    return `${getFullUrl("/v1/orders")}/${id}/invoice-pdf${download ? '?download=true' : ''}`;
   },
 
   downloadInvoicePdf: async (id: number) => {
     const token = localStorage.getItem('access_token');
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(`${BASE}/v1/orders/${id}/invoice-pdf?download=true`, { headers });
+    const res = await fetch(`${getFullUrl("/v1/orders")}/${id}/invoice-pdf?download=true`, { headers });
     if (!res.ok) throw new Error('Không thể tải hóa đơn PDF.');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
@@ -77,7 +81,7 @@ export const orderApi = {
   printInvoicePdf: async (id: number) => {
     const token = localStorage.getItem('access_token');
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(`${BASE}/v1/orders/${id}/invoice-pdf`, { headers });
+    const res = await fetch(`${getFullUrl("/v1/orders")}/${id}/invoice-pdf`, { headers });
     if (!res.ok) throw new Error('Không thể mở hóa đơn PDF.');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
