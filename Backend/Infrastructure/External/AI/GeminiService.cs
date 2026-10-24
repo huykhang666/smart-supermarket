@@ -11,6 +11,7 @@ namespace SmartSupermarket.Backend.Infrastructure.External.AI;
 public class GeminiService : ILlmClient
 {
     private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
     private readonly string _apiKey;
     private readonly string _model;
 
@@ -20,6 +21,7 @@ public class GeminiService : ILlmClient
     {
         _httpClient = httpClient;
         _httpClient.Timeout = TimeSpan.FromSeconds(60);
+        _configuration = configuration;
         _apiKey = configuration["Gemini:ApiKey"] ?? string.Empty;
         var modelConfig = configuration["Gemini:Model"];
         _model = string.IsNullOrWhiteSpace(modelConfig) ? "gemini-2.5-flash" : modelConfig;
@@ -36,11 +38,51 @@ public class GeminiService : ILlmClient
         bool requireJson = false,
         CancellationToken cancellationToken = default)
     {
+        if (!string.IsNullOrWhiteSpace(_apiKey) && _apiKey.StartsWith("AIzaSy"))
+        {
+            try
+            {
+                var geminiResult = await CallGeminiAsync(prompt, systemInstruction, requireJson, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(geminiResult) && !geminiResult.StartsWith("[Lỗi"))
+                {
+                    return geminiResult;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        var groqKey = _configuration["Groq:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(groqKey))
+        {
+            try
+            {
+                var groqResult = await CallGroqAsync(prompt, systemInstruction, requireJson, groqKey, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(groqResult) && !groqResult.StartsWith("{\"error\":"))
+                {
+                    return groqResult;
+                }
+            }
+            catch
+            {
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(_apiKey))
         {
             return "[Gemini API chưa được cấu hình. Vui lòng thêm Gemini:ApiKey vào appsettings.json]";
         }
 
+        return await CallGeminiAsync(prompt, systemInstruction, requireJson, cancellationToken);
+    }
+
+    private async Task<string> CallGeminiAsync(
+        string prompt,
+        string? systemInstruction,
+        bool requireJson,
+        CancellationToken cancellationToken)
+    {
         string fullPrompt = string.IsNullOrWhiteSpace(systemInstruction)
             ? prompt
             : $"[CHỈ DẪN HỆ THỐNG]:\n{systemInstruction}\n\n[YÊU CẦU NGƯỜI DÙNG]:\n{prompt}";
@@ -70,7 +112,6 @@ public class GeminiService : ILlmClient
         {
             var response = await _httpClient.PostAsync(url, content, cancellationToken);
 
-            // Tự động thử fallback sang gemini-2.0-flash hoặc gemini-1.5-flash nếu model chưa phát hành chính thức
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 var fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_apiKey}";
@@ -101,5 +142,56 @@ public class GeminiService : ILlmClient
         {
             return $"[Lỗi kết nối Gemini API]: {ex.Message}";
         }
+    }
+
+    private async Task<string> CallGroqAsync(
+        string prompt,
+        string? systemInstruction,
+        bool requireJson,
+        string apiKey,
+        CancellationToken cancellationToken)
+    {
+        var messages = new System.Collections.Generic.List<object>();
+        if (!string.IsNullOrWhiteSpace(systemInstruction))
+        {
+            messages.Add(new { role = "system", content = systemInstruction });
+        }
+        messages.Add(new { role = "user", content = prompt });
+
+        var requestPayload = new System.Collections.Generic.Dictionary<string, object>
+        {
+            ["model"] = _configuration["Groq:Model"] ?? "llama-3.3-70b-versatile",
+            ["messages"] = messages,
+            ["temperature"] = 0.5
+        };
+
+        if (requireJson)
+        {
+            requestPayload["response_format"] = new { type = "json_object" };
+        }
+
+        var requestJson = JsonSerializer.Serialize(requestPayload);
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
+        {
+            Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+        };
+        requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+        var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return $"{{\"error\": \"Lỗi Groq API [{response.StatusCode}]: {responseBody}\"}}";
+        }
+
+        using var doc = JsonDocument.Parse(responseBody);
+        var content = doc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString();
+
+        return content ?? string.Empty;
     }
 }

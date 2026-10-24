@@ -28,23 +28,27 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
 
     private sealed record ProductBatchSummary(int TotalStock, DateTime MinExpiry);
 
+    private sealed record IngredientQuery(
+        int? CategoryId,
+        string Keyword,
+        int DefaultQty,
+        string? ExcludeWord = null
+    );
+
     public async Task<MealPlanChatResponse> PlanMealAndShopAsync(MealPlanChatRequest request, CancellationToken cancellationToken = default)
     {
         var prompt = request.UserPrompt?.Trim() ?? string.Empty;
 
-        // Trích xuất số người ăn và ngân sách từ yêu cầu hoặc lịch sử chat
         int servings = request.NumberOfPeople ?? ParseServings(prompt, request.ConversationHistory);
         decimal targetBudget = request.TargetBudget ?? ParseBudget(prompt, request.ConversationHistory);
         if (targetBudget <= 0) targetBudget = 350000m;
 
-        // Nhận diện ý định: Chào hỏi, Hỏi mẹo nấu ăn thuần túy, hay Lên mâm cơm/mua sắm
         if (IsGreeting(prompt))
         {
             string greetingMsg = "Chào bạn! Mình là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket 🛒.\n\n" +
-                                 "Mình có thể gợi ý các mâm cơm gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), tư vấn bí quyết chế biến ngon bất bại, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu tươi mới từ kho siêu thị.\n\n" +
+                                 "Mình có thể gợi ý các mâm cơm gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), tư vấn bí quyết chế biến thơm ngon bất bại, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu tươi mới từ kho siêu thị.\n\n" +
                                  "Hôm nay bạn muốn nấu món gì hay cần mình gợi ý mâm cơm ngon cho gia đình ạ?";
 
-            // Thử gọi Gemini chào hỏi tự nhiên nếu có cấu hình
             try
             {
                 string greetingPrompt = $"Khách hàng vừa chào: \"{prompt}\". Hãy đáp lại thân thiện bằng tiếng Việt, xưng là 'mình' và gọi 'bạn', giới thiệu bản thân là Trợ lý Đầu bếp Smart Supermarket và hỏi xem khách muốn nấu món gì hoặc cần mâm cơm cho mấy người ăn.";
@@ -59,7 +63,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
             }
             catch
             {
-                // Fallback nếu mạng timeout hoặc API chưa sẵn sàng
             }
 
             return new MealPlanChatResponse
@@ -81,7 +84,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         {
             string culinaryAdvice = GenerateCulinaryKnowledgeAdvice(prompt);
 
-            // Gửi sang Gemini suy nghĩ câu trả lời ẩm thực sâu sắc
             try
             {
                 string adviceSystem = "Bạn là Đầu Bếp chuyên gia am hiểu cẩm nang nấu ăn hàng ngày của Cookpad Việt Nam. Bạn xưng 'mình' và gọi 'bạn'. Tư vấn mẹo nấu ăn chính xác, súc tích, gạch đầu dòng rõ ràng, không lan man.";
@@ -113,16 +115,13 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
             };
         }
 
-        // Xác định chủ đề món ăn phù hợp với yêu cầu
-        string mainDishTheme = DetermineDishTheme(prompt, request.ConversationHistory);
+        string mainDishTheme = DetermineDishTheme(prompt, targetBudget, servings, request.ConversationHistory);
 
-        // Lấy danh sách sản phẩm thật từ kho hàng
+        // Lấy danh sách sản phẩm từ kho hàng
         var dbProducts = await _dbContext.Products
-            .Where(p => p.Status == ProductStatus.Active)
             .Include(p => p.Category)
             .ToListAsync(cancellationToken);
 
-        // Lấy số tồn kho thực tế và hạn sử dụng từ lô hàng
         var batches = await _dbContext.InventoryBatches
             .Where(b => b.Quantity > 0)
             .ToListAsync(cancellationToken);
@@ -133,7 +132,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 g => g.Key,
                 g => new ProductBatchSummary(g.Sum(x => x.Quantity), g.Min(x => x.ExpiryDate)));
 
-        // Xây dựng 2 đến 3 Option thực đơn chuẩn vị Cookpad để khách hàng lựa chọn
         var mealOptions = BuildMealOptions(mainDishTheme, dbProducts, batchLookup, servings, targetBudget, request.PrioritizePromotions);
 
         var primaryOption = mealOptions.FirstOrDefault() ?? new MealOptionDto
@@ -143,22 +141,20 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
             Ingredients = new List<MealIngredientItemDto>()
         };
 
-        // Chuẩn bị thông điệp đầu bếp có liệt kê gạch đầu dòng rõ từng món và giá tiền
         string message = GenerateChefMealMessageWithMultiOptions(servings, targetBudget, mealOptions);
 
-        // Gọi trực tiếp Google Gemini qua ILlmClient để AI suy nghĩ và sinh phản hồi tự nhiên
         string systemInstruction =
             "Bạn là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket. " +
             "Bạn xưng là 'mình' và gọi người dùng là 'bạn'. " +
             "Hãy tham khảo công thức nấu ăn hàng ngày chuẩn vị từ Cookpad Việt Nam. " +
-            "Hãy phân tích yêu cầu của khách và gợi ý 2 đến 3 lựa chọn thực đơn rõ ràng, liệt kê các món ăn/nguyên liệu theo gạch đầu dòng kèm giá tiền ước tính. " +
-            "Không lan man, căn lề sạch sẽ và nhiệt tình.";
+            "Tư vấn thân thiện, súc tích, tóm tắt các lựa chọn thực đơn đã được thiết kế bên dưới, không liệt kê lại toàn bộ chi tiết bảng giá từng món vì hệ thống đã hiển thị bên dưới. " +
+            "Căn lề sạch sẽ và nhiệt tình.";
 
         string aiPrompt = $"Khách hàng hỏi: \"{prompt}\". " +
             $"Số người ăn: {servings} người, ngân sách: {targetBudget:N0} đ. " +
-            $"Chủ đề món ăn gợi ý: {mainDishTheme}. " +
-            $"Các nguyên liệu tiêu biểu trong kho siêu thị: {string.Join(", ", dbProducts.Take(12).Select(p => $"{p.ProductName} ({p.Price:N0} đ/{p.Unit})"))}. " +
-            "Hãy viết câu trả lời hoàn chỉnh để tư vấn cho khách.";
+            $"Các lựa chọn thực đơn đã được thiết kế từ kho hàng siêu thị:\n" +
+            string.Join("\n", mealOptions.Select((o, i) => $"- Lựa chọn {i + 1}: {o.OptionName} (Tổng chi phí: {o.TotalEstimatedCost:N0} đ). Mô tả: {o.Description}. Món chính: {string.Join(", ", o.Ingredients.Take(4).Select(x => x.ProductName))}")) +
+            "\nHãy viết lời tư vấn của đầu bếp gửi tới khách hàng, xưng là 'mình' và gọi 'bạn'.";
 
         try
         {
@@ -173,7 +169,6 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         }
         catch
         {
-            // Fallback sang thông điệp Cookpad nội bộ nếu mạng timeout hoặc API chưa sẵn sàng
         }
 
         return new MealPlanChatResponse
@@ -201,202 +196,495 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
     {
         var options = new List<MealOptionDto>();
 
-        if (theme.Contains("Lẩu"))
+        if (theme == "Bữa Ăn Tiết Kiệm")
         {
-            // Option 1: Lẩu Tiêu Chuẩn (Vừa vặn ngân sách, tươi ngon chuẩn vị Cookpad)
-            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            var q1 = new List<IngredientQuery>
             {
-                ("bò", servings >= 4 ? 1 : 1),
-                ("tôm", 1),
-                ("nấm kim châm", 2),
-                ("cải thảo", 1),
-                ("ngô", 2),
-                ("hạt nêm", 1)
+                new(9, "trứng gà", 1),
+                new(4, "rau muống", 1)
             };
-            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
             decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 1: Lẩu Tiêu Chuẩn (Tiết kiệm)",
-                DishName = "Lẩu Thái Chua Cay Tiêu Chuẩn",
-                Description = "Đầy đủ thịt bò tươi, tôm thẻ, nấm kim châm & rau củ thanh ngọt.",
+                OptionName = "Option 1: Cơm Trứng Chiên & Canh Rau Muống Luộc",
+                DishName = "Cơm Trứng Gà Chiên & Canh Rau Muống",
+                Description = "Trứng gà Ba Huân chiên vàng xốp, ăn kèm canh rau muống xanh giòn dầm chanh thanh mát.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Trứng")
+            });
+
+            var q2 = new List<IngredientQuery>
+            {
+                new(10, "omachi", servings > 1 ? servings : 1),
+                new(10, "xúc xích", 1),
+                new(4, "cải ngọt", 1)
+            };
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Mì Omachi Xúc Xích & Cải Ngọt Siêu Tốc",
+                DishName = "Mì Nấu Xúc Xích Vissan & Cải Ngọt",
+                Description = "Mì Omachi ngũ quả kèm xúc xích Vissan và rau cải ngọt VietGAP giòn ngọt, chế biến nhanh trong 5 phút.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Mì")
+            });
+
+            var q3 = new List<IngredientQuery>
+            {
+                new(10, "cá nục", 1),
+                new(4, "dưa leo", 1)
+            };
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 3: Cá Hộp Ba Cô Gái & Dưa Leo Baby",
+                DishName = "Cá Nục Sốt Cà & Dưa Leo Baby",
+                Description = "Cá nục sốt cà chua Ba Cô Gái sốt sánh mịn, ăn kèm dưa leo baby giòn mát và cơm nóng siêu đưa cơm.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Cá Hộp")
+            });
+        }
+        else if (theme == "Lẩu")
+        {
+            var q1 = new List<IngredientQuery>
+            {
+                new(9, "bò", servings >= 4 ? 2 : 1),
+                new(9, "tôm", 1),
+                new(4, "nấm kim châm", 2),
+                new(4, "cải thảo", 1),
+                new(4, "bắp ngọt", 2)
+            };
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Lẩu Thái Chua Cay Tiêu Chuẩn",
+                DishName = "Lẩu Thái Chua Cay Bò & Tôm",
+                Description = "Bò Úc Pacow thái lát mềm mọng kết hợp tôm thẻ tươi sống và nấm kim châm giòn ngọt.",
                 TotalEstimatedCost = cost1,
                 TotalSavedAmount = Math.Max(0, orig1 - cost1),
                 Ingredients = items1,
                 CookingTips = GenerateCookingTips("Lẩu")
             });
 
-            // Option 2: Lẩu Thịnh Soạn (Nhiều thịt bò Pacow, tôm mực, nấm đùi gà)
-            var opt2Keywords = new List<(string Keyword, int DefaultQty)>
+            var q2 = new List<IngredientQuery>
             {
-                ("bò", servings >= 4 ? 2 : 1),
-                ("tôm", 1),
-                ("mực", 1),
-                ("nấm kim châm", 2),
-                ("nấm đùi gà", 1),
-                ("cải thảo", 1),
-                ("rau muống", 1),
-                ("ngô", 2)
+                new(9, "bò", servings >= 4 ? 2 : 1),
+                new(9, "tôm", 1),
+                new(9, "mực", 1),
+                new(4, "nấm kim châm", 2),
+                new(4, "cải thảo", 1)
             };
-            var items2 = MatchProductsForKeywords(opt2Keywords, products, batchLookup, prioritizePromotions);
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
             decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 2: Lẩu Hải Sản & Bò Thịnh Soạn",
-                DishName = "Lẩu Thái Hải Sản & Bò Úc Đặc Biệt",
-                Description = "Gấp đôi thịt bò Úc Pacow, tôm tươi, mực ống giòn sần sật và nấm tươi phong phú.",
+                OptionName = "Option 2: Lẩu Hải Sản & Bò Úc Thịnh Soạn",
+                DishName = "Lẩu Thái Thập Cẩm Bò - Tôm - Mực",
+                Description = "Đại tiệc lẩu với bộ ba bò Úc, tôm tươi và mực ống giòn sần sật.",
                 TotalEstimatedCost = cost2,
                 TotalSavedAmount = Math.Max(0, orig2 - cost2),
                 Ingredients = items2,
                 CookingTips = GenerateCookingTips("Lẩu")
             });
 
-            // Option 3: Mâm Lẩu Bò Nấm Dưỡng Sinh
-            var opt3Keywords = new List<(string Keyword, int DefaultQty)>
+            var q3 = new List<IngredientQuery>
             {
-                ("bò", servings >= 4 ? 2 : 1),
-                ("nấm kim châm", 2),
-                ("nấm đùi gà", 2),
-                ("cải thảo", 1),
-                ("ngô", 2),
-                ("hạt nêm", 1)
+                new(9, "bò", servings >= 4 ? 2 : 1),
+                new(4, "nấm kim châm", 2),
+                new(4, "nấm đùi gà", 1),
+                new(4, "bắp ngọt", 2),
+                new(4, "cải thảo", 1)
             };
-            var items3 = MatchProductsForKeywords(opt3Keywords, products, batchLookup, prioritizePromotions);
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
             decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 3: Lẩu Bò & Nấm Thập Cẩm Thanh Ngọt",
+                OptionName = "Option 3: Lẩu Bò & Nấm Tươi Dưỡng Sinh",
                 DishName = "Lẩu Bò Nấm Tươi Dưỡng Sinh",
-                Description = "Vị nước dùng ngọt thanh từ ngô ngọt và các loại nấm tươi Hàn Quốc, nhúng bò Úc mềm mọng.",
+                Description = "Vị nước dùng ngọt thanh từ ngô ngọt Mỹ và các loại nấm tươi sạch Hàn Quốc.",
                 TotalEstimatedCost = cost3,
                 TotalSavedAmount = Math.Max(0, orig3 - cost3),
                 Ingredients = items3,
                 CookingTips = GenerateCookingTips("Lẩu")
             });
         }
-        else if (theme.Contains("Kho Tàu"))
+        else if (theme == "Thịt Kho Tàu")
         {
-            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            var q1 = new List<IngredientQuery>
             {
-                ("ba chỉ", servings >= 4 ? 2 : 1),
-                ("trứng", 1),
-                ("rau muống", 1),
-                ("nước mắm", 1)
+                new(9, "ba chỉ", servings >= 4 ? 2 : 1),
+                new(9, "trứng gà", 1),
+                new(4, "rau muống", 1)
             };
-            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
             decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 1: Thịt Kho Tàu & Canh Rau Muống",
+                OptionName = "Option 1: Thịt Ba Chỉ Kho Tàu & Canh Rau Muống",
                 DishName = "Thịt Ba Chỉ Kho Tàu & Canh Rau Muống",
-                Description = "Thịt ba chỉ MeatDeli kho trứng mềm rục, ăn kèm canh rau muống dầm chanh thanh mát.",
+                Description = "Thịt ba chỉ MeatDeli kho trứng mềm rục vàng óng, ăn kèm canh rau muống thanh mát.",
                 TotalEstimatedCost = cost1,
                 TotalSavedAmount = Math.Max(0, orig1 - cost1),
                 Ingredients = items1,
                 CookingTips = GenerateCookingTips("Kho Tàu")
             });
 
-            var opt2Keywords = new List<(string Keyword, int DefaultQty)>
+            var q2 = new List<IngredientQuery>
             {
-                ("ba chỉ", servings >= 4 ? 2 : 1),
-                ("trứng", 1),
-                ("cà chua", 1),
-                ("rau muống", 1),
-                ("nước mắm", 1),
-                ("đường", 1)
+                new(9, "nạc dăm", servings >= 4 ? 2 : 1),
+                new(4, "cải ngọt", 1),
+                new(4, "cà chua", 1)
             };
-            var items2 = MatchProductsForKeywords(opt2Keywords, products, batchLookup, prioritizePromotions);
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
             decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 2: Thịt Kho Tàu & Canh Cà Chua Trứng",
-                DishName = "Mâm Cơm Gia Đình Thịt Kho & Canh Cà Chua",
-                Description = "Thịt ba chỉ kho béo ngậy kèm bát canh trứng cà chua thơm lừng.",
+                OptionName = "Option 2: Thịt Nạc Dăm Xào Cải Ngọt & Canh Cà Chua",
+                DishName = "Thịt Nạc Dăm Xào Cải & Canh Cà Chua",
+                Description = "Thịt nạc dăm mềm ngọt xào cải xanh giòn, kèm bát canh cà chua trứng dịu mát.",
                 TotalEstimatedCost = cost2,
                 TotalSavedAmount = Math.Max(0, orig2 - cost2),
                 Ingredients = items2,
                 CookingTips = GenerateCookingTips("Kho Tàu")
             });
-        }
-        else if (theme.Contains("Sốt Vang"))
-        {
-            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+
+            var q3 = new List<IngredientQuery>
             {
-                ("bò", servings >= 4 ? 2 : 1),
-                ("khoai tây", 1),
-                ("cà rốt", 1),
-                ("cà chua", 1),
-                ("bánh mì", servings >= 4 ? 4 : 2)
+                new(9, "ba rọi", servings >= 4 ? 2 : 1),
+                new(4, "mướp hương", 1),
+                new(4, "hành lá", 1)
             };
-            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
-            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
-            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 1: Bò Úc Sốt Vang Tiêu Chuẩn & Bánh Mì",
-                DishName = "Bò Úc Sốt Vang Bánh Mì",
-                Description = "Thịt bò Úc thái vuông om cà chua sánh mịn, khoai tây cà rốt mềm ngọt.",
-                TotalEstimatedCost = cost1,
-                TotalSavedAmount = Math.Max(0, orig1 - cost1),
-                Ingredients = items1,
-                CookingTips = GenerateCookingTips("Sốt Vang")
+                OptionName = "Option 3: Thịt Ba Rọi Rang Cháy Cạnh & Canh Mướp",
+                DishName = "Thịt Ba Rọi Rang Cháy Cạnh & Canh Mướp Hương",
+                Description = "Thịt ba rọi rút sườn C.P rang xém cạnh thơm nức mùi hành hoa, canh mướp ngọt lành.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Kho Tàu")
             });
         }
-        else
+        else if (theme == "Sườn Non")
         {
-            var opt1Keywords = new List<(string Keyword, int DefaultQty)>
+            var q1 = new List<IngredientQuery>
             {
-                ("sườn", servings >= 4 ? 2 : 1),
-                ("cà chua", 1),
-                ("rau muống", 1),
-                ("nước mắm", 1)
+                new(9, "sườn non", servings >= 4 ? 2 : 1),
+                new(4, "cà chua", 1),
+                new(4, "rau muống", 1)
             };
-            var items1 = MatchProductsForKeywords(opt1Keywords, products, batchLookup, prioritizePromotions);
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
             decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 1: Sườn Xào Chua Ngọt & Canh Rau Muống",
+                OptionName = "Option 1: Sườn Non Xào Chua Ngọt & Canh Rau Muống",
                 DishName = "Sườn Non Xào Chua Ngọt & Canh Rau Muống",
-                Description = "Sườn non xào đậm đà óng ánh, canh rau thanh mát vừa miệng.",
+                Description = "Sườn non tươi C.P đảo sốt cà chua óng ả đậm đà, canh rau muống luộc giòn mát.",
                 TotalEstimatedCost = cost1,
                 TotalSavedAmount = Math.Max(0, orig1 - cost1),
                 Ingredients = items1,
                 CookingTips = GenerateCookingTips("Chua Ngọt")
             });
 
-            var opt2Keywords = new List<(string Keyword, int DefaultQty)>
+            var q2 = new List<IngredientQuery>
             {
-                ("ba chỉ", servings >= 4 ? 2 : 1),
-                ("trứng", 1),
-                ("rau muống", 1),
-                ("nước mắm", 1)
+                new(9, "sườn non", servings >= 4 ? 2 : 1),
+                new(4, "cải ngọt", 1),
+                new(9, "trứng gà", 1)
             };
-            var items2 = MatchProductsForKeywords(opt2Keywords, products, batchLookup, prioritizePromotions);
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
             decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
             decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
             options.Add(new MealOptionDto
             {
-                OptionName = "Option 2: Thịt Ba Chỉ Kho Tàu Đậm Vị",
-                DishName = "Thịt Ba Chỉ Kho Tàu & Canh Rau",
-                Description = "Thịt ba chỉ thái miếng vuông kho vàng óng thơm ngậy cùng trứng luộc.",
+                OptionName = "Option 2: Canh Sườn Cải Ngọt & Trứng Chiên",
+                DishName = "Canh Sườn Non Nấu Cải Ngọt & Trứng Chiên",
+                Description = "Nước canh sườn ngọt lịm từ xương, thêm đĩa trứng chiên xốp vàng ruộm.",
                 TotalEstimatedCost = cost2,
                 TotalSavedAmount = Math.Max(0, orig2 - cost2),
                 Ingredients = items2,
+                CookingTips = GenerateCookingTips("Chua Ngọt")
+            });
+
+            var q3 = new List<IngredientQuery>
+            {
+                new(9, "sườn non", servings >= 4 ? 2 : 1),
+                new(4, "mướp hương", 1),
+                new(4, "hành lá", 1)
+            };
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 3: Sườn Heo Rim Mặn Ngọt & Canh Mướp",
+                DishName = "Sườn Non Rim Mặn Ngọt & Canh Mướp Hương",
+                Description = "Sườn chặt nhỏ rim keo thơm lừng hành tỏi, canh mướp đồng quê thơm ngát.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Chua Ngọt")
+            });
+        }
+        else if (theme == "Thịt Gà")
+        {
+            var q1 = new List<IngredientQuery>
+            {
+                new(9, "đùi gà", servings >= 4 ? 2 : 1),
+                new(4, "bắp cải trắng", 1),
+                new(4, "hành lá", 1)
+            };
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Đùi Gà Rim Mắm Tỏi & Canh Bắp Cải",
+                DishName = "Đùi Gà Rim Mắm Tỏi & Canh Bắp Cải",
+                Description = "Đùi gà C.P thịt chắc rim đậm đà nước mắm tỏi ớt, canh bắp cải luộc chấm trứng hoặc dầm sấu.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Gà")
+            });
+
+            var q2 = new List<IngredientQuery>
+            {
+                new(9, "ức gà", servings >= 4 ? 2 : 1),
+                new(4, "nấm đùi gà", 1),
+                new(4, "cải ngọt", 1)
+            };
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Ức Gà Xào Nấm Đùi Gà & Canh Cải",
+                DishName = "Ức Gà Xào Nấm Đùi Gà & Canh Cải Ngọt",
+                Description = "Ức gà mềm giàu đạm xào nấm đùi gà giòn sần sật, thanh nhẹ tốt cho sức khỏe.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Gà")
+            });
+
+            var q3 = new List<IngredientQuery>
+            {
+                new(9, "cánh gà", servings >= 4 ? 2 : 1),
+                new(4, "cà chua", 1),
+                new(4, "hành lá", 1)
+            };
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 3: Cánh Gà Chiên & Canh Cà Chua Trứng",
+                DishName = "Cánh Gà Chiên Nước Mắm & Canh Cà Chua",
+                Description = "Cánh gà chiên da giòn rụm óng ánh, ăn kèm canh cà chua thanh dịu ngọt ngào.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Gà")
+            });
+        }
+        else if (theme == "Bò Úc")
+        {
+            var q1 = new List<IngredientQuery>
+            {
+                new(9, "bò", servings >= 4 ? 2 : 1),
+                new(4, "khoai tây", 1),
+                new(4, "cà rốt", 1),
+                new(4, "cà chua", 1)
+            };
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Bò Úc Sốt Vang Tiêu Chuẩn",
+                DishName = "Bò Úc Sốt Vang Khoai Tây Cà Rốt",
+                Description = "Thịt bò Úc Pacow thái vuông om mềm sánh sệt cùng khoai tây vàng và cà rốt Đà Lạt.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Sốt Vang")
+            });
+
+            var q2 = new List<IngredientQuery>
+            {
+                new(9, "bò", servings >= 4 ? 2 : 1),
+                new(4, "nấm kim châm", 1),
+                new(4, "cải ngọt", 1)
+            };
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Thịt Bò Xào Nấm Kim Châm & Cải Ngọt",
+                DishName = "Bò Úc Xào Nấm Kim Châm & Cải Xanh",
+                Description = "Thịt bò xào lửa lớn mềm mọng, nấm kim châm giòn sần sật cuốn hút.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Sốt Vang")
+            });
+
+            var q3 = new List<IngredientQuery>
+            {
+                new(9, "bò", servings >= 4 ? 2 : 1),
+                new(4, "cà chua", 1),
+                new(9, "trứng gà", 1)
+            };
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 3: Canh Thịt Bò Cà Chua Trứng Thanh Mát",
+                DishName = "Canh Thịt Bò Cà Chua Trứng",
+                Description = "Nước canh thanh ngọt bổ dưỡng, màu sắc rực rỡ bắt mắt và nhẹ bụng.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Sốt Vang")
+            });
+        }
+        else if (theme == "Món Chay")
+        {
+            var q1 = new List<IngredientQuery>
+            {
+                new(4, "nấm đùi gà", 1),
+                new(4, "nấm kim châm", 1),
+                new(4, "cải thảo", 1),
+                new(4, "mướp hương", 1)
+            };
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Mâm Nấm Xào & Canh Cải Thảo Thanh Đạm",
+                DishName = "Mâm Cơm Chay Nấm Tươi & Cải Thảo",
+                Description = "Nấm đùi gà xào sả ớt giòn thơm, ăn cùng canh cải thảo ngọt thanh mát lành.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
+                CookingTips = GenerateCookingTips("Chay")
+            });
+
+            var q2 = new List<IngredientQuery>
+            {
+                new(4, "nấm đùi gà", 1),
+                new(4, "bắp ngọt", 2),
+                new(4, "rau muống", 1),
+                new(4, "bắp cải trắng", 1)
+            };
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Canh Ngô Ngọt Nấm & Rau Muống Xào",
+                DishName = "Canh Bắp Ngọt Nấm & Rau Muống Xào Tỏi",
+                Description = "Bắp ngọt Mỹ hầm nước dùng ngọt lịm, đĩa rau muống xanh mướt giòn rụm.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Chay")
+            });
+        }
+        else
+        {
+            var q1 = new List<IngredientQuery>
+            {
+                new(9, "ba chỉ", servings >= 4 ? 2 : 1),
+                new(9, "trứng gà", 1),
+                new(4, "rau muống", 1)
+            };
+            var items1 = MatchProductsForQueries(q1, products, batchLookup, prioritizePromotions);
+            decimal cost1 = items1.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig1 = items1.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 1: Thịt Ba Chỉ Kho Tàu & Canh Rau Muống",
+                DishName = "Thịt Ba Chỉ Kho Tàu & Canh Rau Muống",
+                Description = "Thịt ba chỉ MeatDeli kho trứng mềm rục vàng óng, ăn kèm canh rau muống thanh mát.",
+                TotalEstimatedCost = cost1,
+                TotalSavedAmount = Math.Max(0, orig1 - cost1),
+                Ingredients = items1,
                 CookingTips = GenerateCookingTips("Kho Tàu")
+            });
+
+            var q2 = new List<IngredientQuery>
+            {
+                new(9, "đùi gà", servings >= 4 ? 2 : 1),
+                new(4, "cải ngọt", 1),
+                new(4, "hành lá", 1)
+            };
+            var items2 = MatchProductsForQueries(q2, products, batchLookup, prioritizePromotions);
+            decimal cost2 = items2.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig2 = items2.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 2: Đùi Gà Rim Mắm & Canh Cải Ngọt (Tiết kiệm)",
+                DishName = "Đùi Gà Rim & Canh Cải Ngọt",
+                Description = "Đùi gà C.P rim mắm tỏi thơm lừng, canh cải ngọt VietGAP thanh nhẹ vừa túi tiền.",
+                TotalEstimatedCost = cost2,
+                TotalSavedAmount = Math.Max(0, orig2 - cost2),
+                Ingredients = items2,
+                CookingTips = GenerateCookingTips("Gà")
+            });
+
+            var q3 = new List<IngredientQuery>
+            {
+                new(9, "sườn non", servings >= 4 ? 2 : 1),
+                new(4, "cà chua", 1),
+                new(4, "mướp hương", 1)
+            };
+            var items3 = MatchProductsForQueries(q3, products, batchLookup, prioritizePromotions);
+            decimal cost3 = items3.Sum(i => i.FinalPrice * i.QuantityToBuy);
+            decimal orig3 = items3.Sum(i => i.RegularPrice * i.QuantityToBuy);
+            options.Add(new MealOptionDto
+            {
+                OptionName = "Option 3: Sườn Non Xào Chua Ngọt & Canh Mướp",
+                DishName = "Sườn Non Xào Chua Ngọt & Canh Mướp",
+                Description = "Sườn non tươi C.P sốt sánh óng ánh, canh mướp ngọt lành giải nhiệt.",
+                TotalEstimatedCost = cost3,
+                TotalSavedAmount = Math.Max(0, orig3 - cost3),
+                Ingredients = items3,
+                CookingTips = GenerateCookingTips("Chua Ngọt")
             });
         }
 
         return options;
     }
 
-    private static List<MealIngredientItemDto> MatchProductsForKeywords(
-        List<(string Keyword, int DefaultQty)> keywords,
+    private static List<MealIngredientItemDto> MatchProductsForQueries(
+        List<IngredientQuery> queries,
         List<Product> products,
         Dictionary<int, ProductBatchSummary> batchLookup,
         bool prioritizePromotions)
@@ -404,11 +692,13 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         var result = new List<MealIngredientItemDto>();
         var selectedProductIds = new HashSet<int>();
 
-        foreach (var (kw, qty) in keywords)
+        foreach (var q in queries)
         {
             var match = products
                 .Where(p => !selectedProductIds.Contains(p.ProductId))
-                .Where(p => p.ProductName.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                .Where(p => !q.CategoryId.HasValue || p.CategoryId == q.CategoryId.Value)
+                .Where(p => p.ProductName.Contains(q.Keyword, StringComparison.OrdinalIgnoreCase))
+                .Where(p => string.IsNullOrEmpty(q.ExcludeWord) || !p.ProductName.Contains(q.ExcludeWord, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(p => p.Price > 0)
                 .FirstOrDefault();
 
@@ -446,7 +736,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 Barcode = match.Barcode,
                 ImageUrl = match.ImageUrl ?? "/images/products/default.png",
                 Unit = match.Unit,
-                QuantityToBuy = qty,
+                QuantityToBuy = q.DefaultQty,
                 RegularPrice = regularPrice,
                 FinalPrice = finalPrice,
                 DiscountPercent = discountPercent,
@@ -465,34 +755,20 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         List<MealOptionDto> options)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Dạ, với yêu cầu của bạn, mình đã lên **{options.Count} lựa chọn thực đơn** phù hợp cho **{servings} người ăn** (ngân sách dự kiến: {targetBudget:N0} đ):\n");
+        sb.AppendLine($"Dạ, theo yêu cầu của bạn (**{servings} người ăn**, ngân sách dự kiến **~{targetBudget:N0} đ**), mình đã cân đối và thiết kế **{options.Count} mâm cơm chuẩn vị theo cẩm nang Cookpad**:\n");
 
         for (int i = 0; i < options.Count; i++)
         {
             var opt = options[i];
             string icon = i == 0 ? "🍲" : (i == 1 ? "✨" : "🌿");
-            sb.AppendLine($"{icon} **{opt.OptionName} (Tổng: {opt.TotalEstimatedCost:N0} đ)**");
-            if (!string.IsNullOrEmpty(opt.Description))
+            sb.AppendLine($"{icon} **{opt.OptionName}** (~**{opt.TotalEstimatedCost:N0} đ**)");
+            if (!string.IsNullOrWhiteSpace(opt.Description))
             {
-                sb.AppendLine($"  *Đặc điểm: {opt.Description}*");
+                sb.AppendLine($"   *{opt.Description}*");
             }
-            sb.AppendLine("  **Danh sách nguyên liệu:**");
-
-            foreach (var ing in opt.Ingredients)
-            {
-                decimal lineTotal = ing.FinalPrice * ing.QuantityToBuy;
-                string promoTag = ing.DiscountPercent > 0 ? $" *(Giảm {ing.DiscountPercent}% Flash Sale)*" : "";
-                sb.AppendLine($"  • **{ing.ProductName}** ({ing.QuantityToBuy} {ing.Unit}): **{lineTotal:N0} đ**{promoTag}");
-            }
-
-            if (opt.TotalSavedAmount > 0)
-            {
-                sb.AppendLine($"  💰 *Tiết kiệm hôm nay: -{opt.TotalSavedAmount:N0} đ*");
-            }
-            sb.AppendLine();
         }
 
-        sb.AppendLine("Mời bạn bấm vào nút lựa chọn bên dưới để xem chi tiết mâm nguyên liệu, tùy ý thêm/bớt món trước khi nạp vào giỏ hàng nhé!");
+        sb.AppendLine("\n👉 Bạn có thể xem chi tiết nguyên liệu, giá tiền từng món và tùy ý thêm/bớt ở các thẻ mâm cơm bên dưới, sau đó bấm **\"Chọn mâm này\"** để nạp nhanh vào giỏ hàng nhé!");
         return sb.ToString().TrimEnd();
     }
 
@@ -628,37 +904,39 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         return null;
     }
 
-    private static string DetermineDishTheme(string prompt, List<ChatMessageDto>? history)
+    private static string DetermineDishTheme(string prompt, decimal budget, int servings, List<ChatMessageDto>? history)
     {
         string p = prompt.ToLowerInvariant();
-        if (p.Contains("lẩu") || p.Contains("lau"))
-        {
-            if (p.Contains("hải sản") || p.Contains("tôm") || p.Contains("mực")) return "Lẩu Thái Hải Sản Chua Cay";
-            if (p.Contains("bò")) return "Lẩu Bò Nấm Thập Cẩm";
-            return "Lẩu Thái Chua Cay Thập Cẩm";
-        }
-        if (p.Contains("thịt kho") || p.Contains("kho tàu") || p.Contains("ba chỉ kho")) return "Thịt Ba Chỉ Kho Tàu & Canh Rau Muống";
-        if (p.Contains("bò sốt vang") || p.Contains("sốt vang")) return "Bò Úc Sốt Vang & Bánh Mì";
-        if (p.Contains("canh chua") || p.Contains("cá hồi")) return "Canh Chua Cá Hồi & Thịt Ba Chỉ Rang";
-        if (p.Contains("chay") || p.Contains("thanh đạm") || p.Contains("nấm đậu")) return "Mâm Cơm Chay Nấm Đậu Thanh Đạm";
-        if (p.Contains("sườn") || p.Contains("chua ngọt")) return "Sườn Non Xào Chua Ngọt & Canh Cải";
-        if (p.Contains("gà") || p.Contains("kho gừng")) return "Gà Ta Kho Gừng Sả & Canh Rau";
-        if (p.Contains("mực") || p.Contains("cần tỏi")) return "Mực Tươi Xào Cần Tỏi & Canh Cà Chua";
 
-        // Tra cứu tiếp trong lịch sử hội thoại gần nhất nếu prompt hiện tại ngắn
+        if (p.Contains("lẩu") || p.Contains("lau")) return "Lẩu";
+        if (p.Contains("sườn") || p.Contains("chua ngọt")) return "Sườn Non";
+        if (p.Contains("thịt kho") || p.Contains("kho tàu") || p.Contains("ba chỉ") || p.Contains("ba rọi")) return "Thịt Kho Tàu";
+        if (p.Contains("bò sốt vang") || p.Contains("sốt vang") || p.Contains("thịt bò")) return "Bò Úc";
+        if (p.Contains("gà") || p.Contains("thịt gà") || p.Contains("cánh gà") || p.Contains("đùi gà") || p.Contains("ức gà")) return "Thịt Gà";
+        if (p.Contains("chay") || p.Contains("thanh đạm")) return "Món Chay";
+        if (p.Contains("trứng") || p.Contains("trứng chiên") || p.Contains("trứng rán")) return "Bữa Ăn Tiết Kiệm";
+        if (p.Contains("mì") || p.Contains("mì tôm") || p.Contains("omachi") || p.Contains("hảo hảo")) return "Bữa Ăn Tiết Kiệm";
+        if (p.Contains("cá hộp") || p.Contains("đồ hộp")) return "Bữa Ăn Tiết Kiệm";
+
         if (history != null && history.Any())
         {
             foreach (var msg in history.AsEnumerable().Reverse())
             {
                 string hp = msg.Content.ToLowerInvariant();
-                if (hp.Contains("lẩu")) return "Lẩu Thái Chua Cay Thập Cẩm";
-                if (hp.Contains("bò sốt vang")) return "Bò Úc Sốt Vang & Bánh Mì";
-                if (hp.Contains("thịt kho")) return "Thịt Ba Chỉ Kho Tàu & Canh Rau Muống";
-                if (hp.Contains("sườn")) return "Sườn Non Xào Chua Ngọt & Canh Cải";
+                if (hp.Contains("lẩu")) return "Lẩu";
+                if (hp.Contains("sườn")) return "Sườn Non";
+                if (hp.Contains("thịt kho") || hp.Contains("kho tàu")) return "Thịt Kho Tàu";
+                if (hp.Contains("sốt vang") || hp.Contains("thịt bò")) return "Bò Úc";
+                if (hp.Contains("thịt gà") || hp.Contains("gà")) return "Thịt Gà";
             }
         }
 
-        return "Mâm Cơm Gia Đình Dinh Dưỡng";
+        if (budget <= 60000m || (servings == 1 && budget <= 70000m) || p.Contains("tiết kiệm") || p.Contains("sinh viên") || p.Contains("bình dân") || p.Contains("giá rẻ"))
+        {
+            return "Bữa Ăn Tiết Kiệm";
+        }
+
+        return "Cơm Gia Đình Hàng Ngày";
     }
 
     private static string GenerateCookingTips(string theme)
@@ -666,18 +944,18 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         if (theme.Contains("Lẩu"))
         {
             return "1. Rửa sạch rau nấm và cắt khúc vừa ăn. Ngâm nấm kim châm vào nước muối loãng 5 phút rồi để ráo.\n" +
-                   "2. Nấu 1.8L nước sôi, cho ngô ngọt cắt khoanh và gói gia vị lẩu vào đun sôi 5-7 phút để nước dùng ngọt thanh tự nhiên.\n" +
+                   "2. Nấu 1.8L nước sôi, cho ngô ngọt cắt khoanh vào đun 5-7 phút để nước dùng ngọt thanh tự nhiên.\n" +
                    "3. Nhúng thịt bò Úc Pacow và hải sản vừa chín tới để giữ vị ngọt mềm, ăn kèm nấm và rau xanh khi nước lẩu sôi bùng.";
         }
         if (theme.Contains("Kho Tàu"))
         {
             return "1. Thịt ba chỉ rửa sạch, chần sơ nước sôi rồi thái vuông 3-4cm. Ướp nước mắm cốt, hành tỏi băm, tiêu trong 20 phút.\n" +
-                   "2. Thắng đường caramen màu cánh gián, cho thịt vào đảo săn đều rồi thêm nước dừa xiêm kho nhỏ lửa liu riu 35 phút.\n" +
+                   "2. Thắng đường caramen màu cánh gián, cho thịt vào đảo săn đều rồi thêm nước kho nhỏ lửa liu riu 35 phút.\n" +
                    "3. Thả trứng luộc vào kho tiếp 15 phút đến khi thịt mềm rục, mỡ trong veo và nước sốt sánh mịn óng ánh.";
         }
         if (theme.Contains("Sốt Vang"))
         {
-            return "1. Thịt bò Úc thái quân cờ, chần sơ rồi ướp hạt nêm, tiêu, tỏi băm và một chút rượu vang đỏ trong 25 phút.\n" +
+            return "1. Thịt bò Úc thái quân cờ, chần sơ rồi ướp hạt nêm, tiêu, tỏi băm và một chút gia vị trong 25 phút.\n" +
                    "2. Xào thịt bò với bơ tỏi cho xém cạnh, cho cà chua xào nhuyễn vào đảo đều, châm nước hầm nhỏ lửa 40 phút.\n" +
                    "3. Thêm khoai tây và cà rốt cắt khối vào hầm tiếp 15 phút đến khi rau củ mềm, nước sốt sánh sệt thì ăn kèm bánh mì giòn.";
         }
@@ -687,11 +965,35 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                    "2. Rán sườn vàng xém 2 mặt. Pha sốt chua ngọt tỉ lệ vàng: 2 thìa nước mắm, 2 thìa đường, 2 thìa giấm, 1 thìa tương cà.\n" +
                    "3. Phi thơm hành tỏi, trút sườn và sốt vào đun lửa nhỏ đến khi sốt sền sệt quyện đều quanh từng miếng sườn.";
         }
+        if (theme.Contains("Gà"))
+        {
+            return "1. Gà rửa sạch bằng nước muối loãng, chặt miếng vừa ăn và để thật ráo nước.\n" +
+                   "2. Ướp gà với 1 thìa nước mắm, tỏi băm, hạt tiêu trong 15 phút cho ngấm đều.\n" +
+                   "3. Rán sơ cho da gà xém vàng, sau đó đổ sốt mắm tỏi ớt vào đảo nhỏ lửa cho đến khi gà ngấm nước sốt keo lại.";
+        }
+        if (theme.Contains("Trứng"))
+        {
+            return "1. Đập trứng vào bát, thêm 1 thìa cà phê nước mắm, xíu tiêu và hành lá thái nhỏ. Đánh đều tay cho trứng nổi bọt mịn.\n" +
+                   "2. Đun nóng chảo với dầu ăn, hạ lửa vừa rồi đổ trứng vào. Khi viền trứng phồng vàng thì khéo léo cuộn hoặc lật mặt để trứng xốp mềm không bị khô.\n" +
+                   "3. Nấu nồi nước sôi, cho 1/2 thìa muối rồi thả rau muống vào luộc lửa lớn không đậy vung để rau xanh mướt.";
+        }
+        if (theme.Contains("Mì"))
+        {
+            return "1. Rửa sạch rau cải ngọt, cắt khúc 4-5cm. Cắt xúc xích thành các lát xéo đẹp mắt.\n" +
+                   "2. Nấu 450ml nước sôi, cho gói gia vị mì và rau cải vào nấu 1 phút cho rau vừa chín tới.\n" +
+                   "3. Thả vắt mì Omachi và xúc xích vào nấu thêm 2 phút, tắt bếp và thưởng thức ngay khi sợi mì còn dai giòn.";
+        }
+        if (theme.Contains("Cá Hộp"))
+        {
+            return "1. Rửa sạch dưa leo baby, ngâm nước muối loãng rồi thái lát tròn hoặc thanh dài giòn mát.\n" +
+                   "2. Đun nóng 1 thìa dầu ăn, phi thơm đầu hành băm rồi đổ cá hộp sốt cà vào đun sôi nhỏ lửa 2-3 phút cho sốt sánh đậm đà.\n" +
+                   "3. Rắc thêm chút tiêu xay, dùng nóng với cơm trắng và chấm kèm dưa leo baby giòn rụm.";
+        }
         if (theme.Contains("Chay"))
         {
             return "1. Nấm đùi gà và nấm kim châm ngâm nước muối loãng 5 phút, rửa sạch, cắt miếng vừa ăn.\n" +
-                   "2. Phi thơm sả ớt băm nhuyễn với dầu đậu nành Simply, cho nấm vào đảo nhanh tay ở lửa lớn để nấm giữ độ giòn ngọt.\n" +
-                   "3. Nêm hạt nêm chay nấm hương và chút tiêu xay, dùng nóng cùng cơm trắng và canh rau muống luộc thanh mát.";
+                   "2. Phi thơm sả tỏi với dầu đậu nành, cho nấm vào đảo nhanh tay ở lửa lớn để nấm giữ độ giòn ngọt thanh khiết.\n" +
+                   "3. Nêm gia vị vừa miệng, dùng nóng cùng cơm trắng và canh cải thảo ngọt mát.";
         }
 
         return "1. Sơ chế sạch sẽ các nguyên liệu tươi sống và để ráo nước hoàn toàn trước khi nấu.\n" +
