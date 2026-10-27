@@ -61,6 +61,10 @@ public static class DependencyInjection
         services.AddHttpClient<GroqClient>();
         services.AddScoped<ILlmClient, GeminiService>();
         services.AddScoped<GeminiService>();
+        services.AddHttpClient<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.GeminiGateway>();
+        services.AddHttpClient<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.GroqGateway>();
+        services.AddSingleton<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.LocalFallbackGateway>();
+        services.AddScoped<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.ILLMGateway, SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.LlmGateway>();
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IAiRetailService, AiRetailService>();
         services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
