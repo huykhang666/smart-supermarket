@@ -1,0 +1,450 @@
+<ui:FluentWindow x:Class="SmartSupermarket.POS.Views.Windows.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Smart Supermarket • Đăng Nhập Hệ Thống POS"
+        Height="740" Width="1200"
+        MinHeight="660" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="None">
+
+    <Window.Resources>
+        <!-- Glassmorphic Transparent TextBox Template -->
+        <Style x:Key="ModernInputTextStyle" TargetType="TextBox">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="CaretBrush" Value="#38BDF8" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="SelectionBrush" Value="#38BDF8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="Transparent" BorderThickness="0">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Glassmorphic Transparent PasswordBox Template -->
+        <Style x:Key="ModernInputPasswordStyle" TargetType="PasswordBox">
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="CaretBrush" Value="#38BDF8" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="SelectionBrush" Value="#38BDF8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border Background="Transparent" BorderThickness="0">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TitleBar Action Buttons (Minimize, Maximize, Close) -->
+        <Style x:Key="TitleBarActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bgBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#25FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#40FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Close Button (Red on Hover) -->
+        <Style x:Key="TitleBarCloseActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bgBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#E11D48" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#BE123C" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Background Supermarket Gourmet Poster -->
+        <Image Source="pack://application:,,,/Assets/Images/pos_login_poster.jpg"
+               Stretch="UniformToFill"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
+
+        <!-- Atmospheric Soft Gradient Overlay -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#10000000" Offset="0.0" />
+                    <GradientStop Color="#00000000" Offset="0.45" />
+                    <GradientStop Color="#45030712" Offset="0.70" />
+                    <GradientStop Color="#8002050B" Offset="1.0" />
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+
+        <!-- Main Window Container -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Custom Clean TitleBar -->
+            <Grid Grid.Row="0" Background="#30000000" MouseDown="TitleBar_MouseDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Viewbox Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M 1,1 L 4,1 L 6.68,13.4 C 6.8,14 7.3,14.5 8,14.5 L 18.5,14.5 C 19.2,14.5 19.7,14 19.85,13.4 L 22,4.5 L 5.5,4.5"
+                                  Stroke="#38BDF8" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                            <Ellipse Canvas.Left="7" Canvas.Top="17.5" Width="3" Height="3" Fill="#38BDF8" />
+                            <Ellipse Canvas.Left="17" Canvas.Top="17.5" Width="3" Height="3" Fill="#38BDF8" />
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="KATQ Supermarket"
+                               Foreground="#CBD5E1" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Center Drag Region -->
+                <Rectangle Grid.Column="1" Fill="Transparent" />
+
+                <!-- Right Window Control Buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMinimize_Click" ToolTip="Thu nhỏ">
+                        <ui:SymbolIcon Symbol="Subtract16" FontSize="14" Foreground="#E2E8F0" />
+                    </Button>
+                    <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMaximize_Click" ToolTip="Phóng to / Thu nhỏ">
+                        <ui:SymbolIcon Symbol="Maximize16" FontSize="14" Foreground="#E2E8F0" />
+                    </Button>
+                    <Button Style="{StaticResource TitleBarCloseActionBtn}" Click="BtnClose_Click" ToolTip="Đóng">
+                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="#FFFFFF" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- 2-Column Split: Left (Pure Visual Art) & Right (Professional Login Card) -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.15*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Column is left pure & clean for the photographic poster art -->
+                <Grid Grid.Column="0" />
+
+                <!-- Right Column: Professional Floating Glass Card -->
+                <Grid Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,10,70,20">
+                    <Border Width="410"
+                            CornerRadius="20"
+                            BorderThickness="1"
+                            Padding="36,34,36,32">
+
+                        <!-- Natural Soft Ambient Shadow (No tacky neon glow) -->
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="45" ShadowDepth="12" Opacity="0.6" Direction="270" />
+                        </Border.Effect>
+
+                        <!-- Subtle Translucent Specular Glass Border -->
+                        <Border.BorderBrush>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#40FFFFFF" Offset="0.0" />
+                                <GradientStop Color="#18FFFFFF" Offset="0.5" />
+                                <GradientStop Color="#3038BDF8" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.BorderBrush>
+
+                        <!-- Sophisticated Translucent Slate Glass Fill -->
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#900F172A" Offset="0.0" />
+                                <GradientStop Color="#950B1322" Offset="0.5" />
+                                <GradientStop Color="#A0060C16" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+
+                        <StackPanel>
+                            <!-- Card Header: Brand Logo & Title moved inside the card -->
+                            <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
+                                <!-- Soothing Ocean Cyan Frosted Glass Badge (Harmonious with Wallpaper) -->
+                                <Border Width="58" Height="58"
+                                        CornerRadius="18"
+                                        BorderThickness="1.2"
+                                        HorizontalAlignment="Center"
+                                        Margin="0,0,0,14">
+                                    <Border.BorderBrush>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#8038BDF8" Offset="0.0" />
+                                            <GradientStop Color="#250284C7" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.BorderBrush>
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#300369A1" Offset="0.0" />
+                                            <GradientStop Color="#180F172A" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#0284C7" BlurRadius="16" ShadowDepth="3" Opacity="0.35" Direction="270" />
+                                    </Border.Effect>
+
+                                    <!-- Clean Vector Shopping Cart in Ice Sky White -->
+                                    <Viewbox Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="M 1,2 L 4,2 L 6.8,14 C 6.95,14.6 7.45,15 8.1,15 L 18.5,15 C 19.15,15 19.65,14.6 19.8,14 L 22,5 L 5.2,5"
+                                                  Stroke="#E0F2FE" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                            <Ellipse Canvas.Left="7.2" Canvas.Top="18" Width="2.8" Height="2.8" Fill="#E0F2FE" />
+                                            <Ellipse Canvas.Left="17" Canvas.Top="18" Width="2.8" Height="2.8" Fill="#E0F2FE" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Border>
+
+                                <!-- Brand Name -->
+                                <TextBlock Text="KATQ SUPERMARKET"
+                                           FontSize="19"
+                                           FontWeight="Bold"
+                                           Foreground="#FFFFFF"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,0,0,3" />
+
+                                <!-- Sub-tagline -->
+                                <TextBlock Text="Hệ thống Bán lẻ &amp; Quản trị Siêu thị"
+                                           FontSize="12"
+                                           Foreground="#94A3B8"
+                                           HorizontalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- Subtle Elegant Divider -->
+                            <Border Height="1" Background="#20FFFFFF" Margin="0,0,0,20" />
+
+                            <!-- Section Title -->
+                            <TextBlock Text="Đăng nhập tài khoản"
+                                       FontSize="14.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="#E2E8F0"
+                                       Margin="2,0,0,14" />
+
+                            <!-- Field: Tên đăng nhập -->
+                            <Border x:Name="BorderUsername"
+                                    CornerRadius="12" Height="46"
+                                    Background="#251E293B"
+                                    BorderThickness="1"
+                                    BorderBrush="#334155"
+                                    Margin="0,0,0,14"
+                                    Padding="14,0">
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <ui:SymbolIcon Grid.Column="0" Symbol="Person20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
+                                    <Grid Grid.Column="1">
+                                        <TextBlock x:Name="PlaceholderUsername"
+                                                   Text="Tên đăng nhập"
+                                                   Foreground="#64748B"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   IsHitTestVisible="False" />
+                                        <TextBox x:Name="TxtUsername"
+                                                 Style="{StaticResource ModernInputTextStyle}"
+                                                 GotFocus="InputBox_GotFocus"
+                                                 LostFocus="InputBox_LostFocus"
+                                                 TextChanged="TxtUsername_TextChanged" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Field: Mật khẩu -->
+                            <Border x:Name="BorderPassword"
+                                    CornerRadius="12" Height="46"
+                                    Background="#251E293B"
+                                    BorderThickness="1"
+                                    BorderBrush="#334155"
+                                    Margin="0,0,0,16"
+                                    Padding="14,0">
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <ui:SymbolIcon Grid.Column="0" Symbol="LockClosed20" FontSize="18" Foreground="#38BDF8" Margin="0,0,10,0" />
+                                    <Grid Grid.Column="1">
+                                        <TextBlock x:Name="PlaceholderPassword"
+                                                   Text="Mật khẩu"
+                                                   Foreground="#64748B"
+                                                   FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   IsHitTestVisible="False" />
+                                        <PasswordBox x:Name="TxtPassword"
+                                                     Style="{StaticResource ModernInputPasswordStyle}"
+                                                     GotFocus="PasswordBox_GotFocus"
+                                                     LostFocus="PasswordBox_LostFocus"
+                                                     PasswordChanged="TxtPassword_PasswordChanged" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Status / Alert Message -->
+                            <TextBlock x:Name="TxtStatus" Text=""
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="#38BDF8"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,12"
+                                       TextWrapping="Wrap" />
+
+                            <!-- Primary Action Button: ĐĂNG NHẬP (Soothing Ocean-Sky Cyan Gradient matching Wallpaper) -->
+                            <Button x:Name="BtnLogin"
+                                    HorizontalAlignment="Stretch"
+                                    Height="46"
+                                    Margin="0,0,0,18"
+                                    Click="BtnLogin_Click"
+                                    Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="btnBorder"
+                                                CornerRadius="12"
+                                                BorderThickness="1"
+                                                BorderBrush="#60BAE6FD">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                    <GradientStop Color="#0284C7" Offset="0.0" />
+                                                    <GradientStop Color="#0EA5E9" Offset="0.5" />
+                                                    <GradientStop Color="#38BDF8" Offset="1.0" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="#0284C7" BlurRadius="18" ShadowDepth="3" Opacity="0.45" Direction="270" />
+                                            </Border.Effect>
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="btnBorder" Property="Background">
+                                                    <Setter.Value>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                            <GradientStop Color="#0EA5E9" Offset="0.0" />
+                                                            <GradientStop Color="#38BDF8" Offset="0.5" />
+                                                            <GradientStop Color="#7DD3FC" Offset="1.0" />
+                                                        </LinearGradientBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Setter TargetName="btnBorder" Property="BorderBrush" Value="#A0E0F2FE" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="btnBorder" Property="Opacity" Value="0.88" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="btnBorder" Property="Opacity" Value="0.5" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <TextBlock Text="ĐĂNG NHẬP"
+                                           FontSize="14.5"
+                                           FontWeight="Bold"
+                                           Foreground="#FFFFFF" />
+                            </Button>
+
+                            <!-- Footer Links: Quên mật khẩu? & Hỗ trợ kỹ thuật -->
+                            <Grid Margin="2,0,2,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="Quên mật khẩu?"
+                                           FontSize="12"
+                                           Foreground="#94A3B8"
+                                           HorizontalAlignment="Left"
+                                           Cursor="Hand"
+                                           MouseDown="LinkForgotPassword_Click">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Foreground" Value="#38BDF8" />
+                                                    <Setter Property="TextDecorations" Value="Underline" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="Hỗ trợ kỹ thuật"
+                                           FontSize="12"
+                                           Foreground="#94A3B8"
+                                           HorizontalAlignment="Right"
+                                           Cursor="Hand"
+                                           MouseDown="LinkNeedHelp_Click">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Foreground" Value="#38BDF8" />
+                                                    <Setter Property="TextDecorations" Value="Underline" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

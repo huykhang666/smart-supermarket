@@ -1,0 +1,67 @@
+<ui:FluentWindow x:Class="SmartSupermarket.POS.Views.Windows.EmployeeMainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:pages="clr-namespace:SmartSupermarket.POS.Views.Pages"
+        Title="KATQ Smart Supermarket • Trạm Thu Ngân POS"
+        Height="800" Width="1280" MinHeight="620" MinWidth="980"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Windows 11 TitleBar with Staff Chip & Shift Status -->
+        <ui:TitleBar Grid.Row="0" Title="KATQ POS Workstation • Điểm Bán Hàng Thu Ngân">
+            <ui:TitleBar.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                    <!-- Shift Status Badge -->
+                    <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="12" Padding="8,3,8,3" Margin="0,0,8,0">
+                        <TextBlock Text="🟢 Ca 1 - Đang Mở • Két Tiền Đã Khóa" FontSize="11" FontWeight="SemiBold" Foreground="#059669" />
+                    </Border>
+
+                    <!-- User Profile Chip -->
+                    <Border Background="#FEF3C7" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="12" Padding="8,3,8,3" Margin="0,0,8,0">
+                        <TextBlock x:Name="TxtStaffProfile" Text="👤 Thu Ngân (Staff)" FontSize="11" FontWeight="SemiBold" Foreground="#D97706" />
+                    </Border>
+
+                    <!-- Logout Button -->
+                    <ui:Button Content="Kết Ca / Đăng Xuất" Appearance="Transparent" Height="26" Padding="6,0,6,0" Click="BtnLogout_Click" />
+                </StackPanel>
+            </ui:TitleBar.Header>
+        </ui:TitleBar>
+
+        <!-- NavigationView Sidebar -->
+        <ui:NavigationView Grid.Row="1" x:Name="RootNavigation"
+                           PaneDisplayMode="Left"
+                           IsBackButtonVisible="Collapsed"
+                           OpenPaneLength="220">
+
+            <!-- Primary Navigation Items for Cashier -->
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem Content="POS Bán Hàng"
+                                       Icon="{ui:SymbolIcon Cart24}"
+                                       TargetPageType="{x:Type pages:PosPage}" />
+
+                <ui:NavigationViewItem Content="Đơn Hàng Tại Quầy"
+                                       Icon="{ui:SymbolIcon Receipt24}"
+                                       TargetPageType="{x:Type pages:OrdersPage}" />
+
+                <ui:NavigationViewItem Content="Tra Cứu Giá &amp; Hàng"
+                                       Icon="{ui:SymbolIcon Search24}"
+                                       TargetPageType="{x:Type pages:ProductsPage}" />
+            </ui:NavigationView.MenuItems>
+
+            <!-- Footer Navigation Items -->
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem Content="Cài Đặt"
+                                       Icon="{ui:SymbolIcon Settings24}"
+                                       TargetPageType="{x:Type pages:SettingsPage}" />
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>
