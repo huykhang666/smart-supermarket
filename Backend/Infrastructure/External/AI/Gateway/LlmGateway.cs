@@ -8,12 +8,18 @@ namespace SmartSupermarket.Backend.Infrastructure.External.AI.Gateway;
 
 public class LlmGateway : ILLMGateway
 {
+    private static readonly JsonSerializerOptions DefaultJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly GeminiGateway _geminiGateway;
     private readonly GroqGateway _groqGateway;
     private readonly LocalFallbackGateway _localFallbackGateway;
     private readonly ILogger<LlmGateway> _logger;
+    private volatile string _activeProvider = "Unknown";
 
-    public string ActiveProvider { get; private set; } = "Unknown";
+    public string ActiveProvider => _activeProvider;
 
     public LlmGateway(
         GeminiGateway geminiGateway,
@@ -51,8 +57,7 @@ public class LlmGateway : ILLMGateway
         var json = await GenerateJsonAsync(prompt, systemInstruction, cancellationToken);
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<T>(json, options);
+            return JsonSerializer.Deserialize<T>(json, DefaultJsonOptions);
         }
         catch (Exception ex)
         {
@@ -74,7 +79,7 @@ public class LlmGateway : ILLMGateway
                 var geminiResult = await _geminiGateway.GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(geminiResult))
                 {
-                    ActiveProvider = "Gemini-2.5-Flash";
+                    _activeProvider = "Gemini-2.5-Flash";
                     return geminiResult;
                 }
             }
@@ -91,7 +96,7 @@ public class LlmGateway : ILLMGateway
                 var groqResult = await _groqGateway.GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(groqResult))
                 {
-                    ActiveProvider = "Groq-Llama-3.3-70B";
+                    _activeProvider = "Groq-Llama-3.3-70B";
                     return groqResult;
                 }
             }
@@ -102,7 +107,7 @@ public class LlmGateway : ILLMGateway
         }
 
         _logger.LogInformation("[LlmGateway] Routing to LocalFallbackGateway.");
-        ActiveProvider = "Local-Rule-Engine";
+        _activeProvider = "Local-Rule-Engine";
         return await _localFallbackGateway.GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken);
     }
 }

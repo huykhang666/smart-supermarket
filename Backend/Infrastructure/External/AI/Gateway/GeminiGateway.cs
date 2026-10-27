@@ -1,6 +1,6 @@
 using System;
 using System.Net.Http;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,9 +31,9 @@ public class GeminiGateway
         _model = string.IsNullOrWhiteSpace(modelConfig) ? "gemini-2.5-flash" : modelConfig;
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey) && _apiKey.StartsWith("AIzaSy");
+    public virtual bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey) && _apiKey.StartsWith("AIzaSy");
 
-    public async Task<string> GenerateAsync(
+    public virtual async Task<string> GenerateAsync(
         string prompt,
         string? systemInstruction = null,
         bool requireJson = false,
@@ -73,20 +73,18 @@ public class GeminiGateway
             }
         };
 
-        var json = JsonSerializer.Serialize(requestBody);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
-
-        var response = await _httpClient.PostAsync(url, content, cancellationToken);
+        var primaryUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent";
+        var response = await SendGeminiRequestAsync(primaryUrl, requestBody, cancellationToken);
 
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            var fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_apiKey}";
-            response = await _httpClient.PostAsync(fallbackUrl, content, cancellationToken);
+            var fallbackUrl20 = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+            response = await SendGeminiRequestAsync(fallbackUrl20, requestBody, cancellationToken);
+
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                fallbackUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
-                response = await _httpClient.PostAsync(fallbackUrl, content, cancellationToken);
+                var fallbackUrl15 = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+                response = await SendGeminiRequestAsync(fallbackUrl15, requestBody, cancellationToken);
             }
         }
 
@@ -105,5 +103,19 @@ public class GeminiGateway
             .GetProperty("parts")[0]
             .GetProperty("text")
             .GetString() ?? string.Empty;
+    }
+
+    private async Task<HttpResponseMessage> SendGeminiRequestAsync(
+        string url,
+        object requestBody,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(requestBody)
+        };
+        request.Headers.Add("x-goog-api-key", _apiKey);
+
+        return await _httpClient.SendAsync(request, cancellationToken);
     }
 }

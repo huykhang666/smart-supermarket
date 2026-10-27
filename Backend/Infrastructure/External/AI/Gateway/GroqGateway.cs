@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,9 +33,9 @@ public class GroqGateway
         _model = string.IsNullOrWhiteSpace(modelConfig) ? "llama-3.3-70b-versatile" : modelConfig;
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
+    public virtual bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
 
-    public async Task<string> GenerateAsync(
+    public virtual async Task<string> GenerateAsync(
         string prompt,
         string? systemInstruction = null,
         bool requireJson = false,
@@ -65,10 +65,9 @@ public class GroqGateway
             requestPayload["response_format"] = new { type = "json_object" };
         }
 
-        var requestJson = JsonSerializer.Serialize(requestPayload);
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions")
         {
-            Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
+            Content = JsonContent.Create(requestPayload)
         };
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
