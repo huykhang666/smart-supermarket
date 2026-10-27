@@ -1,117 +1,143 @@
-# 10_AI - TÀI LIỆU 06: QUY TRÌNH NGHIỆP VỤ & LUỒNG THI CÔNG (WORKFLOWS)
+# 10_AI - TÀI LIỆU 06: QUY TRÌNH NGHIỆP VỤ & LUỒNG XỬ LÝ (AI WORKFLOWS)
 
 ---
 
 ## MỤC LỤC
-1. [Quy trình 1: Tư vấn thực đơn & Nạp mâm cơm vào giỏ hàng](#1-quy-trình-1-tư-vấn-thực-đơn--nạp-mâm-cơm-vào-giỏ-hàng)
-2. [Quy trình 2: Tự động phát hiện hàng cận date & kích hoạt Flash Sale](#2-quy-trình-2-tự-động-phát-hiện-hàng-cận-date--kích-hoạt-flash-sale)
-3. [Quy trình 3: AI Copilot phân tích rủi ro kho & Lập phiếu nhập kho nháp](#3-quy-trình-3-ai-copilot-phân-tích-rủi-ro-kho--lập-phiếu-nhập-kho-nháp)
-4. [Sơ đồ tuần tự chi tiết (End-to-End Sequence Diagram)](#4-sơ-đồ-tuần-tự-chi-tiết)
+1. [Luồng 1: Xử lý yêu cầu đi chợ & Lên thực đơn mâm cơm (Shopping Concierge Workflow)](#1-luồng-1-xử-lý-yêu-cầu-đi-chợ--lên-thực-đơn-mâm-cơm)
+2. [Luồng 2: Tự động giám sát hạn sử dụng & Kích hoạt Flash Sale (Shelf-Life Workflow)](#2-luồng-2-tự-động-giám-sát-hạn-sử-dụng--kích-hoạt-flash-sale)
+3. [Luồng 3: Quản trị viên phân tích tồn kho & Lập phiếu nhập kho 1-Click](#3-luồng-3-quản-trị-viên-phân-tích-tồn-kho--lập-phiếu-nhập-kho-1-click)
+4. [Luồng 4: Tương tác khay nguyên liệu & Nạp giỏ hàng (Cart Injection Workflow)](#4-luồng-4-tương-tác-khay-nguyên-liệu--nạp-giỏ-hàng)
+5. [Sơ đồ tuần tự tổng thể (Comprehensive Sequence Diagram)](#5-sơ-đồ-tuần-tự-tổng-thể)
 
 ---
 
-## 1. QUY TRÌNH 1: TƯ VẤN THỰC ĐƠN & NẠP MÂM CƠM VÀO GIỎ HÀNG
+## 1. LUỒNG 1: XỬ LÝ YÊU CẦU ĐI CHỢ & LÊN THỰC ĐƠN MÂM CƠM
 
-Đây là luồng tương tác chủ đạo giữa khách hàng mua sắm trên Web và Trợ lý AI:
+Đây là luồng nghiệp vụ trung tâm kết nối người dùng Web với trí tuệ nhân tạo:
 
 ```mermaid
 flowchart TD
-    A([Khách hàng nhập câu hỏi chat]) --> B{Phân tích ý định<br/>Intent Recognition}
+    Start([1. Khách hàng gửi prompt trên Web]) --> IntentCheck{2. Nhận diện ý định<br/>Intent Recognition}
     
-    B -->|Chào hỏi| C[Trả về lời chào & Gợi ý mâm cơm]
-    B -->|Mẹo ẩm thực thuần túy| D[Tư vấn bí quyết Cookpad: luộc rau, ướp bò...]
-    B -->|Lên thực đơn / Hỏi món| E[Trích xuất Servings & TargetBudget]
+    IntentCheck -->|Chào hỏi| Greet[Trả về lời chào thân thiện & gợi ý mâm cơm]
+    IntentCheck -->|Mẹo nấu ăn| Advice[Trả về cẩm nang bí quyết Cookpad]
+    IntentCheck -->|Hỏi món / Lên thực đơn| ParseParams[3. Bóc tách tham số tự nhiên<br/>Servings & TargetBudget]
 
-    E --> F[Xác định Chủ đề món ăn<br/>DetermineDishTheme]
-    F --> G[Truy vấn CSDL Kho hàng<br/>Products & InventoryBatches]
-    G --> H[Khớp nguyên liệu chính xác theo CategoryId<br/>MatchProductsForQueries]
-    H --> I[Xây dựng 3 Option mâm cơm Cookpad]
+    ParseParams --> Theme[4. Xác định chủ đề món ăn<br/>DetermineDishTheme]
+    Theme --> FetchDB[5. Truy vấn CSDL kho hàng<br/>Products & InventoryBatches]
     
-    I --> J{Gọi LLM Engine}
-    J -->|Gemini Key hợp lệ| K[Google Gemini 2.5 Flash]
-    J -->|Gemini lỗi/timeout| L[Groq Llama 3.3 70B]
-    J -->|Không có mạng / API lỗi| M[Local Rule Fallback]
+    FetchDB --> CategoryMatch[6. Khớp nguyên liệu cách ly CategoryId<br/>MatchProductsForQueries]
+    CategoryMatch --> BuildOptions[7. Xây dựng 3 Option mâm cơm Cookpad<br/>Option 1, Option 2, Option 3]
 
-    K --> N[Tạo thông điệp hoàn chỉnh]
-    L --> N
-    M --> N
+    BuildOptions --> LLMCall{8. Gọi LLM Engine}
+    LLMCall -->|Gemini Key hợp lệ| Gemini[Google Gemini 2.5 Flash]
+    LLMCall -->|Gemini lỗi/404/Quota| Groq[Groq Llama 3.3 70B]
+    LLMCall -->|Không có API Key / Offline| LocalEngine[Local Cookpad Rule Engine]
 
-    N --> O[Render giao diện Chat Web<br/>Lời chào + 3 Thẻ Mâm Cơm Căn Trái]
-    O --> P([Khách nhấn 'Chọn mâm này'])
-    P --> Q[Mở Modal mâm nguyên liệu<br/>Tùy chỉnh thêm/bớt định lượng]
-    Q --> R[Bấm 'Nạp vào giỏ hàng']
-    R --> S[Lưu giỏ hàng & Điều hướng /cart]
+    Gemini --> FormatMsg[9. Định dạng thông điệp hoàn chỉnh<br/>Tóm tắt 3 mâm + giá tiền, căn lề trái]
+    Groq --> FormatMsg
+    LocalEngine --> FormatMsg
+
+    FormatMsg --> ReturnClient([10. Trả về MealPlanChatResponse cho Client])
 ```
 
 ---
 
-## 2. QUY TRÌNH 2: TỰ ĐỘNG PHÁT HIỆN HÀNG CẬN DATE & KÍCH HOẠT FLASH SALE
+## 2. LUỒNG 2: TỰ ĐỘNG GIÁM SÁT HẠN SỬ DỤNG & KÍCH HOẠT FLASH SALE
 
-Quy trình vận hành ngầm (Background Service) đảm bảo thực phẩm tươi sống được tiêu thụ trước khi hết hạn:
+Quy trình tự động chạy ngầm bảo vệ hàng hóa và giải cứu thực phẩm tươi sống:
 
-1. **Quét định kỳ (Daily Schedule)**: `ShelfLifeBackgroundService` kích hoạt mỗi sáng sớm.
-2. **So khớp hạn sử dụng**: Duyệt qua toàn bộ lô hàng `InventoryBatches`, tính toán:
-   $$\text{DaysLeft} = \text{ExpiryDate} - \text{DateTime.UtcNow}$$
-3. **Áp dụng quy tắc chiết khấu**:
-   - Nếu $\text{DaysLeft} \le 7$ ngày: Gán nhãn `isPromotionOrNearExpiry = true`, áp dụng giảm giá 30% (`DiscountPercent = 30%`).
-   - Nếu $\text{DaysLeft} \le 0$ ngày: Tự động chuyển trạng thái lô hàng thành `Expired` và khóa bán.
-4. **Đưa vào mâm cơm AI**: Khi khách hàng bật tùy chọn *"Ưu tiên hàng Flash Sale"*, AI ưu tiên chọn các lô hàng này vào thực đơn hàng ngày để khách hàng được hưởng mức giá tốt nhất, đồng thời giải phóng tồn kho cho siêu thị.
+```mermaid
+flowchart TD
+    Timer([06:00 AM Hàng ngày]) --> Worker[ShelfLifeBackgroundService thức dậy]
+    Worker --> ScanBatches[Quét toàn bộ lô hàng InventoryBatches]
+    
+    ScanBatches --> CalcDays[Tính DaysLeft = ExpiryDate - Today]
+    
+    CalcDays --> CheckDays{Kiểm tra DaysLeft}
+    CheckDays -->|DaysLeft <= 0| LockBatch[Khóa bán lô hàng: Status = 'Expired']
+    CheckDays -->|0 < DaysLeft <= 7| ApplyDiscount[Áp dụng DiscountRule: Giảm giá 30%]
+    CheckDays -->|DaysLeft > 7| Safe[Trạng thái An toàn: Good]
+
+    ApplyDiscount --> TagPromo[Gán nhãn Flash Sale cận date giảm 30%]
+    TagPromo --> ConciergePriority[AI Concierge ưu tiên đưa vào thực đơn tiết kiệm]
+```
 
 ---
 
-## 3. QUY TRÌNH 3: AI COPILOT PHÂN TÍCH RỦI RO KHO & LẬP PHIẾU NHẬP KHO NHÁP
+## 3. LUỒNG 3: QUẢN TRỊ VIÊN PHÂN TÍCH TỒN KHO & LẬP PHIẾU NHẬP KHO 1-CLICK
 
-Quy trình dành cho Quản lý siêu thị trên ứng dụng Desktop WinForms:
+Dành cho nhà quản lý siêu thị tại màn hình Desktop WinForms:
 
 ```mermaid
 sequenceDiagram
+    autonumber
     actor Manager as Quản lý Siêu thị
-    participant WinForms as Desktop (AiCopilotView)
-    participant API as Backend (AiRetailController)
+    participant WinForms as Desktop (AiCopilotView.cs)
+    participant API as AiRetailController
     participant Svc as AiRetailService
     participant DB as CSDL Siêu thị
 
     Manager->>WinForms: Bấm "Phân tích rủi ro kho & Đề xuất nhập hàng"
-    WinForms->>API: POST /api/v1/ai/retail/draft-import-order?supplierId=SUP001
+    WinForms->>API: POST /api/v1/ai/retail/draft-import-order?supplierId=1
     API->>Svc: GenerateDraftImportOrderAsync(supplierId)
-    Svc->>DB: Truy vấn sản phẩm có tồn kho < MinStockLevel
-    DB-->>Svc: Danh sách sản phẩm cạn kho & đơn giá hợp đồng
-    Svc->>Svc: Tính số lượng cần nhập bù = (MinStockLevel * 2) - CurrentStock
-    Svc-->>API: Trả về AiDraftImportOrder (Mã phiếu nháp, danh sách mặt hàng, tổng tiền)
+    Svc->>DB: Tìm sản phẩm có tồn kho < MinStockLevel
+    DB-->>Svc: Danh sách mặt hàng thiếu hụt & giá hợp đồng
+    Svc->>Svc: Tính số lượng cần bù = (MinStockLevel * 2) - CurrentStock
+    Svc-->>API: Trả về AiDraftImportOrder
     API-->>WinForms: Hiển thị bảng duyệt phiếu nhập trên WinForms
-    Manager->>WinForms: Nhấn nút "1-Click Xác nhận lưu phiếu nhập"
+    Manager->>WinForms: Kiểm tra & bấm "1-Click Xác nhận lưu phiếu nhập"
     WinForms->>API: POST /api/v1/ai/retail/commit-draft-import
     API->>DB: INSERT ImportReceipts & ImportDetails (Status = Draft)
     DB-->>API: Ghi nhận thành công
-    API-->>WinForms: Thông báo: "Đã lưu phiếu nhập kho PN-20261024-XXX thành công"
+    API-->>WinForms: Thông báo: "Đã lưu phiếu nhập kho PN-20261027-XXX thành công"
 ```
 
 ---
 
-## 4. SƠ ĐỒ TUẦN TỰ CHI TIẾT (END-TO-END SEQUENCE)
+## 4. LUỒNG 4: TƯƠNG TÁC KHAY NGUYÊN LIỆU & NẠP GIỎ HÀNG (CART INJECTION)
+
+Luồng tương tác trực tiếp trên giao diện [AiShoppingAssistant.tsx](file:///D:/Laptrinhtrucquan/Frontend/src/components/chat/AiShoppingAssistant.tsx):
+
+1. **Hiển thị thẻ mâm cơm**: Client nhận `MealPlanChatResponse`, hiển thị lời chào tóm tắt kèm 3 thẻ mâm cơm căn lề trái (mỗi thẻ có huy hiệu giá tiền xanh và danh sách nguyên liệu rút gọn).
+2. **Kích hoạt khay mâm**: Khách bấm nút `"👉 Chọn mâm này (XX.000 đ)"`.
+3. **Mở Modal khay nguyên liệu (`handleOpenMealModal`)**:
+   - Hiển thị danh sách đầy đủ các nguyên liệu kèm hình ảnh sản phẩm.
+   - Cho phép khách hàng:
+     * Tăng / giảm số lượng từng món (+ / -).
+     * Bỏ bớt món nếu nhà đã có sẵn (ví dụ: đã có nước mắm hoặc rau).
+     * Đọc bí quyết nấu ăn chuẩn Cookpad (`CookingTips`).
+4. **Nạp giỏ hàng 1-Click (`handleApplyMealToCart`)**:
+   - Khách bấm `"🛒 Thêm nguyên liệu đã chọn vào giỏ hàng"`.
+   - Hệ thống tự động đẩy các mặt hàng vào giỏ hàng `CartPage`, hiển thị Toast thông báo và nút bấm điều hướng nhanh `/cart`.
+
+---
+
+## 5. SƠ ĐỒ TUẦN TỰ TỔNG THỂ (COMPREHENSIVE SEQUENCE)
 
 ```mermaid
 sequenceDiagram
+    autonumber
     actor User as Khách hàng
-    participant Web as React Web Assistant
-    participant API as /api/v1/ai/shopping/meal-plan
+    participant Web as React Web (AiShoppingAssistant)
+    participant API as ASP.NET Core Backend
     participant Concierge as AiShoppingConciergeService
     participant LLM as Google Gemini 2.5 Flash
     participant Cart as Giỏ hàng (/cart)
 
     User->>Web: Nhập prompt: "Mình có 30k 1 người ăn thì nấu món gì"
-    Web->>API: POST payload: { userPrompt, targetBudget: 30000, numberOfPeople: 1 }
+    Web->>API: POST /api/v1/ai/shopping/meal-plan
     API->>Concierge: PlanMealAndShopAsync(request)
-    Concierge->>Concierge: Nhận diện: servings=1, budget=30k -> Theme = "Bữa Ăn Tiết Kiệm"
-    Concierge->>Concierge: Ghép 3 mâm: Trứng chiên canh rau (30.8k), Mì xúc xích (44.3k), Cá hộp dưa leo (28.9k)
+    Concierge->>Concierge: Nhận diện: servings=1, budget=30k -> Theme="Bữa Ăn Tiết Kiệm"
+    Concierge->>Concierge: Ghép 3 mâm Cookpad (Trứng chiên 30.8k, Mì xúc xích 44.3k, Cá hộp 28.9k)
     Concierge->>LLM: Gửi prompt tóm tắt + yêu cầu viết câu trả lời xưng "mình" gọi "bạn"
     LLM-->>Concierge: Trả về lời thoại đầu bếp thân thiện
-    Concierge-->>API: MealPlanChatResponse (AssistantMessage + 3 MealOptions)
-    API-->>Web: Trả về JSON kết quả
-    Web->>User: Hiển thị lời thoại + 3 Option Cards (Căn lề trái)
-    User->>Web: Nhấn "Chọn mâm này" tại Option 1
-    Web->>Web: Mở Modal kiểm tra nguyên liệu: Trứng Ba Huân (1 vỉ), Rau muống (1 bó)
-    User->>Web: Nhấn "Nạp nhanh vào giỏ hàng"
-    Web->>Cart: Đẩy 2 sản phẩm vào LocalStorage / Redux Store
-    Web-->>User: Toast: "Đã thêm thành công 2 nguyên liệu món Cơm Trứng Chiên vào giỏ hàng!"
+    Concierge-->>API: Trả về MealPlanChatResponse
+    API-->>Web: HTTP 200 OK
+    Web->>User: Hiển thị lời nhắn + 3 Thẻ Mâm Cơm Căn Trái
+    User->>Web: Bấm "Chọn mâm này" ở Option 1 (Cơm Trứng Chiên & Canh Rau Muống)
+    Web->>Web: Mở Modal xem chi tiết nguyên liệu
+    User->>Web: Bấm "Thêm vào giỏ hàng"
+    Web->>Cart: Đẩy 2 sản phẩm vào Giỏ hàng
+    Web-->>User: Toast: "Đã thêm thành công 2 nguyên liệu vào giỏ hàng!"
 ```

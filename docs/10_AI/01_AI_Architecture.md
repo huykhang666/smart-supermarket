@@ -3,84 +3,76 @@
 ---
 
 ## MỤC LỤC
-1. [Tổng quan kiến trúc phân tầng](#1-tổng-quan-kiến-trúc-phân-tầng)
-2. [Sơ đồ khối hệ thống (System Architecture Diagram)](#2-sơ-đồ-khối-hệ-thống)
-3. [Chi tiết các tầng kiến trúc](#3-chi-tiết-các-tầng-kiến-trúc)
-4. [Cơ chế điều phối LLM & Fallback Chained Engine](#4-cơ-chế-điều-phối-llm--fallback-chained-engine)
-5. [Hiệu năng, Độ trễ (SLA) & Quản lý Token](#5-hiệu-năng-độ-trễ-sla--quản-lý-token)
+1. [Tổng quan kiến trúc phân tầng (Multi-Tier Architecture)](#1-tổng-quan-kiến-trúc-phân-tầng)
+2. [Sơ đồ kiến trúc tổng thể (High-Level Architecture Diagram)](#2-sơ-đồ-kiến-trúc-tổng-thể)
+3. [Luồng dữ liệu xuyên suốt hệ thống (End-to-End Data Flow)](#3-luồng-dữ-liệu-xuyên-suốt-hệ-thống)
+4. [Cơ chế điều phối LLM & Chuỗi dự phòng 3 lớp (Fallback Chain Engine)](#4-cơ-chế-điều-phối-llm--chuỗi-dự-phòng-3-lớp)
+5. [Hiệu năng, Độ trễ (SLA) & Ngân sách Token (Token Budgeting)](#5-hiệu-năng-độ-trễ-sla--ngân-sách-token)
 
 ---
 
 ## 1. TỔNG QUAN KIẾN TRÚC PHÂN TẦNG
 
-Hệ sinh thái AI trong **Smart SuperMarket** được xây dựng theo mô hình **Multi-Tier Decoupled Architecture** (Kiến trúc phân tầng tách rời), kết hợp giữa khả năng xử lý ngôn ngữ tự nhiên mạnh mẽ của các Mô hình Ngôn ngữ Lớn (LLMs) trên nền đám mây và tính toán nghiệp vụ CSDL chính xác của Backend ASP.NET Core.
-
-Hệ thống bao gồm 4 tầng chính:
-1. **Presentation Layer (Tầng hiển thị)**: Giao diện Chatbot React Web cho khách mua sắm & Form WinForms AI Copilot cho nhà quản lý.
-2. **API & Service Layer (Tầng nghiệp vụ AI)**: Bộ điều phối nghiệp vụ ẩm thực, rổ hàng, rủi ro tồn kho và kiểm kê.
-3. **LLM Orchestration Layer (Tầng điều phối AI)**: Giao diện trừu tượng `ILlmClient` điều phối kết nối giữa Google Gemini, Groq LPU và Rule-Engine nội bộ.
-4. **Data & Persistence Layer (Tầng dữ liệu)**: CSDL quan hệ lưu trữ sản phẩm, lô hàng, hóa đơn và lịch sử giao dịch.
-
----
-
-## 2. SƠ ĐỒ KHỐI HỆ THỐNG
+Hệ sinh thái AI trong **Smart SuperMarket** được xây dựng theo mô hình **Phân tầng tách rời (Decoupled Multi-Tier Architecture)**, đảm bảo tính mô-đun hóa, khả năng mở rộng linh hoạt và độc lập giữa giao diện người dùng, nghiệp vụ tính toán và các nhà cung cấp mô hình trí tuệ nhân tạo.
 
 ```mermaid
 flowchart TD
-    subgraph Clients["TẦNG HIỂN THỊ (PRESENTATION LAYER)"]
-        UI_Web["React Web (Vite + TS)<br/>AiShoppingAssistant.tsx"]
-        UI_Desktop["WinForms (.NET 10)<br/>AiCopilotView.cs"]
+    subgraph Tier1["TẦNG 1: TRÌNH DIỄN & GIAO DIỆN (PRESENTATION TIER)"]
+        WebClient["React 18 + Vite + TypeScript<br/>(AiShoppingAssistant.tsx, CartPage.tsx)"]
+        DesktopClient["Windows Forms (.NET 10)<br/>(AiCopilotView.cs, PosScanView.cs)"]
     end
 
-    subgraph API_Layer["TẦNG DỊCH VỤ BACKEND (ASP.NET CORE 10)"]
+    subgraph Tier2["TẦNG 2: DỊCH VỤ & NGHIỆP VỤ BÁN LẺ (APPLICATION SERVICE TIER)"]
         Ctrl_Retail["AiRetailController.cs<br/>/api/v1/ai/shopping/meal-plan<br/>/api/v1/ai/retail/*"]
-        Svc_Concierge["AiShoppingConciergeService<br/>- Phân tích số người & ngân sách<br/>- Ghép nguyên liệu chuẩn danh mục<br/>- Sinh 3 mâm cơm Cookpad"]
-        Svc_Retail["AiRetailService<br/>- Dự báo đứt hàng & rủi ro lô<br/>- Phân tích rổ hàng kết hợp (Market Basket)<br/>- Lập phiếu nhập kho nháp"]
+        Svc_Concierge["AiShoppingConciergeService<br/>- Bóc tách số người & ngân sách<br/>- Khớp nguyên liệu theo CategoryId<br/>- Xây dựng 3 Option mâm cơm Cookpad"]
+        Svc_Retail["AiRetailService<br/>- Phân tích rổ hàng kết hợp (Apriori Mining)<br/>- Giám sát hạn dùng lô hàng (Shelf-Life)<br/>- Tính toán nhu cầu nhập kho nháp"]
     end
 
-    subgraph LLM_Layer["TẦNG ĐIỀU PHỐI AI (LLM ORCHESTRATION)"]
+    subgraph Tier3["TẦNG 3: ĐIỀU PHỐI LLM (LLM ORCHESTRATION TIER)"]
         ILlm["ILlmClient Interface"]
         GeminiClient["GeminiService<br/>(gemini-2.5-flash / gemini-2.0-flash)"]
         GroqClient["GroqClient<br/>(Llama-3.3-70b-versatile LPU)"]
-        LocalEngine["Local Cookpad Rule Engine<br/>(Deterministic Fallback)"]
+        LocalEngine["Local Deterministic Rule Engine<br/>(Cookpad Knowledge Fallback)"]
     end
 
-    subgraph Data_Layer["TẦNG CƠ SỞ DỮ LIỆU (DATABASE & STORAGE)"]
-        DB[(AppDbContext<br/>Products, Categories, Batches, Orders)]
-        SeedData[("products_seed.json<br/>200 Sản phẩm siêu thị")]
+    subgraph Tier4["TẦNG 4: LƯU TRỮ DỮ LIỆU (PERSISTENCE & DATA TIER)"]
+        DB[(AppDbContext<br/>PostgreSQL / In-Memory EF Core)]
+        SeedData[("products_seed.json<br/>200 Sản phẩm siêu thị mẫu")]
     end
 
-    UI_Web -->|HTTP POST JSON| Ctrl_Retail
-    UI_Desktop -->|HTTP POST JSON| Ctrl_Retail
+    WebClient -->|HTTP POST JSON| Ctrl_Retail
+    DesktopClient -->|HTTP POST JSON| Ctrl_Retail
     Ctrl_Retail --> Svc_Concierge
     Ctrl_Retail --> Svc_Retail
-
-    Svc_Concierge -->|Query Active Products & Batches| DB
-    Svc_Retail -->|Query Historical Orders & Shelf-Life| DB
-    DB -.-> SeedData
 
     Svc_Concierge --> ILlm
     Svc_Retail --> ILlm
 
-    ILlm -->|Ưu tiên 1: Google AI API| GeminiClient
-    ILlm -->|Ưu tiên 2: Groq Cloud LPU| GroqClient
-    ILlm -->|Ưu tiên 3: Dự phòng nội bộ| LocalEngine
+    ILlm -->|Ưu tiên 1| GeminiClient
+    ILlm -->|Ưu tiên 2| GroqClient
+    ILlm -->|Ưu tiên 3| LocalEngine
+
+    Svc_Concierge -->|Query Products & Batches| DB
+    Svc_Retail -->|Query Orders & Inventory| DB
+    DB -.-> SeedData
 ```
 
 ---
 
-## 3. CHI TIẾT CÁC TẦNG KIẾN TRÚC
+## 2. SƠ ĐỒ KIẾN TRÚC TỔNG THỂ
 
-### 3.1. Tầng hiển thị (Presentation Layer)
-- **Frontend Web Client**: Tích hợp cửa sổ chat thông minh `AiShoppingAssistant.tsx`, hỗ trợ tin nhắn Markdown, bộ lọc ưu tiên Flash Sale, hiển thị danh thiếp 3 mâm cơm chuẩn vị căn lề trái và modal tương tác thêm/bớt định lượng nguyên liệu trước khi nạp vào giỏ hàng `CartPage`.
-- **Desktop POS & Admin**: Tích hợp `AiCopilotView.cs` hỗ trợ nhân viên quản lý kho quét nhanh các mặt hàng có nguy cơ hư hỏng và phát sinh đơn nhập hàng tự động.
+### 2.1. Tầng Trình diễn (Presentation Tier)
+- **Web Client (React + TypeScript)**: Thành phần `AiShoppingAssistant.tsx` đóng vai trò là cửa sổ trò chuyện nổi (Floating Chat Widget). Tích hợp Markdown renderer, hỗ trợ phân tách tiêu đề in đậm, danh sách lựa chọn căn lề trái và tương tác nạp giỏ hàng qua `handleOpenMealModal`.
+- **Desktop WinForms (.NET 10)**: Màn hình `AiCopilotView.cs` phục vụ cấp Quản lý, hiển thị biểu đồ rủi ro kho, phân tích cặp sản phẩm bán chạy và nút bấm lập đơn nhập kho tự động.
 
-### 3.2. Tầng dịch vụ nghiệp vụ (AI Service Layer)
-- **AiShoppingConciergeService**: Tiếp nhận yêu cầu tự nhiên của khách hàng, trích xuất cấu trúc (`Servings`, `TargetBudget`, `DishTheme`), truy vấn kho hàng thật và xây dựng các phương án mâm cơm dinh dưỡng chuẩn công thức Cookpad.
-- **AiRetailService**: Thực hiện thuật toán khai phá tập mục thường xuyên (Frequent Itemset Mining) từ dữ liệu hóa đơn `OrderDetails` để tìm các cặp sản phẩm thường mua kèm nhau, đồng thời tính toán tốc độ tiêu thụ sản phẩm (Run-rate) để cảnh báo thiếu hụt hàng.
+### 2.2. Tầng Ứng dụng & Nghiệp vụ (Application Service Tier)
+- Chịu trách nhiệm thực thi toàn bộ logic cốt lõi:
+  - Bóc tách tham số tự nhiên: Tìm số người ăn (`servings`) và ngân sách (`targetBudget`) thông qua biểu thức chính quy (Regex).
+  - Phân loại chủ đề món ăn (`DetermineDishTheme`): Lẩu, Sườn non, Thịt kho tàu, Bò Úc, Gà rim, Món chay, hoặc Bữa ăn tiết kiệm (< 50k).
+  - Ghép sản phẩm cách ly theo danh mục (`MatchProductsForQueries`).
 
-### 3.3. Tầng điều phối LLM (LLM Orchestration Layer)
-- Được định nghĩa qua giao diện chuẩn `ILlmClient`:
+### 2.3. Tầng Điều phối LLM (LLM Orchestration Tier)
+- Đóng gói toàn bộ các cuộc gọi AI qua giao diện chuẩn `ILlmClient`:
   ```csharp
   public interface ILlmClient
   {
@@ -92,26 +84,60 @@ flowchart TD
 
 ---
 
-## 4. CƠ CHẾ ĐIỀU PHỐI LLM & FALLBACK CHAINED ENGINE
+## 3. LUỒNG DỮ LIỆU XUYÊN SUỐT HỆ THỐNG
 
-Để đảm bảo hệ thống không bao giờ gặp lỗi ngưng trệ khi người dùng chat, cơ chế **Fallback Chain** (Chuỗi dự phòng 3 lớp) được triển khai tại `GeminiService.cs`:
-
-1. **Lớp 1 (Primary - Google Gemini)**:
-   - Kiểm tra `Gemini:ApiKey` hợp lệ (bắt đầu bằng `AIzaSy`).
-   - Gọi trực tiếp mô hình `gemini-2.5-flash`.
-   - Nếu gặp mã phản hồi `404 Not Found`, tự động chuyển tiếp sang `gemini-2.0-flash` hoặc `gemini-1.5-flash`.
-2. **Lớp 2 (Secondary - Groq LPU Cloud)**:
-   - Nếu Gemini trả về lỗi xác thực (400, 401, 403) hoặc vượt ngưỡng hạn mức Rate-Limit, hệ thống chuyển tiếp sang Groq Cloud (`Llama-3.3-70b-versatile`). Tốc độ sinh text trên chip LPU đạt ~250 tokens/giây, đảm bảo thời gian phản hồi dưới 1 giây.
-3. **Lớp 3 (Deterministic Safety Net - Local Cookpad Engine)**:
-   - Nếu cả 2 nhà cung cấp API bên ngoài đều không khả dụng hoặc mất kết nối mạng internet, hệ thống ngay lập tức kích hoạt bộ sinh nội dung chuyên gia được tích hợp sẵn từ CSDL kho hàng. Người dùng vẫn nhận được 3 lựa chọn mâm cơm đầy đủ giá tiền, danh sách nguyên liệu và bí quyết nấu ăn mà không hề nhận thông báo lỗi.
+1. **Client Request**: Người dùng gửi tin nhắn: `"Mình có 30k 1 người ăn thì nấu món gì"`.
+2. **Controller Entrypoint**: `AiRetailController.PlanMealAndShop` tiếp nhận payload.
+3. **Intent & Parameter Parsing**: `AiShoppingConciergeService` xác định số người = 1, ngân sách = 30.000 đ, chủ đề = `"Bữa Ăn Tiết Kiệm"`.
+4. **Data Retrieval & Matching**: Hệ thống tải danh mục sản phẩm từ CSDL và ghép chính xác:
+   - Option 1: Trứng gà Ba Huân vỉ 10 quả (Cat 9) + Rau muống nước (Cat 4) $\rightarrow$ 30.800 đ.
+   - Option 2: Mì Omachi sườn hầm (Cat 10) + Xúc xích Vissan (Cat 10) + Cải ngọt (Cat 4) $\rightarrow$ 44.300 đ.
+   - Option 3: Cá nục sốt cà Ba Cô Gái (Cat 10) + Dưa leo baby (Cat 4) $\rightarrow$ 28.900 đ.
+5. **Prompt Augmentation & LLM Generation**: Tạo prompt tóm tắt gửi sang Gemini 2.5 Flash để sinh lời thoại đầu bếp thân thiện.
+6. **Response Delivery**: Trả về `MealPlanChatResponse` gồm lời nhắn Markdown và danh sách 3 `MealOptionDto`.
 
 ---
 
-## 5. HIỆU NĂNG, ĐỘ TRỄ (SLA) & QUẢN LÝ TOKEN
+## 4. CƠ CHẾ ĐIỀU PHỐI LLM & CHUỖI DỰ PHÒNG 3 LỚP (FALLBACK CHAIN)
 
-| Chỉ số | Mục tiêu SLA | Giải pháp đạt được |
-| :--- | :--- | :--- |
-| **Thời gian phản hồi (TTFT)** | < 1.5 giây | Tối ưu hóa prompt súc tích; cấu hình `temperature = 0.5 - 0.7` và `maxOutputTokens = 2048`. |
-| **Độ chính xác nguyên liệu** | 100% đúng kho hàng | Phân loại CategoryId nghiêm ngặt trước khi đưa vào context gợi ý, loại bỏ hiện tượng ảo giác (Hallucination). |
-| **Thời gian duy trì hoạt động (Uptime)**| 99.9% | Nhờ cơ chế Fallback Chained Engine 3 lớp bảo vệ độc lập. |
-| **Tiết kiệm Token (Token Budget)** | ~500 - 800 tokens/lượt | Chỉ gửi vào context top 10 - 15 sản phẩm tiêu biểu có liên quan trực tiếp thay vì toàn bộ CSDL. |
+Hệ thống triển khai cơ chế **Fallback Chain** tự động tại [GeminiService.cs](file:///D:/Laptrinhtrucquan/Backend/Infrastructure/External/AI/GeminiService.cs) để đảm bảo không bao giờ gián đoạn dịch vụ:
+
+```mermaid
+stateDiagram-v2
+    [*] --> CheckGeminiKey
+    CheckGeminiKey --> CallGemini: Key hợp lệ (AIzaSy...)
+    CheckGeminiKey --> CallGroq: Không có key / Sai định dạng
+
+    CallGemini --> Success: HTTP 200 OK (gemini-2.5-flash)
+    CallGemini --> FallbackGemini20: HTTP 404 Model
+    FallbackGemini20 --> Success: HTTP 200 OK (gemini-2.0-flash)
+    FallbackGemini20 --> FallbackGemini15: HTTP 404 Model
+    FallbackGemini15 --> Success: HTTP 200 OK (gemini-1.5-flash)
+    FallbackGemini15 --> CallGroq: Lỗi xác thực / Timeout
+
+    CallGroq --> Success: HTTP 200 OK (Llama 3.3 70B)
+    CallGroq --> CallLocalEngine: Groq lỗi / Hết quota
+
+    CallLocalEngine --> Success: Trả về công thức Cookpad nội bộ
+    Success --> [*]
+```
+
+1. **Lớp 1 (Google Gemini 2.5 Flash)**:
+   - Ưu tiên gọi mô hình `gemini-2.5-flash`.
+   - Nếu trả về `404 Not Found`, tự động chuyển sang `gemini-2.0-flash` hoặc `gemini-1.5-flash`.
+2. **Lớp 2 (Groq Cloud LPU - Llama 3.3 70B)**:
+   - Kích hoạt khi Gemini gặp sự cố mạng, lỗi 400/401 hoặc hết hạn ngạch.
+   - Xử lý trên chip LPU tốc độ cao (~250 tokens/giây), độ trễ phản hồi < 1 giây.
+3. **Lớp 3 (Deterministic Cookpad Safety Net)**:
+   - Nếu cả 2 API đám mây đều không khả dụng, hệ thống kích hoạt hàm sinh lời thoại chuyên gia nội bộ `GenerateChefMealMessageWithMultiOptions`. Người dùng vẫn nhận được 3 lựa chọn mâm cơm đầy đủ và chính xác 100%.
+
+---
+
+## 5. HIỆU NĂNG, ĐỘ TRỄ (SLA) & NGÂN SÁCH TOKEN
+
+| Tham số kỹ thuật | Ngưỡng cam kết (SLA) | Cơ chế tối ưu |
+| :--- | :---: | :--- |
+| **Thời gian phản hồi (Latency)** | $\le 1.5\text{s}$ | Sử dụng streaming / flash models; Groq LPU hỗ trợ fallback siêu tốc. |
+| **Ngân sách Token (Token Budget)** | $500 - 800\text{ tokens}$ | Chỉ nạp top 12 sản phẩm liên quan vào context, không nhồi nhét toàn bộ kho hàng. |
+| **Tỷ lệ sẵn sàng (Availability)** | $99.9\%$ | Chuỗi dự phòng 3 lớp đảm bảo luôn có kết quả trả về. |
+| **Độ chính xác danh mục** | $100\%$ | Sử dụng `IngredientQuery` cách ly CategoryId, triệt tiêu ảo giác sai sản phẩm. |
