@@ -3,141 +3,228 @@
 ---
 
 ## MỤC LỤC
-1. [Tổng quan kiến trúc phân tầng (Multi-Tier Architecture)](#1-tổng-quan-kiến-trúc-phân-tầng)
-2. [Sơ đồ kiến trúc tổng thể (High-Level Architecture Diagram)](#2-sơ-đồ-kiến-trúc-tổng-thể)
-3. [Luồng dữ liệu xuyên suốt hệ thống (End-to-End Data Flow)](#3-luồng-dữ-liệu-xuyên-suốt-hệ-thống)
-4. [Cơ chế điều phối LLM & Chuỗi dự phòng 3 lớp (Fallback Chain Engine)](#4-cơ-chế-điều-phối-llm--chuỗi-dự-phòng-3-lớp)
-5. [Hiệu năng, Độ trễ (SLA) & Ngân sách Token (Token Budgeting)](#5-hiệu-năng-độ-trễ-sla--ngân-sách-token)
+1. [Mô hình kiến trúc phân tầng chuẩn Enterprise (Multi-Layer Architecture)](#1-mô-hình-kiến-trúc-phân-tầng-chuẩn-enterprise)
+2. [Chi tiết từng tầng trong kiến trúc (Layer Breakdown)](#2-chi-tiết-từng-tầng-trong-kiến-trúc)
+3. [Luồng thực thi đầy đủ (End-to-End Execution Flow)](#3-luồng-thực-thi-đầy-đủ)
+4. [Lộ trình tiến hóa: Bản MVP tối giản vs Enterprise Multi-Agent](#4-lộ-trình-tiến-hóa-bản-mvp-tối-giản-vs-enterprise-multi-agent)
+5. [Cấu trúc thư mục Backend đề xuất (Clean Architecture)](#5-cấu-trúc-thư-mục-backend-đề-xuất)
+6. [Cơ chế dự phòng 3 lớp (3-Tier Fallback Chain)](#6-cơ-chế-dự-phòng-3-lớp)
 
 ---
 
-## 1. TỔNG QUAN KIẾN TRÚC PHÂN TẦNG
+## 1. MÔ HÌNH KIẾN TRÚC PHÂN TẦNG CHUẨN ENTERPRISE
 
-Hệ sinh thái AI trong **Smart SuperMarket** được xây dựng theo mô hình **Phân tầng tách rời (Decoupled Multi-Tier Architecture)**, đảm bảo tính mô-đun hóa, khả năng mở rộng linh hoạt và độc lập giữa giao diện người dùng, nghiệp vụ tính toán và các nhà cung cấp mô hình trí tuệ nhân tạo.
+Hệ thống AI của **Smart SuperMarket** áp dụng mô hình phân tách trách nhiệm nghiêm ngặt (*Separation of Concerns*). Mọi tương tác từ người dùng đều đi qua cấu trúc phân tầng 7 lớp khép kín, tuyệt đối ngăn chặn việc Agent gọi trực tiếp Database hoặc nhúng Business Logic vào Controller.
 
-```mermaid
-flowchart TD
-    subgraph Tier1["TẦNG 1: TRÌNH DIỄN & GIAO DIỆN (PRESENTATION TIER)"]
-        WebClient["React 18 + Vite + TypeScript<br/>(AiShoppingAssistant.tsx, CartPage.tsx)"]
-        DesktopClient["Windows Forms (.NET 10)<br/>(AiCopilotView.cs, PosScanView.cs)"]
-    end
-
-    subgraph Tier2["TẦNG 2: DỊCH VỤ & NGHIỆP VỤ BÁN LẺ (APPLICATION SERVICE TIER)"]
-        Ctrl_Retail["AiRetailController.cs<br/>/api/v1/ai/shopping/meal-plan<br/>/api/v1/ai/retail/*"]
-        Svc_Concierge["AiShoppingConciergeService<br/>- Bóc tách số người & ngân sách<br/>- Khớp nguyên liệu theo CategoryId<br/>- Xây dựng 3 Option mâm cơm Cookpad"]
-        Svc_Retail["AiRetailService<br/>- Phân tích rổ hàng kết hợp (Apriori Mining)<br/>- Giám sát hạn dùng lô hàng (Shelf-Life)<br/>- Tính toán nhu cầu nhập kho nháp"]
-    end
-
-    subgraph Tier3["TẦNG 3: ĐIỀU PHỐI LLM (LLM ORCHESTRATION TIER)"]
-        ILlm["ILlmClient Interface"]
-        GeminiClient["GeminiService<br/>(gemini-2.5-flash / gemini-2.0-flash)"]
-        GroqClient["GroqClient<br/>(Llama-3.3-70b-versatile LPU)"]
-        LocalEngine["Local Deterministic Rule Engine<br/>(Cookpad Knowledge Fallback)"]
-    end
-
-    subgraph Tier4["TẦNG 4: LƯU TRỮ DỮ LIỆU (PERSISTENCE & DATA TIER)"]
-        DB[(AppDbContext<br/>PostgreSQL / In-Memory EF Core)]
-        SeedData[("products_seed.json<br/>200 Sản phẩm siêu thị mẫu")]
-    end
-
-    WebClient -->|HTTP POST JSON| Ctrl_Retail
-    DesktopClient -->|HTTP POST JSON| Ctrl_Retail
-    Ctrl_Retail --> Svc_Concierge
-    Ctrl_Retail --> Svc_Retail
-
-    Svc_Concierge --> ILlm
-    Svc_Retail --> ILlm
-
-    ILlm -->|Ưu tiên 1| GeminiClient
-    ILlm -->|Ưu tiên 2| GroqClient
-    ILlm -->|Ưu tiên 3| LocalEngine
-
-    Svc_Concierge -->|Query Products & Batches| DB
-    Svc_Retail -->|Query Orders & Inventory| DB
-    DB -.-> SeedData
+```text
+                                ┌──────────────────────────┐
+                                │      Frontend Web        │
+                                │    (AI Chat Component)   │
+                                └─────────────┬────────────┘
+                                              │
+                                    HTTP / REST API
+                                              │
+                                              ▼
+                          ┌─────────────────────────────────┐
+                          │         AIController            │
+                          └─────────────────────────────────┘
+                                              │
+                                              ▼
+                          ┌─────────────────────────────────┐
+                          │      Agent Orchestrator         │
+                          │  (Điều phối toàn bộ Agent)      │
+                          └─────────────────────────────────┘
+            ┌────────────────────┼──────────────────────┐
+            ▼                    ▼                      ▼
+      ShoppingAgent        InventoryAgent        PromotionAgent
+            │                    │                      │
+            ├────────────┬───────┴──────────────┬───────┤
+            ▼            ▼                      ▼
+      RecipeAgent   BudgetAgent            CartAgent
+                         │
+                         ▼
+                  Tool Dispatcher
+                         │
+     ┌───────────────────┼─────────────────────┐
+     ▼                   ▼                     ▼
+ ProductTool       InventoryTool         PromotionTool
+     ▼                   ▼                     ▼
+ ProductService    InventoryService      PromotionService
+     ▼                   ▼                     ▼
+ Repository        Repository            Repository
+     ▼                   ▼                     ▼
+                 SQL Server Database
 ```
 
 ---
 
-## 2. SƠ ĐỒ KIẾN TRÚC TỔNG THỂ
+## 2. CHI TIẾT TỪNG TẦNG TRONG KIẾN TRÚC
 
-### 2.1. Tầng Trình diễn (Presentation Tier)
-- **Web Client (React + TypeScript)**: Thành phần `AiShoppingAssistant.tsx` đóng vai trò là cửa sổ trò chuyện nổi (Floating Chat Widget). Tích hợp Markdown renderer, hỗ trợ phân tách tiêu đề in đậm, danh sách lựa chọn căn lề trái và tương tác nạp giỏ hàng qua `handleOpenMealModal`.
-- **Desktop WinForms (.NET 10)**: Màn hình `AiCopilotView.cs` phục vụ cấp Quản lý, hiển thị biểu đồ rủi ro kho, phân tích cặp sản phẩm bán chạy và nút bấm lập đơn nhập kho tự động.
+### Layer 1: Frontend Client (Angular / React Web)
+- **Nhiệm vụ duy nhất**:
+  - Render giao diện hội thoại (Chat UI).
+  - Gửi `POST /api/ai/chat` kèm payload `{ message, conversationHistory }`.
+  - Hiển thị phản hồi văn bản và các thẻ mâm cơm (Meal Option Cards) căn trái (`text-align: left`).
+- **Ranh giới**: Tuyệt đối **không** xử lý logic AI, không parse giá tiền hay can thiệp vào quy tắc kinh doanh.
 
-### 2.2. Tầng Ứng dụng & Nghiệp vụ (Application Service Tier)
-- Chịu trách nhiệm thực thi toàn bộ logic cốt lõi:
-  - Bóc tách tham số tự nhiên: Tìm số người ăn (`servings`) và ngân sách (`targetBudget`) thông qua biểu thức chính quy (Regex).
-  - Phân loại chủ đề món ăn (`DetermineDishTheme`): Lẩu, Sườn non, Thịt kho tàu, Bò Úc, Gà rim, Món chay, hoặc Bữa ăn tiết kiệm (< 50k).
-  - Ghép sản phẩm cách ly theo danh mục (`MatchProductsForQueries`).
+### Layer 2: AIController (Thin Controller)
+- **Nhiệm vụ duy nhất**:
+  - Tiếp nhận HTTP Request từ Client.
+  - Validate tính hợp lệ của DTO đầu vào (Model Validation).
+  - Chuyển giao trực tiếp cho `AgentOrchestrator`.
+  - Đóng gói DTO phản hồi trả về HTTP 200 OK.
+- **Ranh giới**: Controller cực kỳ mỏng, **không chứa bất kỳ Business Logic nào**.
 
-### 2.3. Tầng Điều phối LLM (LLM Orchestration Tier)
-- Đóng gói toàn bộ các cuộc gọi AI qua giao diện chuẩn `ILlmClient`:
-  ```csharp
-  public interface ILlmClient
-  {
-      string ProviderName { get; }
-      Task<string> GenerateAsync(string prompt, CancellationToken cancellationToken = default);
-      Task<string> GenerateAsync(string prompt, string? systemInstruction = null, bool requireJson = false, CancellationToken cancellationToken = default);
-  }
-  ```
+### Layer 3: Agent Orchestrator (Bộ não điều phối trung tâm)
+- Phân tích ý định người dùng (Intent Classification): Bữa ăn gia đình, tìm món lẩu, kiểm tra khuyến mãi, tra cứu calo hay đặt hàng vào giỏ.
+- Lập lịch điều phối thứ tự gọi các chuyên gia Agent chuyên trách.
+- Tổng hợp dữ liệu từ các Agent thành câu trả lời hoàn chỉnh và thống nhất.
+
+### Layer 4: Multi-Agent Subsystem (Các Agent chuyên trách)
+Mỗi Agent có một **Bounded Context** độc lập, tuyệt đối không lấn sân:
+1. **ShoppingAgent**: Đóng vai trò tổng quản lập kế hoạch (Planner & Synthesizer). Tiếp nhận yêu cầu món ăn, xác định nguyên liệu cần tìm, yêu cầu khuyến mãi và gọi Tool để tổng hợp.
+2. **InventoryAgent**: Chuyên trách kiểm tra tồn kho (`StockQuantity`), hạn sử dụng của từng lô (`Batch`), cảnh báo hàng cận date ($\le 3$ ngày) và đề xuất sản phẩm thay thế tương đương. *Không tính tiền, không tìm Recipe.*
+3. **PromotionAgent**: Chuyên trách kiểm tra Voucher, chiến dịch Flash Sale, chiết khấu giờ vàng và giảm giá combo.
+4. **BudgetAgent**: Chuyên trách tính toán tổng chi phí mâm cơm, so sánh với ngân sách kỳ vọng của khách hàng. Nếu vượt ngân sách, đề xuất thay thế nguyên liệu đắt bằng nguyên liệu giá rẻ hơn.
+5. **RecipeAgent**: Tra cứu công thức nấu nướng từ cơ sở dữ liệu cẩm nang ẩm thực (Cookpad). *Tuyệt đối không bịa công thức hay sinh ngẫu nhiên.*
+6. **CartAgent**: Quản lý thao tác nạp mâm cơm vào giỏ, cập nhật số lượng, xóa món hoặc ước tính tạm tính.
+
+### Layer 5: Tool Layer (Lớp công cụ chuẩn hóa)
+- **Quy tắc bất biến**: **Agent KHÔNG ĐƯỢC gọi Service trực tiếp.** Agent phải thông qua Tool Layer.
+- Tool đóng vai trò là Function Calling Interface cho LLM.
+- Các Tool (`ProductTool`, `InventoryTool`, `PromotionTool`, `RecipeTool`, `CartTool`):
+  - Chỉ chứa chữ ký phương thức: `GetStock()`, `GetNearExpiry()`, `GetAlternative()`, `GetAvailableBatch()`.
+  - **Không chứa Business Logic.**
+
+### Layer 6: Service Layer (Nghiệp vụ cốt lõi)
+- Chứa toàn bộ Business Logic của hệ thống bán lẻ:
+  - `InventoryService`: Lọc các lô hàng $\le 3$ ngày hạn sử dụng để kích hoạt trạng thái Flash Sale.
+  - `PromotionService`: Tính toán phần trăm chiết khấu, kiểm tra điều kiện áp mã voucher `FRESH20`.
+  - `RecipeService`: Khớp các từ khóa món ăn và chuẩn hóa định lượng nguyên liệu.
+
+### Layer 7: Repository & Database Layer
+- **Repository**: Chỉ thực thi các truy vấn Entity Framework Core sạch: `.Where()`, `.Include()`, `.AsNoTracking()`, `.Select()`.
+- **Database**: CSDL quan hệ SQL Server lưu trữ bảng dữ liệu nguồn: `Products`, `ProductBatches`, `Categories`, `Promotions`, `Orders`, `Recipes`.
 
 ---
 
-## 3. LUỒNG DỮ LIỆU XUYÊN SUỐT HỆ THỐNG
+## 3. LUỒNG THỰC THI ĐẦY ĐỦ (END-TO-END EXECUTION FLOW)
 
-1. **Client Request**: Người dùng gửi tin nhắn: `"Mình có 30k 1 người ăn thì nấu món gì"`.
-2. **Controller Entrypoint**: `AiRetailController.PlanMealAndShop` tiếp nhận payload.
-3. **Intent & Parameter Parsing**: `AiShoppingConciergeService` xác định số người = 1, ngân sách = 30.000 đ, chủ đề = `"Bữa Ăn Tiết Kiệm"`.
-4. **Data Retrieval & Matching**: Hệ thống tải danh mục sản phẩm từ CSDL và ghép chính xác:
-   - Option 1: Trứng gà Ba Huân vỉ 10 quả (Cat 9) + Rau muống nước (Cat 4) $\rightarrow$ 30.800 đ.
-   - Option 2: Mì Omachi sườn hầm (Cat 10) + Xúc xích Vissan (Cat 10) + Cải ngọt (Cat 4) $\rightarrow$ 44.300 đ.
-   - Option 3: Cá nục sốt cà Ba Cô Gái (Cat 10) + Dưa leo baby (Cat 4) $\rightarrow$ 28.900 đ.
-5. **Prompt Augmentation & LLM Generation**: Tạo prompt tóm tắt gửi sang Gemini 2.5 Flash để sinh lời thoại đầu bếp thân thiện.
-6. **Response Delivery**: Trả về `MealPlanChatResponse` gồm lời nhắn Markdown và danh sách 3 `MealOptionDto`.
+### Tình huống: Khách có 300,000 đ muốn nấu lẩu cho 5 người, ưu tiên giảm giá
 
----
-
-## 4. CƠ CHẾ ĐIỀU PHỐI LLM & CHUỖI DỰ PHÒNG 3 LỚP (FALLBACK CHAIN)
-
-Hệ thống triển khai cơ chế **Fallback Chain** tự động tại [GeminiService.cs](file:///D:/Laptrinhtrucquan/Backend/Infrastructure/External/AI/GeminiService.cs) để đảm bảo không bao giờ gián đoạn dịch vụ:
-
-```mermaid
-stateDiagram-v2
-    [*] --> CheckGeminiKey
-    CheckGeminiKey --> CallGemini: Key hợp lệ (AIzaSy...)
-    CheckGeminiKey --> CallGroq: Không có key / Sai định dạng
-
-    CallGemini --> Success: HTTP 200 OK (gemini-2.5-flash)
-    CallGemini --> FallbackGemini20: HTTP 404 Model
-    FallbackGemini20 --> Success: HTTP 200 OK (gemini-2.0-flash)
-    FallbackGemini20 --> FallbackGemini15: HTTP 404 Model
-    FallbackGemini15 --> Success: HTTP 200 OK (gemini-1.5-flash)
-    FallbackGemini15 --> CallGroq: Lỗi xác thực / Timeout
-
-    CallGroq --> Success: HTTP 200 OK (Llama 3.3 70B)
-    CallGroq --> CallLocalEngine: Groq lỗi / Hết quota
-
-    CallLocalEngine --> Success: Trả về công thức Cookpad nội bộ
-    Success --> [*]
+```text
+User: "Tôi có 300k, muốn nấu lẩu cho 5 người, có giảm giá thì ưu tiên nhé"
+  │
+  ▼
+[Angular / React Frontend] ──(POST /api/ai/chat)──► [AIController]
+                                                           │
+                                                           ▼
+                                                 [AgentOrchestrator]
+                                                           │
+                                                           ▼
+                                                   [ShoppingAgent]
+                                                           │
+      ┌────────────────────────────────────────────────────┤
+      ▼ Bước 1: Tra cứu công thức                          │
+[RecipeAgent] ──► [RecipeTool] ──► [RecipeService] ──► [RecipeRepo] ──► Trả về nguyên liệu lẩu
+                                                           │
+      ┌────────────────────────────────────────────────────┤
+      ▼ Bước 2: Kiểm tra tồn kho & cận date                │
+[InventoryAgent] ──► [InventoryTool] ──► [InventoryService] ──► [InventoryRepo] ──► Lọc lô thịt bò cận date
+                                                           │
+      ┌────────────────────────────────────────────────────┤
+      ▼ Bước 3: Áp dụng khuyến mãi & voucher               │
+[PromotionAgent] ──► [PromotionTool] ──► [PromotionService] ──► [PromotionRepo] ──► Giảm 30% thịt cận date
+                                                           │
+      ┌────────────────────────────────────────────────────┤
+      ▼ Bước 4: Kiểm tra & Cân đối ngân sách               │
+[BudgetAgent] ──► [BudgetTool] ──► [BudgetService] ──► Tổng chi: 285k (<= 300k, đạt yêu cầu!)
+                                                           │
+                                                           ▼
+[ShoppingAgent] ◄── Tổng hợp kết quả & định dạng 3 mâm cơm Cookpad
+      │
+      ▼
+[AgentOrchestrator] ──► [AIController] ──(HTTP 200 OK)──► [Frontend Client] ──► Hiển thị cho User
 ```
 
-1. **Lớp 1 (Google Gemini 2.5 Flash)**:
-   - Ưu tiên gọi mô hình `gemini-2.5-flash`.
-   - Nếu trả về `404 Not Found`, tự động chuyển sang `gemini-2.0-flash` hoặc `gemini-1.5-flash`.
-2. **Lớp 2 (Groq Cloud LPU - Llama 3.3 70B)**:
-   - Kích hoạt khi Gemini gặp sự cố mạng, lỗi 400/401 hoặc hết hạn ngạch.
-   - Xử lý trên chip LPU tốc độ cao (~250 tokens/giây), độ trễ phản hồi < 1 giây.
-3. **Lớp 3 (Deterministic Cookpad Safety Net)**:
-   - Nếu cả 2 API đám mây đều không khả dụng, hệ thống kích hoạt hàm sinh lời thoại chuyên gia nội bộ `GenerateChefMealMessageWithMultiOptions`. Người dùng vẫn nhận được 3 lựa chọn mâm cơm đầy đủ và chính xác 100%.
+---
+
+## 4. LỘ TRÌNH TIẾN HÓA: BẢN MVP TỐI GIẢN VS ENTERPRISE MULTI-AGENT
+
+Để tránh phức tạp hóa hệ thống trong giai đoạn phát triển ban đầu, dự án chia thành 2 mốc kiến trúc rõ ràng:
+
+### Giai đoạn MVP (Khuyên dùng cho bước đầu)
+Chỉ tập trung vào 1 Agent điều phối trung tâm và 4 Tools cốt lõi:
+1. **ShoppingAgent** (Đảm nhiệm điều phối quy trình và tổng hợp)
+2. **InventoryTool** (Tra cứu tồn kho, kiểm tra cận date)
+3. **ProductTool** (Tìm kiếm danh mục, thông tin sản phẩm)
+4. **PromotionTool** (Tra cứu voucher, flash sale giảm giá)
+5. **CartTool** (Nạp nhanh nguyên liệu vào giỏ hàng)
+
+### Giai đoạn Enterprise (Multi-Agent hoàn chỉnh)
+- Tách rời `InventoryAgent`, `PromotionAgent`, `BudgetAgent`, `RecipeAgent` thành các micro-services hoặc background workers độc lập.
+- Bổ sung RAG (Retrieval-Augmented Generation) kết hợp Vector Database cho hàng chục ngàn công thức nấu ăn.
 
 ---
 
-## 5. HIỆU NĂNG, ĐỘ TRỄ (SLA) & NGÂN SÁCH TOKEN
+## 5. CẤU TRÚC THƯ MỤC BACKEND ĐỀ XUẤT
 
-| Tham số kỹ thuật | Ngưỡng cam kết (SLA) | Cơ chế tối ưu |
-| :--- | :---: | :--- |
-| **Thời gian phản hồi (Latency)** | $\le 1.5\text{s}$ | Sử dụng streaming / flash models; Groq LPU hỗ trợ fallback siêu tốc. |
-| **Ngân sách Token (Token Budget)** | $500 - 800\text{ tokens}$ | Chỉ nạp top 12 sản phẩm liên quan vào context, không nhồi nhét toàn bộ kho hàng. |
-| **Tỷ lệ sẵn sàng (Availability)** | $99.9\%$ | Chuỗi dự phòng 3 lớp đảm bảo luôn có kết quả trả về. |
-| **Độ chính xác danh mục** | $100\%$ | Sử dụng `IngredientQuery` cách ly CategoryId, triệt tiêu ảo giác sai sản phẩm. |
+```text
+Features/
+└── AI/
+    ├── Controllers/
+    │   └── AIController.cs             # Thin Controller cho AI Endpoint
+    │
+    ├── Orchestrator/
+    │   ├── IAgentOrchestrator.cs       # Interface điều phối
+    │   └── AgentOrchestrator.cs        # Bộ não phân tích intent & điều phối
+    │
+    ├── Agents/
+    │   ├── Shopping/
+    │   │   ├── IShoppingAgent.cs
+    │   │   └── ShoppingAgent.cs
+    │   ├── Inventory/
+    │   │   ├── IInventoryAgent.cs
+    │   │   └── InventoryAgent.cs
+    │   ├── Promotion/
+    │   │   ├── IPromotionAgent.cs
+    │   │   └── PromotionAgent.cs
+    │   ├── Recipe/
+    │   │   ├── IRecipeAgent.cs
+    │   │   └── RecipeAgent.cs
+    │   ├── Budget/
+    │   │   ├── IBudgetAgent.cs
+    │   │   └── BudgetAgent.cs
+    │   └── Cart/
+    │       ├── ICartAgent.cs
+    │       └── CartAgent.cs
+    │
+    ├── Tools/
+    │   ├── ProductTool.cs              # Search(), GetById(), GetAlternative()
+    │   ├── InventoryTool.cs            # GetStock(), GetNearExpiry(), GetAvailableBatch()
+    │   ├── PromotionTool.cs            # GetVouchers(), CheckFlashSale()
+    │   ├── RecipeTool.cs               # GetRecipe(), GetIngredients()
+    │   ├── CartTool.cs                 # AddToCart(), EstimateCart()
+    │   └── CustomerTool.cs             # GetPreferences(), GetOrderHistory()
+    │
+    ├── Services/
+    │   ├── AiService.cs                # Core AI business logic
+    │   ├── ConversationService.cs      # Quản lý phiên hội thoại & Memory
+    │   ├── PromptService.cs            # Nạp & định dạng System Prompts
+    │   └── LlmGatewayService.cs        # Kết nối Gemini 2.5 Flash / Groq / Fallback
+    │
+    ├── Prompts/                        # Lưu trữ file markdown system prompt
+    ├── DTOs/                           # Data Transfer Objects (Strictly no comments)
+    ├── Memory/                         # Session & Context Cache
+    ├── Contracts/                      # Event & Message Contracts
+    └── Models/                         # Domain Entities cho AI
+```
+
+---
+
+## 6. CƠ CHẾ DỰ PHÒNG 3 LỚP (3-TIER FALLBACK CHAIN)
+
+Dù ở phiên bản MVP hay Enterprise, cơ chế phòng hộ vẫn hoạt động với 3 lớp kiên cố:
+- **Lớp 1 (Chính)**: `Google Gemini 2.5 Flash` (Thời gian phản hồi ~1.2s, độ chính xác ngôn ngữ cao).
+- **Lớp 2 (Dự phòng đám mây)**: `Groq LPU Llama-3.3-70b-versatile` (Kích hoạt khi Gemini gặp lỗi 429 hoặc timeout > 4s).
+- **Lớp 3 (Dự phòng cục bộ)**: `Local Pre-compiled Rule Engine` (Chạy hoàn toàn bằng code C# và cache dữ liệu sẵn trong RAM, đảm bảo hệ thống phản hồi trong 150ms ngay cả khi rớt mạng Internet).

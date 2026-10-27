@@ -1,23 +1,74 @@
 sequenceDiagram
     autonumber
-    actor User as Khách hàng
-    participant Web as React Web (AiShoppingAssistant)
-    participant API as Backend (AiRetailController)
-    participant Svc as AiShoppingConciergeService
-    participant LLM as Google Gemini 2.5 Flash
+    actor User as Khách Hàng
+    participant UI as Frontend (Chat UI)
+    participant Ctrl as AIController
+    participant Orch as AgentOrchestrator
+    participant ShopAgent as ShoppingAgent
+    participant RecAgent as RecipeAgent
+    participant InvAgent as InventoryAgent
+    participant PromoAgent as PromotionAgent
+    participant BudAgent as BudgetAgent
+    participant Tool as Tool Layer (Dispatcher)
+    participant Svc as Service Layer
+    participant Repo as Repository Layer
+    participant DB as SQL Server Database
 
-    User->>Web: Nhập tin nhắn chào hỏi hoặc hỏi mẹo nấu ăn
-    Web->>API: POST /api/v1/ai/shopping/meal-plan
-    API->>Svc: PlanMealAndShopAsync(request)
+    User->>UI: "Tôi có 300k, nấu lẩu 4-5 người, ưu tiên đồ giảm giá"
+    UI->>Ctrl: POST /api/ai/chat { message, conversationHistory }
+    Note over Ctrl: Validate Request & DTO
+    Ctrl->>Orch: DispatchMessageAsync(message)
+    Note over Orch: Phân tích Intent: MealPlanning, Recipe, Budget, Promotion, Inventory
+
+    Orch->>ShopAgent: PlanShoppingWorkflowAsync(intent)
     
-    alt Ý định là Lời chào (Greeting)
-        Svc->>LLM: Gửi Greeting Prompt (Xưng 'mình', gọi 'bạn')
-        LLM-->>Svc: Trả về lời chào ấm áp & hướng dẫn đặt câu hỏi
-    else Ý định là Mẹo ẩm thực (Culinary Advice)
-        Svc->>LLM: Gửi Culinary Prompt (Mẹo luộc rau, ướp thịt bò...)
-        LLM-->>Svc: Trả về các bước hướng dẫn chuẩn vị Cookpad
+    %% Bước 1: RecipeAgent
+    ShopAgent->>RecAgent: GetRecipeIngredients("lẩu", servings=5)
+    RecAgent->>Tool: RecipeTool.GetRecipeAsync("Lẩu thập cẩm")
+    Tool->>Svc: RecipeService.FindRecipeByName()
+    Svc->>Repo: RecipeRepository.GetIngredients()
+    Repo->>DB: Query Cookpad Recipe DB
+    DB-->>Repo: Return List<Ingredient>
+    Repo-->>Svc: Ingredient Entities
+    Svc-->>Tool: Recipe DTO
+    Tool-->>RecAgent: Raw Ingredients List
+    RecAgent-->>ShopAgent: Ingredients (Thịt bò, Nấm, Rau muống, Gói gia vị lẩu)
+
+    %% Bước 2: InventoryAgent
+    ShopAgent->>InvAgent: CheckAvailabilityAndNearExpiry(ingredients)
+    InvAgent->>Tool: InventoryTool.GetStockAndNearExpiryAsync(productIds)
+    Tool->>Svc: InventoryService.CheckStockAndBatches()
+    Svc->>Repo: InventoryRepository.GetBatchesWithExpiry()
+    Repo->>DB: Query Inventory & Batches
+    DB-->>Repo: Stock & Expiry Data
+    Repo-->>Svc: Batches Data
+    Svc-->>Tool: InStock + NearExpiry List (Thịt bò C.P còn 2 ngày)
+    Tool-->>InvAgent: Inventory Status
+    InvAgent-->>ShopAgent: Validated Stock & Flash Sale Candidates
+
+    %% Bước 3: PromotionAgent
+    ShopAgent->>PromoAgent: ApplyPromotionsAndVouchers(items)
+    PromoAgent->>Tool: PromotionTool.GetApplicableDiscountsAsync(items)
+    Tool->>Svc: PromotionService.CalculateDiscounts()
+    Svc->>Repo: PromotionRepository.GetActiveCampaigns()
+    Repo->>DB: Query Promotions
+    DB-->>Repo: Active Discounts
+    Repo-->>Svc: Campaign Entities
+    Svc-->>Tool: Discount Details (Giảm 30% thịt nạc dăm, voucher FRESH20)
+    Tool-->>PromoAgent: Applied Discounts
+    PromoAgent-->>ShopAgent: Discounted Prices
+
+    %% Bước 4: BudgetAgent
+    ShopAgent->>BudAgent: BalanceBudget(target=300000, currentItems)
+    alt Tổng tiền <= 300,000 đ
+        BudAgent-->>ShopAgent: Budget OK (~285,000 đ)
+    else Vượt quá 300,000 đ
+        BudAgent->>Tool: ProductTool.GetAlternativeAsync(cheaperOption)
+        Tool-->>BudAgent: Thay Bò Úc bằng Bò Ta hoặc Nạc dăm
+        BudAgent-->>ShopAgent: Rebalanced Meal Plan (~295,000 đ)
     end
 
-    Svc-->>API: Trả về MealPlanChatResponse (HasMealSuggestion = false)
-    API-->>Web: HTTP 200 OK
-    Web->>User: Hiển thị câu trả lời căn lề trái tự nhiên
+    ShopAgent->>Orch: Synthesized Response & Option Cards
+    Orch->>Ctrl: ChatResponseDTO
+    Ctrl->>UI: HTTP 200 OK (JSON)
+    UI->>User: Hiển thị câu trả lời & các thẻ mâm cơm (Text-align left)

@@ -1,39 +1,91 @@
 flowchart TD
-    subgraph Presentation["TẦNG 1: TRÌNH DIỄN & GIAO DIỆN (PRESENTATION TIER)"]
-        Web["React 18 + Vite Web Client<br/>(AiShoppingAssistant.tsx, CartPage.tsx)"]
-        Desktop["Windows Forms Desktop (.NET 10)<br/>(AiCopilotView.cs, PosScanView.cs)"]
+    subgraph Layer1["Layer 1: Frontend (Client Presentation)"]
+        UI["Frontend Web Client<br/>(AI Chat Component)"]
     end
 
-    subgraph API_Services["TẦNG 2: NGHIỆP VỤ & ĐIỀU PHỐI (APPLICATION SERVICE TIER)"]
-        Ctrl["AiRetailController.cs<br/>/api/v1/ai/shopping/meal-plan<br/>/api/v1/ai/retail/*"]
-        Concierge["AiShoppingConciergeService<br/>- Bóc tách Servings & Budget<br/>- Khớp nguyên liệu CategoryId<br/>- Xây dựng 3 Option Cookpad"]
-        Retail["AiRetailService<br/>- Phân tích rổ hàng Market Basket<br/>- Quét hạn dùng lô Shelf-Life<br/>- Lập phiếu nhập kho nháp"]
+    subgraph Layer2["Layer 2: API Controller (Thin Layer)"]
+        Ctrl["AIController<br/>POST /api/ai/chat<br/>(Validate & DTO Return)"]
     end
 
-    subgraph LLM_Orchestration["TẦNG 3: ĐIỀU PHỐI LLM (LLM ORCHESTRATION TIER)"]
-        ILlm["ILlmClient Interface"]
-        Gemini["GeminiService<br/>(gemini-2.5-flash / gemini-2.0-flash)"]
-        Groq["GroqClient<br/>(Llama-3.3-70b-versatile LPU)"]
-        Local["Local Deterministic Rule Engine<br/>(Cookpad Knowledge Safety Net)"]
+    subgraph Layer3["Layer 3: Agent Orchestrator (Brain & Multi-Agent)"]
+        Orch["Agent Orchestrator<br/>(Phân tích Intent & Điều phối Agent)"]
+        
+        subgraph Agents["Specialized Agents"]
+            ShoppingAgent["ShoppingAgent<br/>(Planning & Synthesis)"]
+            InventoryAgent["InventoryAgent<br/>(Stock, Batches, Expiry)"]
+            PromotionAgent["PromotionAgent<br/>(Voucher, Flash Sale, Promo)"]
+            RecipeAgent["RecipeAgent<br/>(Cookpad DB & Ingredients)"]
+            BudgetAgent["BudgetAgent<br/>(Tính tổng & Đề xuất thay thế)"]
+            CartAgent["CartAgent<br/>(Add, Remove, Update, Estimate)"]
+        end
     end
 
-    subgraph Database["TẦNG 4: LƯU TRỮ DỮ LIỆU (PERSISTENCE & DATA TIER)"]
-        DB[(AppDbContext<br/>PostgreSQL / In-Memory EF Core)]
-        SeedData[("products_seed.json<br/>200 Sản phẩm siêu thị")]
+    subgraph Layer4["Layer 4: Tool Layer (Tool Dispatcher)"]
+        Dispatcher["Tool Dispatcher"]
+        ProductTool["ProductTool<br/>Search(), GetById()"]
+        InventoryTool["InventoryTool<br/>GetStock(), GetNearExpiry(), GetAlternative()"]
+        PromotionTool["PromotionTool<br/>GetVouchers(), CheckFlashSale()"]
+        RecipeTool["RecipeTool<br/>GetRecipe(), GetIngredients()"]
+        CartTool["CartTool<br/>AddToCart(), EstimateCart()"]
     end
 
-    Web -->|HTTP POST JSON| Ctrl
-    Desktop -->|HTTP POST JSON| Ctrl
-    Ctrl --> Concierge
-    Ctrl --> Retail
+    subgraph Layer5["Layer 5: Service Layer (Business Logic)"]
+        ProductService["ProductService"]
+        InventoryService["InventoryService<br/>(Lọc cận date <= 3 ngày, Flash Sale)"]
+        PromotionService["PromotionService<br/>(Tính chiết khấu & điều kiện Voucher)"]
+        RecipeService["RecipeService<br/>(Tra cứu cẩm nang Cookpad)"]
+        OrderService["OrderService / CartService"]
+    end
 
-    Concierge --> ILlm
-    Retail --> ILlm
+    subgraph Layer6["Layer 6: Repository Layer (EF Core Queries)"]
+        ProductRepo["ProductRepository"]
+        InventoryRepo["InventoryRepository"]
+        PromotionRepo["PromotionRepository"]
+        RecipeRepo["RecipeRepository"]
+        OrderRepo["OrderRepository"]
+    end
 
-    ILlm -->|Ưu tiên 1| Gemini
-    ILlm -->|Ưu tiên 2| Groq
-    ILlm -->|Ưu tiên 3| Local
+    subgraph Layer7["Layer 7: Persistence Layer"]
+        DB[("SQL Server Database<br/>(Products, Inventory, Orders, Promotions, Recipes)")]
+    end
 
-    Concierge -->|Query Products & Batches| DB
-    Retail -->|Query Orders & Inventory| DB
-    DB -.-> SeedData
+    UI -->|HTTP POST /api/ai/chat| Ctrl
+    Ctrl -->|Call Orchestrator| Orch
+
+    Orch --> ShoppingAgent
+    Orch --> InventoryAgent
+    Orch --> PromotionAgent
+    Orch --> RecipeAgent
+    Orch --> BudgetAgent
+    Orch --> CartAgent
+
+    ShoppingAgent --> Dispatcher
+    InventoryAgent --> Dispatcher
+    PromotionAgent --> Dispatcher
+    RecipeAgent --> Dispatcher
+    BudgetAgent --> Dispatcher
+    CartAgent --> Dispatcher
+
+    Dispatcher --> ProductTool
+    Dispatcher --> InventoryTool
+    Dispatcher --> PromotionTool
+    Dispatcher --> RecipeTool
+    Dispatcher --> CartTool
+
+    ProductTool --> ProductService
+    InventoryTool --> InventoryService
+    PromotionTool --> PromotionService
+    RecipeTool --> RecipeService
+    CartTool --> OrderService
+
+    ProductService --> ProductRepo
+    InventoryService --> InventoryRepo
+    PromotionService --> PromotionRepo
+    RecipeService --> RecipeRepo
+    OrderService --> OrderRepo
+
+    ProductRepo --> DB
+    InventoryRepo --> DB
+    PromotionRepo --> DB
+    RecipeRepo --> DB
+    OrderRepo --> DB

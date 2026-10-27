@@ -3,141 +3,122 @@
 ---
 
 ## MỤC LỤC
-1. [Luồng 1: Xử lý yêu cầu đi chợ & Lên thực đơn mâm cơm (Shopping Concierge Workflow)](#1-luồng-1-xử-lý-yêu-cầu-đi-chợ--lên-thực-đơn-mâm-cơm)
-2. [Luồng 2: Tự động giám sát hạn sử dụng & Kích hoạt Flash Sale (Shelf-Life Workflow)](#2-luồng-2-tự-động-giám-sát-hạn-sử-dụng--kích-hoạt-flash-sale)
-3. [Luồng 3: Quản trị viên phân tích tồn kho & Lập phiếu nhập kho 1-Click](#3-luồng-3-quản-trị-viên-phân-tích-tồn-kho--lập-phiếu-nhập-kho-1-click)
-4. [Luồng 4: Tương tác khay nguyên liệu & Nạp giỏ hàng (Cart Injection Workflow)](#4-luồng-4-tương-tác-khay-nguyên-liệu--nạp-giỏ-hàng)
-5. [Sơ đồ tuần tự tổng thể (Comprehensive Sequence Diagram)](#5-sơ-đồ-tuần-tự-tổng-thể)
+1. [Luồng đầy đủ: Tư vấn mâm cơm đa tác nhân (End-to-End Meal Planning Workflow)](#1-luồng-đầy-đủ-tư-vấn-mâm-cơm-đa-tác-nhân)
+2. [Luồng nạp giỏ hàng: 1-Click Add Cart (Add Cart Workflow)](#2-luồng-nạp-giỏ-hàng-1-click-add-cart)
+3. [Luồng xử lý khi hết hàng & Đề xuất thay thế (Out of Stock & Alternative Workflow)](#3-luồng-xử-lý-khi-hết-hàng--đề-xuất-thay-thế)
+4. [Luồng tự động giám sát hạn dùng & Flash Sale (Shelf-Life Workflow)](#4-luồng-tự-động-giám-sát-hạn-dùng--flash-sale)
 
 ---
 
-## 1. LUỒNG 1: XỬ LÝ YÊU CẦU ĐI CHỢ & LÊN THỰC ĐƠN MÂM CƠM
+## 1. LUỒNG ĐẦY ĐỦ: TƯ VẤN MÂM CƠM ĐA TÁC NHÂN
 
-Đây là luồng nghiệp vụ trung tâm kết nối người dùng Web với trí tuệ nhân tạo:
+Áp dụng cho tình huống khách hàng gửi yêu cầu mua sắm và nấu ăn (Ví dụ: *"Tôi có 300k, muốn nấu lẩu cho 5 người, có giảm giá thì ưu tiên"*).
 
 ```mermaid
 flowchart TD
-    Start([1. Khách hàng gửi prompt trên Web]) --> IntentCheck{2. Nhận diện ý định<br/>Intent Recognition}
+    User([Khách Hàng]) -->|1. '300k nấu lẩu 5 người'| UI[Frontend Chat UI]
+    UI -->|2. POST /api/ai/chat| Ctrl[AIController]
+    Ctrl -->|3. Validate & Chuyển giao| Orch[AgentOrchestrator]
     
-    IntentCheck -->|Chào hỏi| Greet[Trả về lời chào thân thiện & gợi ý mâm cơm]
-    IntentCheck -->|Mẹo nấu ăn| Advice[Trả về cẩm nang bí quyết Cookpad]
-    IntentCheck -->|Hỏi món / Lên thực đơn| ParseParams[3. Bóc tách tham số tự nhiên<br/>Servings & TargetBudget]
-
-    ParseParams --> Theme[4. Xác định chủ đề món ăn<br/>DetermineDishTheme]
-    Theme --> FetchDB[5. Truy vấn CSDL kho hàng<br/>Products & InventoryBatches]
+    Orch -->|4. Phân tích Intent| ShopAgent[ShoppingAgent]
     
-    FetchDB --> CategoryMatch[6. Khớp nguyên liệu cách ly CategoryId<br/>MatchProductsForQueries]
-    CategoryMatch --> BuildOptions[7. Xây dựng 3 Option mâm cơm Cookpad<br/>Option 1, Option 2, Option 3]
+    subgraph Execution_Pipeline["Chuỗi Thực Thi Đa Tác Nhân"]
+        ShopAgent -->|5. Tìm công thức| RecAgent[RecipeAgent]
+        RecAgent -->|6. Call Tool| RecTool[RecipeTool]
+        RecTool -->|7. Query Service| RecSvc[RecipeService]
+        RecSvc -->|8. Query Repo| RecRepo[RecipeRepository]
+        RecRepo -->|9. Đọc CSDL Cookpad| RecData[(Recipe Data)]
+        RecData -.->|Trả nguyên liệu| ShopAgent
 
-    BuildOptions --> LLMCall{8. Gọi LLM Engine}
-    LLMCall -->|Gemini Key hợp lệ| Gemini[Google Gemini 2.5 Flash]
-    LLMCall -->|Gemini lỗi/404/Quota| Groq[Groq Llama 3.3 70B]
-    LLMCall -->|Không có API Key / Offline| LocalEngine[Local Cookpad Rule Engine]
+        ShopAgent -->|10. Kiểm tra tồn & date| InvAgent[InventoryAgent]
+        InvAgent -->|11. Call Tool| InvTool[InventoryTool]
+        InvTool -->|12. Query Service| InvSvc[InventoryService]
+        InvSvc -->|13. Query Repo| InvRepo[InventoryRepository]
+        InvRepo -->|14. Đọc kho hàng| InvData[(Inventory Batches)]
+        InvData -.->|Lọc lô cận date| ShopAgent
 
-    Gemini --> FormatMsg[9. Định dạng thông điệp hoàn chỉnh<br/>Tóm tắt 3 mâm + giá tiền, căn lề trái]
-    Groq --> FormatMsg
-    LocalEngine --> FormatMsg
+        ShopAgent -->|15. Kiểm tra khuyến mãi| PromoAgent[PromotionAgent]
+        PromoAgent -->|16. Call Tool| PromoTool[PromotionTool]
+        PromoTool -->|17. Query Service| PromoSvc[PromotionService]
+        PromoSvc -->|18. Query Repo| PromoRepo[PromotionRepository]
+        PromoRepo -->|19. Đọc Voucher/Promo| PromoData[(Promotions)]
+        PromoData -.->|Áp dụng giảm 30%| ShopAgent
 
-    FormatMsg --> ReturnClient([10. Trả về MealPlanChatResponse cho Client])
+        ShopAgent -->|20. Cân đối chi phí| BudAgent[BudgetAgent]
+        BudAgent -->|21. Call Tool| BudTool[ProductTool]
+        BudTool -->|22. Query Service| BudSvc[ProductService]
+        BudSvc -.->|Tổng chi <= 300k| ShopAgent
+    end
+
+    ShopAgent -->|23. Tổng hợp DTO| RespBuilder[Response Builder]
+    RespBuilder -->|24. Return DTO| Ctrl
+    Ctrl -->|25. HTTP 200 OK| UI
+    UI -->|26. Hiển thị mâm cơm| User
 ```
 
 ---
 
-## 2. LUỒNG 2: TỰ ĐỘNG GIÁM SÁT HẠN SỬ DỤNG & KÍCH HOẠT FLASH SALE
+## 2. LUỒNG NẠP GIỎ HÀNG: 1-CLICK ADD CART
+
+Áp dụng khi khách hàng bấm nút **"Chọn mâm này"** hoặc gửi tin nhắn *"Tôi lấy toàn bộ mâm lẩu này"*.
+
+```mermaid
+flowchart TD
+    User([Khách Hàng]) -->|'Tôi lấy toàn bộ mâm này'| UI[Frontend UI]
+    UI -->|POST /api/ai/cart/inject| Ctrl[AIController]
+    Ctrl --> Orch[AgentOrchestrator]
+    Orch --> ShopAgent[ShoppingAgent]
+    ShopAgent --> CartAgent[CartAgent]
+    
+    CartAgent --> CartTool[CartTool.AddToCartAsync]
+    CartTool --> OrderSvc[OrderService / CartService]
+    OrderSvc --> OrderRepo[OrderRepository]
+    OrderRepo --> DB[(SQL Server - Cart & CartItems)]
+    
+    DB -.->|Thêm thành công| OrderSvc
+    OrderSvc -.->|Giỏ hàng cập nhật| CartAgent
+    CartAgent -.->|Cart Status OK| ShopAgent
+    ShopAgent --> Resp[Thông báo: 'Đã thêm trọn bộ nguyên liệu vào giỏ hàng!']
+    Resp --> Ctrl --> UI --> User
+```
+
+---
+
+## 3. LUỒNG XỬ LÝ KHI HẾT HÀNG & ĐỀ XUẤT THAY THẾ (OUT OF STOCK & ALTERNATIVE)
+
+Khi một nguyên liệu trong công thức nấu ăn bị hết hàng tại siêu thị, hệ thống tự động tìm kiếm món thay thế tương đương cùng ngành hàng:
+
+```mermaid
+flowchart TD
+    InvCheck[Kiểm tra tồn kho nguyên liệu] --> StockCheck{StockQuantity == 0?}
+    StockCheck -- Không (Còn hàng) --> NormalFlow[Sử dụng nguyên liệu gốc]
+    StockCheck -- Có (Hết hàng) --> TriggerInv[Kích hoạt InventoryAgent]
+    
+    TriggerInv --> CallAltTool[Gọi ProductTool.GetAlternativeAsync]
+    CallAltTool --> ProdSvc[ProductService]
+    
+    subgraph Alt_Resolution["Thuật Toán Tìm Sản Phẩm Thay Thế"]
+        ProdSvc --> MatchCategory[1. Khóa chặt cùng CategoryId]
+        MatchCategory --> MatchNutrition[2. Tương đồng giá trị đạm / calo]
+        MatchNutrition --> CheckStock[3. Sản phẩm thay thế phải có Stock > 0]
+        CheckStock --> CheckPrice[4. Đơn giá tương đương hoặc rẻ hơn]
+    end
+
+    ProdSvc --> ReturnAlt[Trả về sản phẩm thay thế]
+    ReturnAlt --> ShopAgent[ShoppingAgent gắn nhãn: 'Đã thay thế nguyên liệu']
+    ShopAgent --> NotifyUser[Thông báo minh bạch lý do thay thế cho người dùng]
+```
+
+---
+
+## 4. LUỒNG TỰ ĐỘNG GIÁM SÁT HẠN DÙNG & FLASH SALE (SHELF-LIFE WORKFLOW)
 
 Quy trình tự động chạy ngầm bảo vệ hàng hóa và giải cứu thực phẩm tươi sống:
-
-```mermaid
-flowchart TD
-    Timer([06:00 AM Hàng ngày]) --> Worker[ShelfLifeBackgroundService thức dậy]
-    Worker --> ScanBatches[Quét toàn bộ lô hàng InventoryBatches]
-    
-    ScanBatches --> CalcDays[Tính DaysLeft = ExpiryDate - Today]
-    
-    CalcDays --> CheckDays{Kiểm tra DaysLeft}
-    CheckDays -->|DaysLeft <= 0| LockBatch[Khóa bán lô hàng: Status = 'Expired']
-    CheckDays -->|0 < DaysLeft <= 7| ApplyDiscount[Áp dụng DiscountRule: Giảm giá 30%]
-    CheckDays -->|DaysLeft > 7| Safe[Trạng thái An toàn: Good]
-
-    ApplyDiscount --> TagPromo[Gán nhãn Flash Sale cận date giảm 30%]
-    TagPromo --> ConciergePriority[AI Concierge ưu tiên đưa vào thực đơn tiết kiệm]
-```
-
----
-
-## 3. LUỒNG 3: QUẢN TRỊ VIÊN PHÂN TÍCH TỒN KHO & LẬP PHIẾU NHẬP KHO 1-CLICK
-
-Dành cho nhà quản lý siêu thị tại màn hình Desktop WinForms:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Manager as Quản lý Siêu thị
-    participant WinForms as Desktop (AiCopilotView.cs)
-    participant API as AiRetailController
-    participant Svc as AiRetailService
-    participant DB as CSDL Siêu thị
-
-    Manager->>WinForms: Bấm "Phân tích rủi ro kho & Đề xuất nhập hàng"
-    WinForms->>API: POST /api/v1/ai/retail/draft-import-order?supplierId=1
-    API->>Svc: GenerateDraftImportOrderAsync(supplierId)
-    Svc->>DB: Tìm sản phẩm có tồn kho < MinStockLevel
-    DB-->>Svc: Danh sách mặt hàng thiếu hụt & giá hợp đồng
-    Svc->>Svc: Tính số lượng cần bù = (MinStockLevel * 2) - CurrentStock
-    Svc-->>API: Trả về AiDraftImportOrder
-    API-->>WinForms: Hiển thị bảng duyệt phiếu nhập trên WinForms
-    Manager->>WinForms: Kiểm tra & bấm "1-Click Xác nhận lưu phiếu nhập"
-    WinForms->>API: POST /api/v1/ai/retail/commit-draft-import
-    API->>DB: INSERT ImportReceipts & ImportDetails (Status = Draft)
-    DB-->>API: Ghi nhận thành công
-    API-->>WinForms: Thông báo: "Đã lưu phiếu nhập kho PN-20261027-XXX thành công"
-```
-
----
-
-## 4. LUỒNG 4: TƯƠNG TÁC KHAY NGUYÊN LIỆU & NẠP GIỎ HÀNG (CART INJECTION)
-
-Luồng tương tác trực tiếp trên giao diện [AiShoppingAssistant.tsx](file:///D:/Laptrinhtrucquan/Frontend/src/components/chat/AiShoppingAssistant.tsx):
-
-1. **Hiển thị thẻ mâm cơm**: Client nhận `MealPlanChatResponse`, hiển thị lời chào tóm tắt kèm 3 thẻ mâm cơm căn lề trái (mỗi thẻ có huy hiệu giá tiền xanh và danh sách nguyên liệu rút gọn).
-2. **Kích hoạt khay mâm**: Khách bấm nút `"👉 Chọn mâm này (XX.000 đ)"`.
-3. **Mở Modal khay nguyên liệu (`handleOpenMealModal`)**:
-   - Hiển thị danh sách đầy đủ các nguyên liệu kèm hình ảnh sản phẩm.
-   - Cho phép khách hàng:
-     * Tăng / giảm số lượng từng món (+ / -).
-     * Bỏ bớt món nếu nhà đã có sẵn (ví dụ: đã có nước mắm hoặc rau).
-     * Đọc bí quyết nấu ăn chuẩn Cookpad (`CookingTips`).
-4. **Nạp giỏ hàng 1-Click (`handleApplyMealToCart`)**:
-   - Khách bấm `"🛒 Thêm nguyên liệu đã chọn vào giỏ hàng"`.
-   - Hệ thống tự động đẩy các mặt hàng vào giỏ hàng `CartPage`, hiển thị Toast thông báo và nút bấm điều hướng nhanh `/cart`.
-
----
-
-## 5. SƠ ĐỒ TUẦN TỰ TỔNG THỂ (COMPREHENSIVE SEQUENCE)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Khách hàng
-    participant Web as React Web (AiShoppingAssistant)
-    participant API as ASP.NET Core Backend
-    participant Concierge as AiShoppingConciergeService
-    participant LLM as Google Gemini 2.5 Flash
-    participant Cart as Giỏ hàng (/cart)
-
-    User->>Web: Nhập prompt: "Mình có 30k 1 người ăn thì nấu món gì"
-    Web->>API: POST /api/v1/ai/shopping/meal-plan
-    API->>Concierge: PlanMealAndShopAsync(request)
-    Concierge->>Concierge: Nhận diện: servings=1, budget=30k -> Theme="Bữa Ăn Tiết Kiệm"
-    Concierge->>Concierge: Ghép 3 mâm Cookpad (Trứng chiên 30.8k, Mì xúc xích 44.3k, Cá hộp 28.9k)
-    Concierge->>LLM: Gửi prompt tóm tắt + yêu cầu viết câu trả lời xưng "mình" gọi "bạn"
-    LLM-->>Concierge: Trả về lời thoại đầu bếp thân thiện
-    Concierge-->>API: Trả về MealPlanChatResponse
-    API-->>Web: HTTP 200 OK
-    Web->>User: Hiển thị lời nhắn + 3 Thẻ Mâm Cơm Căn Trái
-    User->>Web: Bấm "Chọn mâm này" ở Option 1 (Cơm Trứng Chiên & Canh Rau Muống)
-    Web->>Web: Mở Modal xem chi tiết nguyên liệu
-    User->>Web: Bấm "Thêm vào giỏ hàng"
-    Web->>Cart: Đẩy 2 sản phẩm vào Giỏ hàng
-    Web-->>User: Toast: "Đã thêm thành công 2 nguyên liệu vào giỏ hàng!"
-```
+1. **06:00 AM Hàng ngày**: `ShelfLifeBackgroundService` quét toàn bộ bảng `ProductBatches`.
+2. **Tính số ngày còn lại**: $\text{DaysLeft} = \text{ExpiryDate} - \text{Today}$.
+3. **Phân loại**:
+   - $\text{DaysLeft} \le 0$: Khóa bán ngay lập tức (`Status = Expired`).
+   - $0 < \text{DaysLeft} \le 1$: Kích hoạt Flash Sale xả hàng **giảm 50%**.
+   - $1 < \text{DaysLeft} \le 3$: Kích hoạt Flash Sale **giảm 30%**.
+   - $\text{DaysLeft} > 3$: Trạng thái an toàn bình thường.
+4. `PromotionAgent` và `ShoppingAgent` tự động nhận diện các lô hàng này để đưa vào danh mục mâm cơm gợi ý cho khách hàng trong ngày.

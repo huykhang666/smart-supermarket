@@ -1,138 +1,118 @@
-# 10_AI - TÀI LIỆU 03: THIẾT KẾ GỌI HÀM & CÔNG CỤ (TOOL CALLING DESIGN)
+# 10_AI - TÀI LIỆU 03: THIẾT KẾ LỚP CÔNG CỤ & GỌI HÀM (TOOL CALLING DESIGN)
 
 ---
 
 ## MỤC LỤC
-1. [Nguyên lý hoạt động của Tool Calling](#1-nguyên-lý-hoạt-động-của-tool-calling)
-2. [Danh mục các Tools trong hệ thống](#2-danh-mục-các-tools-trong-hệ-thống)
-3. [Đặc tả chi tiết & JSON Schema từng Tool](#3-đặc-tả-chi-tiết--json-schema-từng-tool)
-   - 3.1. [Tool: search_supermarket_products](#31-tool-search_supermarket_products)
-   - 3.2. [Tool: check_inventory_batches](#32-tool-check_inventory_batches)
-   - 3.3. [Tool: calculate_meal_cost](#33-tool-calculate_meal_cost)
-   - 3.4. [Tool: filter_flash_sale_near_expiry](#34-tool-filter_flash_sale_near_expiry)
-   - 3.5. [Tool: generate_draft_import_order](#35-tool-generate_draft_import_order)
-4. [Luồng thực thi & Cơ chế bẫy lỗi (Execution Flow & Error Handling)](#4-luồng-thực-thi--cơ-chế-bẫy-lỗi)
-5. [Quy chuẩn an toàn (Security Guardrails)](#5-quy-chuẩn-an-toàn-security-guardrails)
+1. [Nguyên tắc cốt lõi: Tách biệt Agent - Tool - Service - Repository](#1-nguyên-tắc-cốt-lõi-tách-biệt-agent---tool---service---repository)
+2. [Cơ chế hoạt động của Tool Dispatcher](#2-cơ-chế-hoạt-động-của-tool-dispatcher)
+3. [Danh mục các Tools chuẩn trong hệ thống](#3-danh-mục-các-tools-chuẩn-trong-hệ-thống)
+4. [Đặc tả chi tiết từng Tool](#4-đặc-tả-chi-tiết-từng-tool)
+   - [4.1. InventoryTool (Tra cứu tồn kho & Cận Date)](#41-inventorytool)
+   - [4.2. ProductTool (Tìm kiếm & Sản phẩm thay thế)](#42-producttool)
+   - [4.3. PromotionTool (Voucher & Flash Sale)](#43-promotiontool)
+   - [4.4. RecipeTool (Tra cứu công thức Cookpad)](#44-recipetool)
+   - [4.5. CartTool (Thao tác giỏ hàng)](#45-carttool)
+5. [Quy chuẩn an toàn & Bảo vệ dữ liệu (Security Guardrails)](#5-quy-chuẩn-an-toàn--bảo-vệ-dữ-liệu)
 
 ---
 
-## 1. NGUYÊN LÝ HOẠT ĐỘNG CỦA TOOL CALLING
+## 1. NGUYÊN TẮC CỐT LÕI: TÁCH BIỆT AGENT - TOOL - SERVICE - REPOSITORY
 
-Mô hình Ngôn ngữ Lớn (LLM) không thể tự động truy cập dữ liệu thời gian thực hay tự động chèn đơn hàng vào giỏ hàng. Cơ chế **Tool Calling** (Function Calling) cho phép LLM quyết định khi nào cần gọi hàm nghiệp vụ phía Backend C#, tiếp nhận kết quả trả về và tổng hợp thành lời khuyên chuẩn xác nhất.
+Trong kiến trúc Enterprise AI của **Smart SuperMarket**, quy tắc phân tầng là bất biến:
+
+```text
+Agent ──(gọi)──► Tool ──(gọi)──► Service ──(gọi)──► Repository ──(truy vấn)──► Database
+```
+
+| Tầng | Vai Trò | Logic Xử Lý | Ví Dụ Minh Họa |
+|---|---|---|---|
+| **Agent** | Hiểu ý định & Lập kế hoạch | Logic tư duy & điều phối | `ShoppingAgent` nhận thấy cần kiểm tra hàng cận date $\rightarrow$ gọi `InventoryTool` |
+| **Tool** | Cổng giao tiếp chuẩn hóa (Interface) | **HOÀN TOÀN KHÔNG CÓ LOGIC** | `InventoryTool.GetNearExpiry(days)` chuyển tiếp tham số sang `InventoryService` |
+| **Service** | Xử lý nghiệp vụ kinh doanh | **TOÀN BỘ BUSINESS LOGIC Ở ĐÂY** | `InventoryService` lọc lô $\le 3$ ngày, tính mức giảm 30%, gắn cờ Flash Sale |
+| **Repository** | Đọc/Ghi dữ liệu EF Core | **CHỈ TRUY VẤN, KHÔNG LOGIC** | `_db.InventoryBatches.Where(b => b.ExpiryDate <= target).Include().ToList()` |
+| **Database** | Nguồn chân lý duy nhất | Lưu trữ trạng thái | Bảng `Products`, `ProductBatches`, `Promotions` trong SQL Server |
+
+---
+
+## 2. CƠ CHẾ HOẠT ĐỘNG CỦA TOOL DISPATCHER
+
+Khi mô hình LLM (Gemini 2.5 Flash) xử lý prompt của Agent, nếu cần dữ liệu thực tế, LLM sẽ sinh ra một lệnh Function Call (JSON). `Tool Dispatcher` tiếp nhận lệnh, gọi Tool C# tương ứng, và nạp kết quả JSON trở lại cho LLM.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Khách hàng
-    participant LLM as Google Gemini / Groq
-    participant Orchestrator as AI Concierge Service
-    participant Tool as Backend Tools (C#)
-    participant DB as AppDbContext
+    participant Agent as ShoppingAgent (LLM)
+    participant Disp as Tool Dispatcher
+    participant Tool as InventoryTool
+    participant Svc as InventoryService
+    participant Repo as InventoryRepository
+    participant DB as SQL Server
 
-    User->>LLM: "Nhà mình 4 người muốn ăn lẩu bò nấm, ngân sách 200k"
-    LLM->>Orchestrator: Yêu cầu gọi Tool: search_supermarket_products(categoryId=9, keyword="bò")
-    Orchestrator->>Tool: Execute search_supermarket_products
-    Tool->>DB: Query sản phẩm trong kho (CategoryId=9, ProductName chứa "bò")
-    DB-->>Tool: Thịt bò Úc tươi cắt lát Pacow (109.000 đ)
-    Tool-->>Orchestrator: Trả về Product DTO
-    Orchestrator->>Tool: Execute calculate_meal_cost(items)
-    Tool-->>Orchestrator: TotalEstimatedCost = 172.000 đ
-    Orchestrator-->>LLM: Cung cấp kết quả thực thi Tool
-    LLM-->>User: Trả về lời tư vấn mâm Lẩu bò nấm chuẩn vị Cookpad & thẻ chọn mâm
+    Agent->>Disp: Call Tool: GetNearExpiry(daysThreshold=3)
+    Disp->>Tool: InventoryTool.GetNearExpiryAsync(3)
+    Tool->>Svc: InventoryService.GetNearExpiryBatchesAsync(3)
+    Note over Svc: Business Logic: Lọc hàng cận date & áp dụng quy tắc Flash Sale 30%
+    Svc->>Repo: InventoryRepository.GetBatchesByExpiryAsync(cutoffDate)
+    Repo->>DB: EF Core Query (AsNoTracking)
+    DB-->>Repo: Database Rows
+    Repo-->>Svc: Batch Entities
+    Svc-->>Tool: NearExpiryProductsDTO List
+    Tool-->>Disp: ToolExecutionResult (JSON)
+    Disp-->>Agent: Data Context (Thịt nạc heo C.P còn 2 ngày, giá giảm còn 50.400 đ)
+    Agent->>Agent: Tích hợp vào mâm cơm tiết kiệm
 ```
 
 ---
 
-## 2. DANH MỤC CÁC TOOLS TRONG HỆ THỐNG
+## 3. DANH MỤC CÁC TOOLS CHUẨN TRONG HỆ THỐNG
 
-| Tên Tool | Tác nhân sử dụng | Mục đích nghiệp vụ |
-| :--- | :--- | :--- |
-| `search_supermarket_products` | Chef & Concierge Agent | Tìm kiếm sản phẩm theo từ khóa và cách ly đúng `CategoryId` |
-| `check_inventory_batches` | Chef & Retail Copilot | Kiểm tra số lượng tồn và hạn dùng chi tiết của từng lô hàng |
-| `calculate_meal_cost` | Chef & Concierge Agent | Tính toán chi phí mâm cơm, mức chiết khấu và số tiền tiết kiệm |
-| `filter_flash_sale_near_expiry` | Chef & Concierge Agent | Lọc các mặt hàng cận date $\le 7$ ngày để áp dụng giảm 30% |
-| `generate_draft_import_order` | Retail Operations Copilot | Tự động tính toán lượng thiếu hụt và lập phiếu nhập kho nháp |
-
----
-
-## 3. ĐẶC TẢ CHI TIẾT & JSON SCHEMA TỪNG TOOL
-
-### 3.1. Tool: search_supermarket_products
-- **Mục đích**: Tìm kiếm sản phẩm trong kho siêu thị với bộ lọc danh mục chặt chẽ, loại bỏ hoàn toàn lỗi ghép nhầm mì tôm sang thịt tươi hoặc cá hộp sang cà chua.
-- **Khai báo JSON Schema**:
-```json
-{
-  "name": "search_supermarket_products",
-  "description": "Tìm kiếm sản phẩm thực tế từ kho siêu thị theo danh mục và từ khóa chính xác",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "categoryId": {
-        "type": "integer",
-        "description": "Mã danh mục: 9=Thịt/Cá/Trứng, 4=Rau củ tươi, 10=Đồ ăn liền/hộp, 5=Gia vị"
-      },
-      "keyword": {
-        "type": "string",
-        "description": "Từ khóa tên sản phẩm (ví dụ: 'ba chỉ', 'cà chua', 'trứng gà', 'sườn non')"
-      },
-      "excludeWord": {
-        "type": "string",
-        "description": "Từ khóa loại trừ (ví dụ: loại trừ 'mì' khi tìm kiếm sườn)"
-      }
-    },
-    "required": ["keyword"]
-  }
-}
-```
-
-### 3.2. Tool: check_inventory_batches
-- **Mục đích**: Tra cứu tồn kho chi tiết theo từng lô hàng của sản phẩm.
-- **Tham số đầu vào**: `productId` (int), `branchId` (int).
-- **Kết quả trả về**:
-```json
-{
-  "productId": 81,
-  "productName": "Thịt ba chỉ heo MeatDeli khay 400g",
-  "totalStock": 35,
-  "batches": [
-    {
-      "batchCode": "LOT-0081",
-      "quantity": 35,
-      "expiryDate": "2026-11-04T00:00:00Z",
-      "daysLeft": 8,
-      "status": "Good"
-    }
-  ]
-}
-```
-
-### 3.3. Tool: calculate_meal_cost
-- **Mục đích**: Tính toán chi phí mâm cơm và số tiền tiết kiệm được từ Flash Sale.
-- **Công thức chuẩn**:
-  $$\text{LineTotal} = \text{FinalPrice} \times \text{QuantityToBuy}$$
-  $$\text{TotalEstimatedCost} = \sum \text{LineTotal}$$
-  $$\text{TotalSavedAmount} = \sum (\text{RegularPrice} - \text{FinalPrice}) \times \text{QuantityToBuy}$$
-
-### 3.4. Tool: filter_flash_sale_near_expiry
-- **Mục đích**: Lọc các mặt hàng có hạn sử dụng còn lại $\le 7$ ngày để ưu tiên ghép vào thực đơn *"Bữa cơm giải cứu - Tiết kiệm tối đa"*.
-- **Ràng buộc**: Tự động áp dụng mức giảm 30% (`DiscountPercent = 30%`).
-
-### 3.5. Tool: generate_draft_import_order
-- **Mục đích**: Lập phiếu nhập kho nháp tự động cho bộ phận thu mua.
-- **Tham số đầu vào**: `supplierId` (int), `thresholdDays` (int).
-- **Kết quả trả về**: Đối tượng `AiDraftImportOrder` bao gồm các mặt hàng cần nhập, đơn giá hợp đồng và tổng giá trị thanh toán dự kiến.
+| Tên Tool | Các Phương Thức Cung Cấp | Service Phụ Trách | Mục Đích |
+|---|---|---|---|
+| `InventoryTool` | `GetStock()`, `GetNearExpiry()`, `GetAlternative()`, `GetAvailableBatch()` | `InventoryService` | Kiểm tra số lượng tồn, lô hàng và hạn dùng |
+| `ProductTool` | `Search()`, `GetById()`, `GetAlternative()`, `GetByCategory()` | `ProductService` | Tra cứu thông tin chi tiết và sản phẩm thay thế |
+| `PromotionTool` | `GetVouchers()`, `CheckFlashSale()`, `CalculateDiscount()` | `PromotionService` | Áp dụng mã giảm giá và chiến dịch giờ vàng |
+| `RecipeTool` | `GetRecipe()`, `GetIngredients()`, `SearchByKeyword()` | `RecipeService` | Tra cứu công thức nấu ăn chuẩn Cookpad |
+| `CartTool` | `AddToCart()`, `RemoveFromCart()`, `EstimateCart()` | `OrderService` | Thao tác và tính toán giỏ hàng người dùng |
 
 ---
 
-## 4. LUỒNG THỰC THI & CƠ CHẾ BẪY LỖI (ERROR HANDLING)
+## 4. ĐẶC TẢ CHI TIẾT TỪNG TOOL
 
-1. **Validation Gate**: Mọi tham số từ LLM trước khi chuyển cho C# Service đều phải được kiểm tra kiểu dữ liệu (`int.TryParse`, null check).
-2. **Missing Product Fallback**: Nếu một từ khóa không tìm thấy sản phẩm trong kho (ví dụ: siêu thị tạm hết bắp ngọt), Tool tự động trả về `null` và Service chọn sản phẩm thay thế tương đương cùng nhóm mà không làm đổ vỡ toàn bộ mâm cơm.
-3. **Timeout Protection**: Giới hạn thời gian thực thi Tool $\le 500\text{ms}$.
+### 4.1. InventoryTool
+- **Chữ ký phương thức**:
+  - `Task<int> GetStockAsync(int productId)`
+  - `Task<List<NearExpiryItemDto>> GetNearExpiryAsync(int daysThreshold)`
+  - `Task<ProductDto?> GetAlternativeAsync(int outOfStockProductId)`
+  - `Task<List<BatchDto>> GetAvailableBatchAsync(int productId)`
+- **Đặc điểm**: Chỉ đóng vai trò adapter gọi sang `IInventoryService`.
+
+### 4.2. ProductTool
+- **Chữ ký phương thức**:
+  - `Task<List<ProductDto>> SearchAsync(string keyword, int? categoryId)`
+  - `Task<ProductDto?> GetByIdAsync(int productId)`
+  - `Task<ProductDto?> GetAlternativeAsync(int currentProductId, decimal maxPrice)`
+- **Quy tắc cách ly**: Luôn yêu cầu `categoryId` để đảm bảo thực phẩm không bị phân loại nhầm danh mục (Category 9 = Thịt/Trứng/Thủy sản, Category 4 = Rau củ tươi).
+
+### 4.3. PromotionTool
+- **Chữ ký phương thức**:
+  - `Task<List<VoucherDto>> GetVouchersAsync(int customerId)`
+  - `Task<FlashSaleReportDto> CheckFlashSaleAsync()`
+  - `Task<decimal> CalculateDiscountAsync(List<CartItemDto> items, string voucherCode)`
+
+### 4.4. RecipeTool
+- **Chữ ký phương thức**:
+  - `Task<RecipeDto?> GetRecipeAsync(string dishName)`
+  - `Task<List<IngredientDto>> GetIngredientsAsync(int recipeId, int servings)`
+- **Đảm bảo**: Dữ liệu nguyên liệu lấy từ CSDL công thức chuẩn (Cookpad Knowledge Base), ngăn chặn hoàn toàn việc AI bịa ra món ăn không tưởng.
+
+### 4.5. CartTool
+- **Chữ ký phương thức**:
+  - `Task<bool> AddToCartAsync(int cartId, List<CartItemDto> items)`
+  - `Task<CartEstimationDto> EstimateCartAsync(List<CartItemDto> items)`
 
 ---
 
-## 5. QUY CHUẨN AN TOÀN (SECURITY GUARDRAILS)
-
-- **Quyền đọc độc quyền (Read-Only Safety)**: Toàn bộ các Tool phía Client chỉ có quyền đọc dữ liệu (`AsNoTracking()`), không thể thực hiện INSERT, UPDATE, DELETE CSDL.
-- **Duyệt qua người dùng (Human-In-The-Loop)**: Mọi hành vi tạo phiếu nhập kho hoặc nạp giỏ hàng đều yêu cầu xác nhận chủ động từ Quản lý hoặc Khách hàng.
+## 5. QUY CHUẨN AN TOÀN & BẢO VỆ DỮ LIỆU (SECURITY GUARDRAILS)
+1. **Chế độ Read-Only cho truy vấn**: Các Tool tra cứu chỉ gọi Repository với `.AsNoTracking()`, không thể làm thay đổi trạng thái dữ liệu kho.
+2. **Ngăn chặn rò rỉ giá vốn**: Dữ liệu giá vốn (`CostPrice`) và thông tin nhà cung cấp nội bộ bị loại bỏ hoàn toàn khỏi DTO trả về cho Agent khách hàng.
+3. **Giới hạn số lượng bản ghi (Pagination)**: Mỗi lần truy vấn Tool chỉ trả về tối đa 15 sản phẩm phù hợp nhất, tránh làm tràn Context Token của LLM.

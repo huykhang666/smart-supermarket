@@ -1,66 +1,136 @@
 classDiagram
-    class IAiShoppingConciergeService {
+    class AIController {
+        -IAgentOrchestrator _orchestrator
+        +ChatAsync(request) Task~IActionResult~
+    }
+
+    class IAgentOrchestrator {
         <<interface>>
-        +PlanMealAndShopAsync(request, cancellationToken) Task~MealPlanChatResponse~
+        +DispatchAsync(userMessage, history) Task~ChatResponseDTO~
     }
 
-    class AiShoppingConciergeService {
-        -AppDbContext _dbContext
-        -ILlmClient _llmClient
-        +PlanMealAndShopAsync(request, cancellationToken) Task~MealPlanChatResponse~
-        -BuildMealOptions(theme, products, batchLookup, servings, budget, prioritizePromotions) List~MealOptionDto~
-        -MatchProductsForQueries(queries, products, batchLookup, prioritizePromotions) List~MealIngredientItemDto~
-        -DetermineDishTheme(prompt, budget, servings, history) string
-        -GenerateChefMealMessageWithMultiOptions(servings, budget, options) string
-        -GenerateCookingTips(theme) string
+    class AgentOrchestrator {
+        -IShoppingAgent _shoppingAgent
+        -IInventoryAgent _inventoryAgent
+        -IPromotionAgent _promotionAgent
+        -IRecipeAgent _recipeAgent
+        -IBudgetAgent _budgetAgent
+        -ICartAgent _cartAgent
+        +DispatchAsync(userMessage, history) Task~ChatResponseDTO~
+        -AnalyzeIntent(message) AgentIntent
     }
 
-    class IAiRetailService {
+    class IShoppingAgent {
         <<interface>>
-        +AnalyzeProductRisksAsync(cancellationToken) Task~AiProductRiskReport~
-        +AnalyzeMarketBasketAsync(daysBack, cancellationToken) Task~AiMarketBasketReport~
-        +GenerateDraftImportOrderAsync(supplierId, cancellationToken) Task~AiDraftImportOrder~
-        +CommitDraftImportOrderAsync(draftOrder, cancellationToken) Task~ImportReceipt~
+        +PlanShoppingAsync(intent, history) Task~ShoppingPlanResult~
     }
 
-    class AiRetailService {
-        -AppDbContext _dbContext
-        -ILlmClient _llmClient
-        +AnalyzeProductRisksAsync(cancellationToken) Task~AiProductRiskReport~
-        +AnalyzeMarketBasketAsync(daysBack, cancellationToken) Task~AiMarketBasketReport~
-        +GenerateDraftImportOrderAsync(supplierId, cancellationToken) Task~AiDraftImportOrder~
-        +CommitDraftImportOrderAsync(draftOrder, cancellationToken) Task~ImportReceipt~
+    class ShoppingAgent {
+        -IRecipeAgent _recipeAgent
+        -IInventoryAgent _inventoryAgent
+        -IPromotionAgent _promotionAgent
+        -IBudgetAgent _budgetAgent
+        +PlanShoppingAsync(intent, history) Task~ShoppingPlanResult~
     }
 
-    class ILlmClient {
+    class IInventoryAgent {
         <<interface>>
-        +string ProviderName
-        +GenerateAsync(prompt, cancellationToken) Task~string~
-        +GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
+        +CheckStockAsync(items) Task~InventoryStatusResult~
+        +GetNearExpiryAsync(daysThreshold) Task~List~NearExpiryItem~~
     }
 
-    class GeminiService {
-        -HttpClient _httpClient
-        -IConfiguration _configuration
-        -string _apiKey
-        -string _model
-        +GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
-        -CallGeminiAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
-        -CallGroqAsync(prompt, systemInstruction, requireJson, apiKey, cancellationToken) Task~string~
+    class InventoryAgent {
+        -InventoryTool _inventoryTool
+        +CheckStockAsync(items) Task~InventoryStatusResult~
     }
 
-    class GroqClient {
-        -HttpClient _httpClient
-        -string _apiKey
-        -string _model
-        +GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
+    class IPromotionAgent {
+        <<interface>>
+        +GetDiscountsAsync(items) Task~List~DiscountResult~~
     }
 
-    IAiShoppingConciergeService <|.. AiShoppingConciergeService
-    IAiRetailService <|.. AiRetailService
-    ILlmClient <|.. GeminiService
-    ILlmClient <|.. GroqClient
+    class PromotionAgent {
+        -PromotionTool _promotionTool
+        +GetDiscountsAsync(items) Task~List~DiscountResult~~
+    }
 
-    AiShoppingConciergeService --> ILlmClient : uses
-    AiRetailService --> ILlmClient : uses
-    GeminiService ..> GroqClient : fallback to
+    class IRecipeAgent {
+        <<interface>>
+        +FindRecipeIngredientsAsync(dishName, servings) Task~List~Ingredient~~
+    }
+
+    class RecipeAgent {
+        -RecipeTool _recipeTool
+        +FindRecipeIngredientsAsync(dishName, servings) Task~List~Ingredient~~
+    }
+
+    class IBudgetAgent {
+        <<interface>>
+        +BalanceBudgetAsync(targetBudget, items) Task~BudgetEvaluationResult~
+    }
+
+    class BudgetAgent {
+        -ProductTool _productTool
+        +BalanceBudgetAsync(targetBudget, items) Task~BudgetEvaluationResult~
+    }
+
+    class ICartAgent {
+        <<interface>>
+        +AddToCartAsync(cartId, items) Task~CartOperationResult~
+    }
+
+    class CartAgent {
+        -CartTool _cartTool
+        +AddToCartAsync(cartId, items) Task~CartOperationResult~
+    }
+
+    class ProductTool {
+        -IProductService _productService
+        +SearchAsync(query) Task~List~ProductDTO~~
+        +GetAlternativeAsync(productId) Task~ProductDTO~
+    }
+
+    class InventoryTool {
+        -IInventoryService _inventoryService
+        +GetStockAsync(productId) Task~int~
+        +GetNearExpiryAsync(days) Task~List~BatchDTO~~
+    }
+
+    class PromotionTool {
+        -IPromotionService _promotionService
+        +GetVouchersAsync() Task~List~VoucherDTO~~
+        +GetFlashSaleAsync() Task~List~FlashSaleDTO~~
+    }
+
+    class RecipeTool {
+        -IRecipeService _recipeService
+        +GetRecipeAsync(dish) Task~RecipeDTO~
+    }
+
+    class CartTool {
+        -IOrderService _orderService
+        +AddItemsAsync(cartId, items) Task~bool~
+    }
+
+    AIController --> IAgentOrchestrator
+    IAgentOrchestrator <|.. AgentOrchestrator
+    AgentOrchestrator --> IShoppingAgent
+    AgentOrchestrator --> IInventoryAgent
+    AgentOrchestrator --> IPromotionAgent
+    AgentOrchestrator --> IRecipeAgent
+    AgentOrchestrator --> IBudgetAgent
+    AgentOrchestrator --> ICartAgent
+
+    IShoppingAgent <|.. ShoppingAgent
+    IInventoryAgent <|.. InventoryAgent
+    IPromotionAgent <|.. PromotionAgent
+    IRecipeAgent <|.. RecipeAgent
+    IBudgetAgent <|.. BudgetAgent
+    ICartAgent <|.. CartAgent
+
+    ShoppingAgent --> ProductTool
+    InventoryAgent --> InventoryTool
+    PromotionAgent --> PromotionTool
+    RecipeAgent --> RecipeTool
+    BudgetAgent --> ProductTool
+    CartAgent --> CartTool

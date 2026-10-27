@@ -1,73 +1,98 @@
-# TEMPLATE: KHAI BÁO & ĐĂNG KÝ TOOL / FUNCTION CALLING (TOOL SPECIFICATION TEMPLATE)
+# TEMPLATE: KHAI BÁO & ĐỊNH NGHĨA TOOL (TOOL SPECIFICATION TEMPLATE)
 
 ---
 
-## 1. THÔNG TIN ĐỊNH DANH TOOL
-
-- **Tên Tool (Function Name)**: `[Tên hàm tiếng Anh chuẩn camelCase, ví dụ: queryInventoryStock]`
-- **Mô tả chức năng (Description)**: `[Mô tả rõ ràng để LLM biết thời điểm nào nên gọi tool này]`
-- **Cơ chế gọi (Invocation Type)**: `Read-Only Database Query / Write Action / External Service`
+## 1. TÊN TOOL (TOOL NAME)
+- **Tool Identifier**: `[Tên Tool viết theo PascalCase, ví dụ: InventoryTool]`
+- **Interface C#**: `I[ToolName]`
+- **LLM Function Identifier**: `[Tên hàm trong JSON Schema, ví dụ: queryInventoryStock]`
 
 ---
 
-## 2. JSON SCHEMA KHAI BÁO CHO GEMINI API
+## 2. PURPOSE (MỤC ĐÍCH NGHIỆP VỤ)
+- Mô tả rõ ranh giới chức năng của Tool.
+- Xác định trường hợp nào LLM được phép kích hoạt Tool này.
+- **Quy tắc bất biến**: Tool **không chứa Business Logic**, chỉ đóng vai trò adapter chuyển tiếp yêu cầu sang Service Layer.
 
+---
+
+## 3. METHODS (DANH SÁCH PHƯƠNG THỨC)
+Liệt kê các method được khai báo trong Tool:
+- `Task<int> GetStockAsync(int productId)`
+- `Task<List<NearExpiryItemDto>> GetNearExpiryAsync(int daysThreshold)`
+- `Task<ProductDto?> GetAlternativeAsync(int productId)`
+- `Task<List<BatchDto>> GetAvailableBatchAsync(int productId)`
+
+---
+
+## 4. INPUT (THAM SỐ ĐẦU VÀO)
+Bảng tham số đầu vào được mapping từ lệnh gọi của LLM:
+
+| Tham Số | Kiểu Dữ Liệu | Bắt Buộc | Mô Tả |
+|---|---|---|---|
+| `productId` | `int` | Có | Mã ID sản phẩm trong siêu thị |
+| `daysThreshold` | `int` | Không (Mặc định: 3) | Ngưỡng số ngày còn lại để xác định cận date |
+
+---
+
+## 5. OUTPUT (DỮ LIỆU ĐẦU RA)
+Đặc tả DTO trả về cho Agent và LLM:
 ```json
 {
-  "name": "queryInventoryStock",
-  "description": "Tra cứu số lượng tồn kho thực tế và hạn sử dụng của sản phẩm dựa trên SKU hoặc ID.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "productId": {
-        "type": "integer",
-        "description": "Mã ID duy nhất của sản phẩm trong hệ thống siêu thị"
-      },
-      "branchId": {
-        "type": "integer",
-        "description": "Mã định danh chi nhánh siêu thị (mặc định chi nhánh gần nhất)"
-      }
-    },
-    "required": ["productId"]
-  }
+  "productId": 105,
+  "productName": "Thịt Nạc Dăm Heo C.P",
+  "stockQuantity": 14,
+  "isAvailable": true,
+  "isNearExpiry": true,
+  "expiryDate": "2026-10-29T00:00:00Z"
 }
 ```
 
 ---
 
-## 3. MẪU IMPLEMENTATION C# (BACKEND SERVICE)
+## 6. CALL SERVICE (DỊCH VỤ NGHIỆP VỤ ĐƯỢC GỌI)
+- **Service Dependency**: `[Ví dụ: IInventoryService]`
+- **Phương thức Service tương ứng**: `_inventoryService.GetNearExpiryBatchesAsync(daysThreshold)`
+- **Lưu ý**: Tool inject Service thông qua Constructor Dependency Injection.
+
+---
+
+## 7. EXCEPTION (XỬ LÝ LỖI & NGOẠI LỆ)
+Định nghĩa cách thức Tool bẫy lỗi để LLM không bị crash hoặc sinh ảo giác:
+- `ProductNotFoundException` $\rightarrow$ Trả về `ToolExecutionResult.NotFound("Sản phẩm không tồn tại")`.
+- `ServiceUnavailableException` (Database timeout) $\rightarrow$ Kích hoạt Fallback trả về dữ liệu an toàn từ MemoryCache hoặc báo lỗi lịch sự.
+- `ValidationException` (Tham số âm, ID sai) $\rightarrow$ Trả về `ToolExecutionResult.InvalidInput(...)`.
+
+---
+
+## 8. EXAMPLE (CODE IMPLEMENTATION MẪU)
 
 ```csharp
-public async Task<ToolExecutionResult> ExecuteAsync(Dictionary<string, object> parameters)
+namespace SmartSupermarket.Backend.Features.AI.Tools;
+
+public class InventoryTool : IInventoryTool
 {
-    if (!parameters.TryGetValue("productId", out var idObj) || !int.TryParse(idObj.ToString(), out int productId))
+    private readonly IInventoryService _inventoryService;
+    private readonly ILogger<InventoryTool> _logger;
+
+    public InventoryTool(IInventoryService inventoryService, ILogger<InventoryTool> logger)
     {
-        return ToolExecutionResult.Failed("Mã sản phẩm không hợp lệ.");
+        _inventoryService = inventoryService;
+        _logger = logger;
     }
 
-    var product = await _context.Products
-        .AsNoTracking()
-        .FirstOrDefaultAsync(p => p.Id == productId);
-
-    if (product == null)
+    public async Task<ToolExecutionResult> GetNearExpiryAsync(int daysThreshold)
     {
-        return ToolExecutionResult.NotFound($"Không tìm thấy sản phẩm có mã {productId}");
+        try
+        {
+            var results = await _inventoryService.GetNearExpiryBatchesAsync(daysThreshold);
+            return ToolExecutionResult.Success(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tra cứu hàng cận date với ngưỡng {Days} ngày", daysThreshold);
+            return ToolExecutionResult.Failed("Không thể truy xuất thông tin hạn dùng lúc này.");
+        }
     }
-
-    return ToolExecutionResult.Success(new
-    {
-        productId = product.Id,
-        productName = product.Name,
-        stockQuantity = product.StockQuantity,
-        unitPrice = product.Price,
-        isAvailable = product.StockQuantity > 0
-    });
 }
 ```
-
----
-
-## 4. QUY TẮC BẢO MẬT & HIỆU NĂNG
-1. Luôn dùng `.AsNoTracking()` cho các truy vấn Read-Only từ Tool Calling.
-2. Có giới hạn phân trang `Take(20)` tránh LLM bị quá tải context token.
-3. Không expose các trường nhạy cảm như giá vốn nhập (`CostPrice`) hoặc thông tin khách hàng cá nhân ra LLM trừ khi có role quản lý tương ứng.
