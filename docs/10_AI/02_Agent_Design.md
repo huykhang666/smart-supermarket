@@ -1,133 +1,177 @@
-# 10_AI - TÀI LIỆU 02: THIẾT KẾ HỆ THỐNG ĐA TÁC NHÂN (MULTI-AGENT DESIGN)
+# 10_AI - TÀI LIỆU 02: THIẾT KẾ ĐA TÁC NHÂN & BASE AGENT PATTERN (AGENT DESIGN)
 
 ---
 
 ## MỤC LỤC
-1. [Triết lý thiết kế Bounded Context trong Multi-Agent](#1-triết-lý-thiết-kế-bounded-context-trong-multi-agent)
-2. [Agent Orchestrator: Nhạc trưởng điều phối](#2-agent-orchestrator-nhạc-trưởng-điều-phối)
-3. [Chi tiết các Agent chuyên trách (Specialized Agents)](#3-chi-tiết-các-agent-chuyên-trách)
-   - [3.1. ShoppingAgent (Kế hoạch & Tổng hợp)](#31-shoppingagent-kế-hoạch--tổng-hợp)
-   - [3.2. InventoryAgent (Quản trị Tồn kho & Cận Date)](#32-inventoryagent-quản-trị-tồn-kho--cận-date)
-   - [3.3. PromotionAgent (Khuyến mãi & Flash Sale)](#33-promotionagent-khuyến-mãi--flash-sale)
-   - [3.4. BudgetAgent (Ngân sách & Thay thế tiết kiệm)](#34-budgetagent-ngân-sách--thay-thế-tiết-kiệm)
-   - [3.5. RecipeAgent (Công thức ẩm thực Cookpad)](#35-recipeagent-công-thức-ẩm-thực-cookpad)
-   - [3.6. CartAgent (Quản lý giỏ hàng)](#36-cartagent-quản-lý-giỏ-hàng)
-4. [Mô hình MVP tối giản vs Enterprise Full Multi-Agent](#4-mô-hình-mvp-tối-giản-vs-enterprise-full-multi-agent)
-5. [Cơ chế phối hợp & Quản lý Context hội thoại](#5-cơ-chế-phối-hợp--quản-lý-context-hội-thoại)
+1. [Mô hình kế thừa BaseAgent (BaseAgent Architecture Pattern)](#1-mô-hình-kế-thừa-baseagent)
+2. [Chi tiết lớp cơ sở BaseAgent](#2-chi-tiết-lớp-cơ-sở-baseagent)
+3. [Tương tác giữa Agent và LLM Gateway (ILLMGateway)](#3-tương-tác-giữa-agent-và-llm-gateway)
+4. [Tương tác giữa Agent và Tool Dispatcher](#4-tương-tác-giữa-agent-và-tool-dispatcher)
+5. [Đặc tả các Agent chuyên trách (Specialized Agents)](#5-đặc-tả-các-agent-chuyên-trách)
+   - [5.1. ShoppingAgent (Planning & Synthesis)](#51-shoppingagent)
+   - [5.2. InventoryAgent (Stock, Batches & Expiry)](#52-inventoryagent)
+   - [5.3. PromotionAgent (Voucher & Flash Sale)](#53-promotionagent)
+   - [5.4. BudgetAgent (Rebalancing & Cheaper Substitutes)](#54-budgetagent)
+   - [5.5. RecipeAgent (Cookpad Tra Cứu)](#55-recipeagent)
+   - [5.6. CartAgent (Thao Tác Giỏ Hàng)](#56-cartagent)
+6. [Lộ trình phát triển MVP $\rightarrow$ Enterprise](#6-lộ-trình-phát-triển-mvp--enterprise)
 
 ---
 
-## 1. TRIẾT LÝ THIẾT KẾ BOUNDED CONTEXT TRONG MULTI-AGENT
+## 1. MÔ HÌNH KẾ THỪA BASEAGENT (BASEAGENT ARCHITECTURE PATTERN)
 
-Một trong những sai lầm phổ biến khi thiết kế AI cho thương mại điện tử là bắt một Agent duy nhất làm tất cả mọi việc (vừa tra cứu công thức, vừa tính tiền, vừa kiểm tra tồn kho, vừa quyết định giảm giá). Khi đó prompt trở nên quá tải, dễ dẫn đến hiện tượng ảo giác (*Hallucination*), tính sai ngân sách hoặc bịa đặt sản phẩm không có thật trong kho.
-
-**Quy tắc bất biến tại Smart SuperMarket**:
-- Mỗi Agent chỉ giải quyết một bài toán duy nhất trong **Bounded Context** của mình.
-- Agent **không trực tiếp gọi Service hay Database**, mà phải gọi thông qua **Tool Layer**.
-- AI chỉ được phép đưa ra khuyến nghị dựa trên dữ liệu thật từ hệ thống siêu thị.
+Thay vì viết lại toàn bộ logic xử lý logging, nạp prompt, bẫy lỗi và điều phối gọi tool cho từng Agent, hệ thống áp dụng mẫu thiết kế **Template Method & Inheritance**:
 
 ```mermaid
-graph TD
-    User["Khách Hàng (User)"] --> Orchestrator["Agent Orchestrator (Bộ não)"]
-    
-    subgraph MultiAgents["Sub-Agents Chuyên Trách"]
-        ShoppingAgent["ShoppingAgent<br/>(Planner & Synthesizer)"]
-        RecipeAgent["RecipeAgent<br/>(Cookpad Recipe Tra cứu)"]
-        InventoryAgent["InventoryAgent<br/>(Stock, Batches & Expiry)"]
-        PromotionAgent["PromotionAgent<br/>(Voucher & Flash Sale)"]
-        BudgetAgent["BudgetAgent<br/>(Cân đối ngân sách & Thay thế)"]
-        CartAgent["CartAgent<br/>(Thao tác giỏ hàng)"]
-    end
+classDiagram
+    class IAgent {
+        <<interface>>
+        +string AgentName
+        +ExecuteAsync(context, cancellationToken) Task~AgentResult~
+    }
 
-    Orchestrator --> ShoppingAgent
-    ShoppingAgent --> RecipeAgent
-    ShoppingAgent --> InventoryAgent
-    ShoppingAgent --> PromotionAgent
-    ShoppingAgent --> BudgetAgent
-    ShoppingAgent --> CartAgent
+    class BaseAgent {
+        <<abstract>>
+        #ILLMGateway _llmGateway
+        #IToolDispatcher _toolDispatcher
+        #ILogger _logger
+        #IPromptBuilder _promptBuilder
+        +ExecuteAsync(context, cancellationToken) Task~AgentResult~
+        #ProcessInternalAsync(context, ct)* Task~AgentResult~
+        #CallToolAsync~T~(toolName, parameters) Task~T~
+        #GenerateLlmResponseAsync(prompt, systemInstruction) Task~string~
+    }
+
+    class ShoppingAgent {
+        +ProcessInternalAsync(context, ct) Task~AgentResult~
+    }
+
+    class InventoryAgent {
+        +ProcessInternalAsync(context, ct) Task~AgentResult~
+    }
+
+    class PromotionAgent {
+        +ProcessInternalAsync(context, ct) Task~AgentResult~
+    }
+
+    class BudgetAgent {
+        +ProcessInternalAsync(context, ct) Task~AgentResult~
+    }
+
+    class RecipeAgent {
+        +ProcessInternalAsync(context, ct) Task~AgentResult~
+    }
+
+    class CartAgent {
+        +ProcessInternalAsync(context, ct) Task~AgentResult~
+    }
+
+    IAgent <|.. BaseAgent
+    BaseAgent <|-- ShoppingAgent
+    BaseAgent <|-- InventoryAgent
+    BaseAgent <|-- PromotionAgent
+    BaseAgent <|-- BudgetAgent
+    BaseAgent <|-- RecipeAgent
+    BaseAgent <|-- CartAgent
 ```
 
 ---
 
-## 2. AGENT ORCHESTRATOR: NHẠC TRƯỞNG ĐIỀU PHỐI
+## 2. CHI TIẾT LỚP CƠ SỞ BASEAGENT
 
-- **Vai trò**: Điểm tiếp nhận duy nhất từ `AIController`.
-- **Chức năng**:
-  1. Phân tích Intent của User: `MealPlanning`, `ProductSearch`, `PromotionInquiry`, `CartAction`, `GeneralAdvice`.
-  2. Xác định chuỗi Agent cần thực thi (Pipeline Execution).
-  3. Quản lý trạng thái phiên làm việc (Session Memory & Context History).
-  4. Đóng gói kết quả cuối cùng thành `ChatResponseDTO`.
+Lớp `BaseAgent` đảm nhiệm việc dùng chung (Cross-Cutting Concerns):
+1. **Logging & Tracing**: Tự động ghi lại thời gian thực thi, Intent đầu vào và trạng thái thành công/thất bại của từng Agent.
+2. **Memory & Context Loading**: Nạp lịch sử hội thoại gần nhất từ `ConversationService`.
+3. **Prompt Dynamic Assembly**: Gọi `PromptBuilder` để nạp đúng Identity, Rules và Few-shot Examples tương ứng với từng tác nhân.
+4. **Structured Output Parsing**: Parse kết quả trả về từ LLM sang DTO dạng typed sạch sẽ, tự động xử lý khi JSON bị lỗi cú pháp.
 
----
+```csharp
+namespace SmartSupermarket.Backend.Features.AI.Agents.Common;
 
-## 3. CHI TIẾT CÁC AGENT CHUYÊN TRÁCH
+public abstract class BaseAgent : IAgent
+{
+    protected readonly ILLMGateway _llmGateway;
+    protected readonly IToolDispatcher _toolDispatcher;
+    protected readonly ILogger _logger;
 
-### 3.1. ShoppingAgent (Kế hoạch & Tổng hợp)
-- **Nhiệm vụ**:
-  - Không làm mọi thứ một mình.
-  - Phân tích yêu cầu khách hàng $\rightarrow$ Lập kế hoạch $\rightarrow$ Gọi các Sub-Agent & Tool tương ứng $\rightarrow$ Tổng hợp thành câu trả lời ấm áp và các thẻ mâm cơm.
-- **Ví dụ**:
-  - Khách: `"Tôi muốn ăn bò 4 người, ngân sách 200k"`.
-  - ShoppingAgent: Cần công thức món bò $\rightarrow$ Gọi RecipeAgent; Cần tồn kho $\rightarrow$ Gọi InventoryAgent; Cần khuyến mãi $\rightarrow$ Gọi PromotionAgent; Cần kiểm tra tổng chi $\rightarrow$ Gọi BudgetAgent $\rightarrow$ Xuất bản phản hồi.
-- **Quy tắc xưng hô**: Tự xưng là `"mình"`, gọi khách là `"bạn"`. Tuyệt đối không dùng `"em"`.
+    public abstract string AgentName { get; }
 
-### 3.2. InventoryAgent (Quản trị Tồn kho & Cận Date)
-- **Nhiệm vụ**:
-  - Kiểm tra tồn kho thực tế (`StockQuantity > 0`).
-  - Kiểm tra số lượng và hạn sử dụng của từng lô hàng (`Batch`).
-  - Xác định mặt hàng cận date ($\le 3$ ngày) để đề xuất ưu tiên giải cứu.
-  - Khi một sản phẩm hết hàng (`StockQuantity = 0`), tự động gọi Tool tìm sản phẩm thay thế tương đương cùng ngành hàng.
-- **Ranh giới nghiêm ngặt**:
-  - ❌ **Không tính tiền**.
-  - ❌ **Không tìm kiếm công thức món ăn**.
+    protected BaseAgent(ILLMGateway llmGateway, IToolDispatcher toolDispatcher, ILogger logger)
+    {
+        _llmGateway = llmGateway;
+        _toolDispatcher = toolDispatcher;
+        _logger = logger;
+    }
 
-### 3.3. PromotionAgent (Khuyến mãi & Flash Sale)
-- **Nhiệm vụ**:
-  - Tra cứu các voucher hợp lệ của khách hàng (VD: `FRESH20`).
-  - Áp dụng chương trình Flash Sale cho các lô hàng tươi sống cận date (chiết khấu 30% - 50%).
-  - Kiểm tra điều kiện combo (Mua gà tặng gói gia vị lá giang).
-- **Ranh giới nghiêm ngặt**:
-  - ❌ **Không tự ý bịa mã voucher hay tự giảm giá** ngoài danh mục khuyến mãi được cấu hình trong DB.
+    public async Task<AgentResult> ExecuteAsync(AgentContext context, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[{Agent}] Bắt đầu xử lý intent: {Intent}", AgentName, context.Intent);
+        var stopwatch = Stopwatch.StartNew();
 
-### 3.4. BudgetAgent (Ngân sách & Thay thế tiết kiệm)
-- **Nhiệm vụ**:
-  - Tính tổng chi phí giỏ hàng hoặc mâm cơm dự kiến.
-  - So sánh với ngân sách kỳ vọng của khách hàng.
-  - Nếu tổng tiền vượt ngân sách ($\text{Total} > \text{Budget}$): Đề xuất phương án thay thế thông minh (VD: Thay Thịt bò Úc 90k bằng Thịt bò Ta 65k hoặc Nạc dăm heo 50k để bảo toàn ngân sách).
-- **Ranh giới nghiêm ngặt**:
-  - ❌ **Không tự ý kiểm tra CSDL trực tiếp** mà thông qua `ProductTool.GetAlternativeAsync()`.
+        try
+        {
+            var result = await ProcessInternalAsync(context, ct);
+            stopwatch.Stop();
+            _logger.LogInformation("[{Agent}] Hoàn thành trong {ElapsedMs}ms", AgentName, stopwatch.ElapsedMilliseconds);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{Agent}] Xảy ra lỗi khi xử lý", AgentName);
+            return AgentResult.Failed(AgentName, ex.Message);
+        }
+    }
 
-### 3.5. RecipeAgent (Công thức ẩm thực Cookpad)
-- **Nhiệm vụ**:
-  - Tra cứu công thức mâm cơm gia đình từ cơ sở dữ liệu cẩm nang Cookpad Việt Nam.
-  - Bóc tách danh sách nguyên liệu và định lượng tương ứng theo số người ăn (`servings`).
-- **Ranh giới nghiêm ngặt**:
-  - ❌ **Tuyệt đối KHÔNG tự sáng tác công thức lạ** không có nguyên liệu tại siêu thị.
-  - Trong tương lai: Tích hợp RAG Vector Search để truy vấn hàng triệu công thức từ Cookpad.
+    protected abstract Task<AgentResult> ProcessInternalAsync(AgentContext context, CancellationToken ct);
 
-### 3.6. CartAgent (Quản lý giỏ hàng)
-- **Nhiệm vụ**:
-  - Thực thi các thao tác giỏ hàng: `AddToCart`, `RemoveItem`, `UpdateQuantity`, `ClearCart`, `EstimateTotal`.
-  - Đóng gói mâm cơm thành các item cụ thể nạp trực tiếp vào Cart Session của khách hàng chỉ với 1 click.
+    protected async Task<TResult> CallToolAsync<TResult>(string toolName, Dictionary<string, object> parameters)
+    {
+        return await _toolDispatcher.DispatchAsync<TResult>(toolName, parameters);
+    }
+}
+```
 
 ---
 
-## 4. MÔ HÌNH MVP TỐI GIẢN VS ENTERPRISE FULL MULTI-AGENT
+## 3. TƯƠNG TÁC GIỮA AGENT VÀ LLM GATEWAY (ILLMGATEWAY)
 
-Để tối ưu hóa chi phí phát triển và đảm bảo tính khả thi cao trong triển khai thực tế, dự án phân định rõ 2 giai đoạn:
+- Agent **hoàn toàn không quan tâm** model đang chạy là Gemini 2.5 Flash, Groq Llama 3.3 hay GPT-4o Mini.
+- Mọi tương tác diễn ra qua `ILLMGateway.GenerateAsync()`:
+```csharp
+public interface ILLMGateway
+{
+    string ActiveProvider { get; }
+    Task<string> GenerateTextAsync(string prompt, string systemInstruction, CancellationToken ct = default);
+    Task<T> GenerateJsonAsync<T>(string prompt, string systemInstruction, CancellationToken ct = default);
+}
+```
 
-| Tiêu Chí | Phiên Bản MVP (Khuyên dùng bước đầu) | Phiên Bản Enterprise (Mở rộng toàn diện) |
+---
+
+## 4. TƯƠNG TÁC GIỮA AGENT VÀ TOOL DISPATCHER
+
+Agent **không gọi Tool trực tiếp**, mà gửi thông điệp thông qua `_toolDispatcher`:
+```csharp
+// Trong ShoppingAgent:
+var stock = await CallToolAsync<StockResult>("InventoryTool.GetStock", new() { ["productId"] = 105 });
+```
+Tool Dispatcher sẽ đứng ở giữa để ghi log, đo latency, retry khi CSDL bận, và đảm bảo timeout không vượt quá 1500ms.
+
+---
+
+## 5. ĐẶC TẢ CÁC AGENT CHUYÊN TRÁCH
+
+| Agent | Bounded Context (Chỉ được làm) | Nghiêm Cấm (Không được làm) |
 |---|---|---|
-| **Số lượng Agent** | **1 Agent duy nhất**: `ShoppingAgent` (đóng vai trò điều phối) | **6 Agents chuyên trách** độc lập dưới sự điều phối của `AgentOrchestrator` |
-| **Tool sử dụng** | 4 Tools: `InventoryTool`, `ProductTool`, `PromotionTool`, `CartTool` | Đầy đủ 6 Tools + CustomerTool + External Nutrition API Tool |
-| **Cơ sở dữ liệu công thức** | Bảng công thức nội bộ kèm Cache RAM (Cookpad Seed Store) | RAG Vector Search kết hợp Milvus / Qdrant trên toàn bộ kho Cookpad |
-| **Xử lý ngân sách** | Thuật toán cân đối tích hợp trong Service | `BudgetAgent` phân tích độ co giãn giá và hành vi tiêu dùng |
+| **ShoppingAgent** | Nhận diện nhu cầu, lập kế hoạch, gọi Tool, tổng hợp câu trả lời | Không tự bịa công thức, không tự giảm giá |
+| **InventoryAgent** | Kiểm tra tồn, kiểm tra batch, phát hiện cận date, tìm sản phẩm thay thế | **Không tính tiền, không tìm Recipe** |
+| **PromotionAgent** | Tra cứu voucher hợp lệ, kiểm tra điều kiện Flash Sale cận date | **Không tự tạo mã voucher ngoài CSDL** |
+| **BudgetAgent** | Tính tổng hóa đơn, so sánh ngân sách, đề xuất đổi sang món rẻ hơn | **Không truy cập DB trực tiếp, không đổi món tùy tiện** |
+| **RecipeAgent** | Tra cứu cẩm nang Cookpad, bóc tách nguyên liệu chuẩn định lượng | **Không sáng tác công thức ảo không có nguyên liệu tại siêu thị** |
+| **CartAgent** | Thêm, xóa, cập nhật giỏ hàng theo 1-Click | Không tự ý thanh toán khi chưa có lệnh |
 
 ---
 
-## 5. CƠ CHẾ PHỐI HỢP & QUẢN LÝ CONTEXT HỘI THOẠI
-
-Hệ thống duy trì bộ nhớ ngữ cảnh nhiều lượt (Multi-turn Conversation Memory):
-1. **Short-Term Memory**: Lưu trữ 5 lượt tương tác gần nhất trong phiên trò chuyện (Client gửi kèm mảng `conversationHistory`).
-2. **Current Cart Context**: AI luôn nhận biết trạng thái giỏ hàng hiện tại của khách để không gợi ý mua trùng lặp nguyên liệu đã có sẵn trong giỏ.
-3. **Left-Aligned UI Guarantee**: Mọi kết quả phản hồi văn bản và thẻ mâm cơm đều tuân thủ nguyên tắc định dạng căn lề trái (`text-align: left`).
+## 6. LỘ TRÌNH PHÁT TRIỂN MVP $\rightarrow$ ENTERPRISE
+1. **MVP**: Chỉ triển khai `ShoppingAgent` (kế thừa `BaseAgent`), sử dụng `ToolDispatcher` gọi 4 Tools cơ bản (`ProductTool`, `InventoryTool`, `PromotionTool`, `CartTool`).
+2. **Enterprise**: Kích hoạt đầy đủ cả 6 Sub-Agents, thêm RAG Vector Search cho `RecipeAgent`.

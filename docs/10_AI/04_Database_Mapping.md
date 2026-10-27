@@ -1,126 +1,127 @@
-# 10_AI - TÀI LIỆU 04: ÁNH XẠ DỮ LIỆU CSDL → SERVICE → TOOL (DATABASE MAPPING)
+# 10_AI - TÀI LIỆU 04: ÁNH XẠ DỮ LIỆU CSDL → REPOSITORY → SERVICE → TOOL → AGENT (DATABASE MAPPING)
 
 ---
 
 ## MỤC LỤC
-1. [Chuỗi chuyển đổi dữ liệu 3 bước (3-Step Data Transformation Pipeline)](#1-chuỗi-chuyển-đổi-dữ-liệu-3-bước)
-2. [Bảng ánh xạ chi tiết từng thực thể CSDL](#2-bảng-ánh-xạ-chi-tiết-từng-thực-thể-csdl)
-   - 2.1. [Products & Categories → IngredientQuery → search_supermarket_products](#21-products--categories--ingredientquery--search_supermarket_products)
-   - 2.2. [InventoryBatches → ProductBatchSummary → check_inventory_batches](#22-inventorybatches--productbatchsummary--check_inventory_batches)
-   - 2.3. [DiscountRules → DiscountRuleDto → filter_flash_sale_near_expiry](#23-discountrules--discountruledto--filter_flash_sale_near_expiry)
-   - 2.4. [OrderDetails → BasketItemPair → Market Basket Analysis](#24-orderdetails--basketitempair--market-basket-analysis)
-   - 2.5. [ImportReceipts & Details → AiDraftImportOrder → generate_draft_import_order](#25-importreceipts--details--aidraftimportorder--generate_draft_import_order)
+1. [Chuỗi chuyển đổi dữ liệu 7 bước chuẩn Enterprise](#1-chuỗi-chuyển-đổi-dữ-liệu-7-bước-chuẩn-enterprise)
+2. [Bảng ánh xạ toàn phần từng thực thể cốt lõi](#2-bảng-ánh-xạ-toàn-phần-từng-thực-thể-cốt-lõi)
+   - [2.1. Chuỗi ánh xạ Sản Phẩm (Products Mapping)](#21-chuỗi-ánh-xạ-sản-phẩm-products-mapping)
+   - [2.2. Chuỗi ánh xạ Tồn Kho & Lô Hàng Cận Date (InventoryBatches Mapping)](#22-chuỗi-ánh-xạ-tồn-kho--lô-hàng-cận-date-inventorybatches-mapping)
+   - [2.3. Chuỗi ánh xạ Khuyến Mãi & Voucher (Promotions Mapping)](#23-chuỗi-ánh-xạ-khuyến-mãi--voucher-promotions-mapping)
+   - [2.4. Chuỗi ánh xạ Công Thức Ẩm Thực (Recipes Mapping)](#24-chuỗi-ánh-xạ-công-thức-ẩm-thực-recipes-mapping)
+   - [2.5. Chuỗi ánh xạ Giỏ Hàng (Cart & Orders Mapping)](#25-chuỗi-ánh-xạ-giỏ-hàng-cart--orders-mapping)
 3. [Quy tắc cách ly Danh mục (Category Isolation Matrix)](#3-quy-tắc-cách-ly-danh-mục-category-isolation-matrix)
-4. [Tối ưu hóa Token & Định dạng Compact Context](#4-tối-ưu-hóa-token--định-dạng-compact-context)
-5. [Tính tương thích CSDL: In-Memory DB & PostgreSQL](#5-tính-tương-thích-csdl-in-memory-db--postgresql)
+4. [Tối ưu hóa Token & Compact Context](#4-tối-ưu-hóa-token--compact-context)
 
 ---
 
-## 1. CHUỖI CHUYỂN ĐỔI DỮ LIỆU 3 BƯỚC
+## 1. CHUỖI CHUYỂN ĐỔI DỮ LIỆU 7 BƯỚC CHUẨN ENTERPRISE
 
-Để đưa dữ liệu CSDL quan hệ vào môi trường suy luận của AI một cách an toàn, chính xác và tiết kiệm token, hệ thống áp dụng chuỗi chuyển đổi chuẩn:
+Để đảm bảo tính toàn vẹn dữ liệu, hiệu năng và tránh rò rỉ các trường thông tin nhạy cảm của hệ thống, dữ liệu không bao giờ nhảy cóc trực tiếp từ CSDL sang Agent mà phải đi qua chuỗi ánh xạ 7 bước khép kín:
 
-```mermaid
-flowchart LR
-    A["BƯỚC 1: DATABASE ENTITIES<br/>(Products, Batches, Orders)"]
-    -->|EF Core Query + Include| B["BƯỚC 2: SERVICE DOMAIN MODELS<br/>(IngredientQuery, ProductBatchSummary)"]
-    -->|Filter & Serialization| C["BƯỚC 3: TOOL SCHEMA & PROMPT<br/>(MealOptionDto, System Prompt Context)"]
+```text
+Table (SQL Server)
+  │
+  ▼
+Entity (C# Model)
+  │
+  ▼
+Repository (EF Core Query: AsNoTracking, Where, Select)
+  │
+  ▼
+Business Service (Business Rules, Tính toán Flash Sale)
+  │
+  ▼
+DTO (Clean Data Transfer Object, No Comments)
+  │
+  ▼
+Tool (Interface cho LLM / Function Calling)
+  │
+  ▼
+Agent (ShoppingAgent / InventoryAgent / BudgetAgent)
 ```
 
 ---
 
-## 2. BẢNG ÁNH XẠ CHI TIẾT TỪNG THỰC THỂ CSDL
+## 2. BẢNG ÁNH XẠ TOÀN PHẦN TỪNG THỰC THỂ CỐT LÕI
 
-### 2.1. Products & Categories → IngredientQuery → search_supermarket_products
-- **Bảng CSDL gốc**: `Products` (kết hợp `Categories`).
-- **Lớp Service trung gian**:
-  ```csharp
-  private sealed record IngredientQuery(
-      int? CategoryId,        // Mã danh mục bắt buộc (4, 9, 10...)
-      string Keyword,         // Từ khóa nhận diện món
-      int DefaultQty,         // Định lượng mua mặc định
-      string? ExcludeWord = null // Từ khóa loại trừ
-  );
-  ```
-- **Ánh xạ sang Tool & Context**:
-  - `ProductId` $\rightarrow$ `MealIngredientItemDto.ProductId`
-  - `ProductName` $\rightarrow$ `MealIngredientItemDto.ProductName`
-  - `Barcode` $\rightarrow$ `MealIngredientItemDto.Barcode`
-  - `Price` $\rightarrow$ `MealIngredientItemDto.RegularPrice`
-  - `Unit` $\rightarrow$ `MealIngredientItemDto.Unit`
-  - `ImageUrl` $\rightarrow$ `MealIngredientItemDto.ImageUrl`
+### 2.1. Chuỗi ánh xạ Sản Phẩm (Products Mapping)
 
-### 2.2. InventoryBatches → ProductBatchSummary → check_inventory_batches
-- **Bảng CSDL gốc**: `InventoryBatches`.
-- **Lớp Service trung gian**:
-  ```csharp
-  private sealed record ProductBatchSummary(int TotalStock, DateTime MinExpiry);
-  ```
-- **Logic ánh xạ**:
-  - `TotalStock` = $\sum \text{Quantity}$ (Tổng số lượng tồn thực tế của các lô còn hạn).
-  - `MinExpiry` = $\min(\text{ExpiryDate})$ (Lô có hạn sử dụng gần nhất).
-  - Nếu $(\text{MinExpiry} - \text{DateTime.UtcNow}).\text{Days} \le 7$ $\rightarrow$ Kích hoạt Flash Sale 30%.
+$$\text{Products (Table)} \longrightarrow \text{Product (Entity)} \longrightarrow \text{ProductRepository} \longrightarrow \text{ProductService} \longrightarrow \text{ProductDto} \longrightarrow \text{ProductTool} \longrightarrow \text{ShoppingAgent}$$
 
-### 2.3. DiscountRules → DiscountRuleDto → filter_flash_sale_near_expiry
-- **Bảng CSDL gốc**: `DiscountRules`.
-- **Ánh xạ sang Tool**:
-  - `DaysBeforeExpiry` $\rightarrow$ Ngưỡng ngày kiểm tra ($\le 7$ ngày).
-  - `DiscountPercent` $\rightarrow$ Mức chiết khấu áp dụng ($30\%$).
-  - `FinalPrice` = $\text{Round}\left(\text{RegularPrice} \times \frac{100 - \text{DiscountPercent}}{100}\right)$.
+| Tầng | Tên Thành Phần | Trường Dữ Liệu / Trách Nhiệm |
+|---|---|---|
+| **SQL Table** | `dbo.Products` | `Id`, `Name`, `Price`, `CostPrice`, `StockQuantity`, `CategoryId`, `IsActive` |
+| **Entity** | `Product.cs` | Entity Framework mapping có navigation property `Category` |
+| **Repository** | `ProductRepository.cs` | `_context.Products.AsNoTracking().Where(p => p.IsActive && p.StockQuantity > 0)` |
+| **Service** | `ProductService.cs` | Kiểm tra điều kiện kinh doanh, lọc bỏ sản phẩm tạm ngưng bán |
+| **DTO** | `ProductDto.cs` | `Id`, `Name`, `Price`, `CategoryName`, `InStock` *(Loại bỏ CostPrice)* |
+| **Tool** | `ProductTool.cs` | Cung cấp method `Search(keyword, categoryId)`, `GetAlternative(id)` |
+| **Agent** | `ShoppingAgent` | Sử dụng thông tin sản phẩm để lắp ghép vào mâm cơm Cookpad |
 
-### 2.4. OrderDetails → BasketItemPair → Market Basket Analysis
-- **Bảng CSDL gốc**: `Orders` và `OrderDetails`.
-- **Ánh xạ sang Service**:
-  - Gom nhóm các sản phẩm xuất hiện trong cùng một `OrderId`.
-  - Đếm tần suất xuất hiện đồng thời $(A, B)$ để tính độ tin cậy $\text{Confidence}(A \rightarrow B) = \frac{P(A \cap B)}{P(A)}$.
+---
 
-### 2.5. ImportReceipts & Details → AiDraftImportOrder → generate_draft_import_order
-- **Bảng CSDL gốc**: `ImportReceipts`, `ImportDetails`, `Suppliers`.
-- **Ánh xạ sang Service**:
-  - Dựa trên sản phẩm có tồn kho $<$ `MinStockLevel` từ nhà cung cấp `SupplierId`.
-  - Sinh đối tượng `AiDraftImportOrder` sẵn sàng cho nút bấm 1-Click Commit vào bảng `ImportReceipts`.
+### 2.2. Chuỗi ánh xạ Tồn Kho & Lô Hàng Cận Date (InventoryBatches Mapping)
+
+$$\text{ProductBatches (Table)} \longrightarrow \text{ProductBatch (Entity)} \longrightarrow \text{InventoryRepository} \longrightarrow \text{InventoryService} \longrightarrow \text{NearExpiryBatchDto} \longrightarrow \text{InventoryTool} \longrightarrow \text{InventoryAgent}$$
+
+| Tầng | Tên Thành Phần | Trường Dữ Liệu / Trách Nhiệm |
+|---|---|---|
+| **SQL Table** | `dbo.ProductBatches` | `Id`, `ProductId`, `BatchCode`, `Quantity`, `ExpiryDate`, `ImportDate` |
+| **Entity** | `ProductBatch.cs` | Entity mapping có khóa ngoại tới `Product` |
+| **Repository** | `InventoryRepository.cs` | Query các lô hàng: `Where(b => b.ExpiryDate <= targetDate && b.Quantity > 0)` |
+| **Service** | `InventoryService.cs` | **Business Logic cốt lõi**: Tính $\text{DaysLeft} = \text{ExpiryDate} - \text{Now}$. Nếu $\le 1$ ngày $\rightarrow$ giảm 50%; nếu $\le 3$ ngày $\rightarrow$ giảm 30% Flash Sale. |
+| **DTO** | `NearExpiryBatchDto.cs` | `ProductId`, `ProductName`, `DiscountPercent`, `FlashSalePrice`, `DaysLeft` |
+| **Tool** | `InventoryTool.cs` | Cung cấp method `GetNearExpiry(daysThreshold)` |
+| **Agent** | `InventoryAgent` | Báo cáo danh sách cứu trợ tồn kho cho `ShoppingAgent` |
+
+---
+
+### 2.3. Chuỗi ánh xạ Khuyến Mãi & Voucher (Promotions Mapping)
+
+$$\text{Promotions (Table)} \longrightarrow \text{Promotion (Entity)} \longrightarrow \text{PromotionRepository} \longrightarrow \text{PromotionService} \longrightarrow \text{VoucherDto} \longrightarrow \text{PromotionTool} \longrightarrow \text{PromotionAgent}$$
+
+- **Service Logic**: Kiểm tra đơn hàng có đủ điều kiện áp mã `FRESH20` (tối thiểu 100k thịt cá tươi Category 9) không.
+- **DTO**: Trả về `Code`, `DiscountAmount`, `MinOrderValue`, `IsEligible`.
+- **Tool**: `PromotionTool.GetApplicableVouchers()`.
+
+---
+
+### 2.4. Chuỗi ánh xạ Công Thức Ẩm Thực (Recipes Mapping)
+
+$$\text{Recipes (Table / Seed)} \longrightarrow \text{Recipe (Entity)} \longrightarrow \text{RecipeRepository} \longrightarrow \text{RecipeService} \longrightarrow \text{RecipeDto} \longrightarrow \text{RecipeTool} \longrightarrow \text{RecipeAgent}$$
+
+- **Nhiệm vụ**: Bóc tách mâm cơm theo số người ăn (`servings`), tính định lượng nguyên liệu chính xác, tránh hoàn toàn ảo giác.
+
+---
+
+### 2.5. Chuỗi ánh xạ Giỏ Hàng (Cart & Orders Mapping)
+
+$$\text{CartItems (Table)} \longrightarrow \text{CartItem (Entity)} \longrightarrow \text{OrderRepository} \longrightarrow \text{OrderService} \longrightarrow \text{CartStatusDto} \longrightarrow \text{CartTool} \longrightarrow \text{CartAgent}$$
+
+- **Nhiệm vụ**: Cho phép 1-Click nạp trọn bộ nguyên liệu của mâm cơm vào giỏ hàng của người dùng.
 
 ---
 
 ## 3. QUY TẮC CÁCH LY DANH MỤC (CATEGORY ISOLATION MATRIX)
 
-Quy tắc sống còn để triệt tiêu lỗi nhận diện sai sản phẩm:
+Để ngăn chặn việc xếp nhầm thực phẩm (như xếp nhầm mì gói hoặc hạt nêm vào danh mục thịt tươi):
 
-| Nhóm nguyên liệu | CategoryId bắt buộc | Ví dụ từ khóa | Ví dụ từ loại trừ | Sản phẩm chính xác được ghép |
-| :--- | :---: | :--- | :--- | :--- |
-| **Thịt sườn non tươi** | `9` | `"sườn non"` | `"mì"` | `Sườn non heo tươi C.P khay 500g` |
-| **Thịt ba chỉ / ba rọi** | `9` | `"ba chỉ"`, `"ba rọi"`| - | `Thịt ba chỉ heo MeatDeli khay 400g` |
-| **Trứng gà tươi** | `9` | `"trứng gà"` | - | `Trứng gà tươi Ba Huân vỉ 10 quả` |
-| **Thịt bò Úc** | `9` | `"bò"` | - | `Thịt bò Úc tươi cắt lát Pacow khay 250g` |
-| **Cà chua tươi** | `4` | `"cà chua"` | `"cá"` | `Cà chua Beef Đà Lạt tươi ngon 1kg` |
-| **Rau muống nước** | `4` | `"rau muống"` | - | `Rau muống nước tươi Bách Hóa Xanh bó 500g` |
-| **Cải ngọt** | `4` | `"cải ngọt"` | - | `Cải ngọt Đà Lạt đạt chuẩn VietGAP túi 500g` |
-| **Mì nấu nhanh** | `10` | `"omachi"`, `"hảo hảo"`| - | `Mì Omachi sườn hầm ngũ quả gói 80g` |
-| **Xúc xích** | `10` | `"xúc xích"` | - | `Xúc xích tiệt trùng Vissan Heo gói 5 cây` |
-| **Cá hộp** | `10` | `"cá nục"` | - | `Cá nục sốt cà chua Ba Cô Gái lon 155g` |
+| Category ID | Tên Ngành Hàng | Đại Diện CSDL | Quy Tắc Ràng Buộc AI |
+|---|---|---|---|
+| **9** | **Thịt, Trứng & Thủy Hải Sản** | `MeatDeli`, `Thịt bò Úc`, `Cá hú`, `Trứng Ba Huân` | Tuyệt đối cấm đưa sản phẩm khô hoặc đồ hộp vào nhóm này. |
+| **4** | **Rau Củ Tươi** | `Rau muống`, `Cải ngọt VietGAP`, `Cà chua` | Chỉ chứa rau củ tươi sống có hạn dùng ngắn. |
+| **10** | **Đồ Hộp & Ăn Liền** | `Mì Hảo Hảo`, `Cá hộp Ba Cô Gái` | Nhóm đồ khô, tiện lợi cho sinh viên. |
+| **5** | **Gia Vị** | `Nước mắm Nam Ngư`, `Dầu ăn Simply`, `Aji-Quick` | Chỉ tính phụ gia nấu nướng. |
 
 ---
 
-## 4. TỐI ƯU HÓA TOKEN & ĐỊNH DẠNG COMPACT CONTEXT
+## 4. TỐI ƯU HÓA TOKEN & COMPACT CONTEXT
 
-Thay vì nhồi nhét toàn bộ 200 sản phẩm với hàng nghìn ký tự JSON vào câu lệnh gửi LLM, hệ thống sử dụng định dạng chuỗi nén siêu nhẹ:
-
-```csharp
-// Chỉ lấy 12 sản phẩm đại diện phù hợp chủ đề đưa vào Prompt LLM
-string compactContext = string.Join(", ", dbProducts.Take(12).Select(p => $"{p.ProductName} ({p.Price:N0} đ/{p.Unit})"));
-```
-
-Tiết kiệm hơn 85% dung lượng Token đầu vào, giảm chi phí API và rút ngắn thời gian phản hồi còn dưới 1.2 giây.
-
----
-
-## 5. TÍNH TƯƠNG THÍCH CSDL: IN-MEMORY DB & POSTGRESQL
-
-Trong môi trường kiểm thử và Demo cục bộ, hệ thống có thể chạy trên `UseInMemoryDatabase("SmartSupermarketDb")` hoặc máy chủ `PostgreSQL`:
-- Nhằm tránh việc tiến trình nền `ShelfLifeBackgroundService` quét tự động và đánh dấu `ProductStatus.Inactive` với các sản phẩm seed có date cũ, tại [AiShoppingConciergeService.cs](file:///D:/Laptrinhtrucquan/Backend/Features/AI/Services/AiShoppingConciergeService.cs) hệ thống truy vấn toàn bộ danh mục sản phẩm:
-  ```csharp
-  var dbProducts = await _dbContext.Products
-      .Include(p => p.Category)
-      .ToListAsync(cancellationToken);
+Khi nạp dữ liệu từ DTO vào prompt cho LLM:
+- **Loại bỏ trường thừa**: Không truyền `CreatedAt`, `UpdatedAt`, `Barcode`, `SupplierId` vào LLM.
+- **Compact JSON Template**:
+  ```json
+  [{"id":105,"name":"Nạc Dăm Heo C.P","price":50400,"discount":30,"cat":9}]
   ```
-- Nhờ vậy, AI luôn có sẵn đầy đủ nguồn dữ liệu thực phẩm tươi ngon để phục vụ thực khách trong mọi môi trường triển khai.
+  Giúp tiết kiệm 70% Token Context, giảm thời gian xử lý xuống còn $<1.2\text{s}$.

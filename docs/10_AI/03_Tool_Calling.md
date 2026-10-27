@@ -1,118 +1,126 @@
-# 10_AI - TÀI LIỆU 03: THIẾT KẾ LỚP CÔNG CỤ & GỌI HÀM (TOOL CALLING DESIGN)
+# 10_AI - TÀI LIỆU 03: THIẾT KẾ ĐIỀU PHỐI CÔNG CỤ (TOOL DISPATCHER DESIGN)
 
 ---
 
 ## MỤC LỤC
-1. [Nguyên tắc cốt lõi: Tách biệt Agent - Tool - Service - Repository](#1-nguyên-tắc-cốt-lõi-tách-biệt-agent---tool---service---repository)
-2. [Cơ chế hoạt động của Tool Dispatcher](#2-cơ-chế-hoạt-động-của-tool-dispatcher)
-3. [Danh mục các Tools chuẩn trong hệ thống](#3-danh-mục-các-tools-chuẩn-trong-hệ-thống)
-4. [Đặc tả chi tiết từng Tool](#4-đặc-tả-chi-tiết-từng-tool)
-   - [4.1. InventoryTool (Tra cứu tồn kho & Cận Date)](#41-inventorytool)
-   - [4.2. ProductTool (Tìm kiếm & Sản phẩm thay thế)](#42-producttool)
-   - [4.3. PromotionTool (Voucher & Flash Sale)](#43-promotiontool)
-   - [4.4. RecipeTool (Tra cứu công thức Cookpad)](#44-recipetool)
-   - [4.5. CartTool (Thao tác giỏ hàng)](#45-carttool)
-5. [Quy chuẩn an toàn & Bảo vệ dữ liệu (Security Guardrails)](#5-quy-chuẩn-an-toàn--bảo-vệ-dữ-liệu)
+1. [Nguyên lý Tool Dispatcher Pattern](#1-nguyên-lý-tool-dispatcher-pattern)
+2. [5 Ưu điểm vượt trội của Tool Dispatcher](#2-5-ưu-điểm-vượt-trội-của-tool-dispatcher)
+3. [Kiến trúc & Interface của Tool Dispatcher](#3-kiến-trúc--interface-của-tool-dispatcher)
+4. [Kỹ thuật Gọi Công Cụ Song Song (Parallel Tool Calling)](#4-kỹ-thuật-gọi-công-cụ-song-song)
+5. [Đặc tả các Tools trong hệ thống](#5-đặc-tả-các-tools-trong-hệ-thống)
+6. [Cơ chế bẫy lỗi & Fallback của Tool](#6-cơ-chế-bẫy-lỗi--fallback-của-tool)
 
 ---
 
-## 1. NGUYÊN TẮC CỐT LÕI: TÁCH BIỆT AGENT - TOOL - SERVICE - REPOSITORY
+## 1. NGUYÊN LÝ TOOL DISPATCHER PATTERN
 
-Trong kiến trúc Enterprise AI của **Smart SuperMarket**, quy tắc phân tầng là bất biến:
+Trong kiến trúc thông thường, Agent gọi Tool trực tiếp (`ShoppingAgent -> InventoryTool`). Tuy nhiên, cách tiếp cận này khiến Agent bị phụ thuộc chặt chẽ, khó theo dõi log, không thể xử lý timeout hoặc retry một cách nhất quán.
 
+**Kiến trúc Tool Dispatcher chuẩn**:
 ```text
-Agent ──(gọi)──► Tool ──(gọi)──► Service ──(gọi)──► Repository ──(truy vấn)──► Database
-```
-
-| Tầng | Vai Trò | Logic Xử Lý | Ví Dụ Minh Họa |
-|---|---|---|---|
-| **Agent** | Hiểu ý định & Lập kế hoạch | Logic tư duy & điều phối | `ShoppingAgent` nhận thấy cần kiểm tra hàng cận date $\rightarrow$ gọi `InventoryTool` |
-| **Tool** | Cổng giao tiếp chuẩn hóa (Interface) | **HOÀN TOÀN KHÔNG CÓ LOGIC** | `InventoryTool.GetNearExpiry(days)` chuyển tiếp tham số sang `InventoryService` |
-| **Service** | Xử lý nghiệp vụ kinh doanh | **TOÀN BỘ BUSINESS LOGIC Ở ĐÂY** | `InventoryService` lọc lô $\le 3$ ngày, tính mức giảm 30%, gắn cờ Flash Sale |
-| **Repository** | Đọc/Ghi dữ liệu EF Core | **CHỈ TRUY VẤN, KHÔNG LOGIC** | `_db.InventoryBatches.Where(b => b.ExpiryDate <= target).Include().ToList()` |
-| **Database** | Nguồn chân lý duy nhất | Lưu trữ trạng thái | Bảng `Products`, `ProductBatches`, `Promotions` trong SQL Server |
-
----
-
-## 2. CƠ CHẾ HOẠT ĐỘNG CỦA TOOL DISPATCHER
-
-Khi mô hình LLM (Gemini 2.5 Flash) xử lý prompt của Agent, nếu cần dữ liệu thực tế, LLM sẽ sinh ra một lệnh Function Call (JSON). `Tool Dispatcher` tiếp nhận lệnh, gọi Tool C# tương ứng, và nạp kết quả JSON trở lại cho LLM.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Agent as ShoppingAgent (LLM)
-    participant Disp as Tool Dispatcher
-    participant Tool as InventoryTool
-    participant Svc as InventoryService
-    participant Repo as InventoryRepository
-    participant DB as SQL Server
-
-    Agent->>Disp: Call Tool: GetNearExpiry(daysThreshold=3)
-    Disp->>Tool: InventoryTool.GetNearExpiryAsync(3)
-    Tool->>Svc: InventoryService.GetNearExpiryBatchesAsync(3)
-    Note over Svc: Business Logic: Lọc hàng cận date & áp dụng quy tắc Flash Sale 30%
-    Svc->>Repo: InventoryRepository.GetBatchesByExpiryAsync(cutoffDate)
-    Repo->>DB: EF Core Query (AsNoTracking)
-    DB-->>Repo: Database Rows
-    Repo-->>Svc: Batch Entities
-    Svc-->>Tool: NearExpiryProductsDTO List
-    Tool-->>Disp: ToolExecutionResult (JSON)
-    Disp-->>Agent: Data Context (Thịt nạc heo C.P còn 2 ngày, giá giảm còn 50.400 đ)
-    Agent->>Agent: Tích hợp vào mâm cơm tiết kiệm
+ShoppingAgent ──(Yêu cầu thực thi)──► Tool Dispatcher ──► Logging / Metrics / Retry
+                                             │
+                       ┌─────────────────────┼─────────────────────┐
+                       ▼                     ▼                     ▼
+                  InventoryTool         PromotionTool          RecipeTool
+                       │                     │                     │
+                       ▼                     ▼                     ▼
+                InventoryService      PromotionService       RecipeService
+                       │                     │                     │
+                       ▼                     ▼                     ▼
+                 Repositories          Repositories          Repositories
+                       │                     │                     │
+                       ▼                     ▼                     ▼
+                                  SQL Server Database
 ```
 
 ---
 
-## 3. DANH MỤC CÁC TOOLS CHUẨN TRONG HỆ THỐNG
+## 2. 5 ƯU ĐIỂM VƯỢT TRỘI CỦA TOOL DISPATCHER
 
-| Tên Tool | Các Phương Thức Cung Cấp | Service Phụ Trách | Mục Đích |
+1. **Audit Logging**: Ghi nhận toàn bộ tham số đầu vào, kết quả đầu ra và timestamp của mọi lệnh gọi Tool từ LLM, phục vụ truy vết khi có sai lệch giá hoặc số lượng.
+2. **Resilience & Retry**: Tự động thử lại tối đa 3 lần (với độ trễ lũy thừa mũ $200\text{ms} \rightarrow 400\text{ms} \rightarrow 800\text{ms}$) khi gặp sự cố tạm thời về kết nối cơ sở dữ liệu.
+3. **Timeout Protection**: Đặt ngưỡng ngắt cứng ($1500\text{ms}$). Nếu một Tool bị tắc nghẽn, Dispatcher tự động ngắt và trả về kết quả dự phòng, không để toàn bộ cuộc trò chuyện của khách hàng bị treo.
+4. **Parallel Execution**: Hỗ trợ kích hoạt nhiều Tool đồng thời khi Agent cần tra cứu nhiều nguồn dữ liệu độc lập.
+5. **Observability & Metrics**: Thu thập các chỉ số: Số lượng Tool Call/phút, Tỷ lệ lỗi theo từng Tool, Thời gian phản hồi P95 và P99.
+
+---
+
+## 3. KIẾN TRÚC & INTERFACE CỦA TOOL DISPATCHER
+
+```csharp
+namespace SmartSupermarket.Backend.Features.AI.Dispatcher;
+
+public interface IToolDispatcher
+{
+    Task<TResult> DispatchAsync<TResult>(string toolMethod, Dictionary<string, object> parameters, CancellationToken ct = default);
+    Task<Dictionary<string, object>> DispatchBatchParallelAsync(List<ToolCallRequest> requests, CancellationToken ct = default);
+}
+
+public class ToolDispatcher : IToolDispatcher
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<ToolDispatcher> _logger;
+
+    public ToolDispatcher(IServiceProvider serviceProvider, ILogger<ToolDispatcher> logger)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
+
+    public async Task<TResult> DispatchAsync<TResult>(string toolMethod, Dictionary<string, object> parameters, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[ToolDispatcher] Gọi tool: {ToolMethod}", toolMethod);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            // Thực thi với chính sách Timeout 1500ms
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(1500));
+
+            var result = await ExecuteWithRetryAsync<TResult>(toolMethod, parameters, timeoutCts.Token);
+            stopwatch.Stop();
+            _logger.LogInformation("[ToolDispatcher] {ToolMethod} thành công trong {ElapsedMs}ms", toolMethod, stopwatch.ElapsedMilliseconds);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[ToolDispatcher] {ToolMethod} thất bại", toolMethod);
+            throw;
+        }
+    }
+}
+```
+
+---
+
+## 4. KỸ THUẬT GỌI CÔNG CỤ SONG SONG (PARALLEL TOOL CALLING)
+
+Khi khách hàng hỏi: *"Tôi muốn ăn lẩu bò nấm, có gì giảm giá không?"*, `ShoppingAgent` cần:
+1. `RecipeTool.GetIngredients("Lẩu bò nấm")`
+2. `InventoryTool.GetNearExpiry(daysThreshold=3)`
+3. `PromotionTool.GetVouchers(customerId)`
+
+Tool Dispatcher sử dụng `Task.WhenAll` để kích hoạt cả 3 Tool cùng lúc:
+- Thay vì gọi tuần tự tốn $3 \times 200\text{ms} = 600\text{ms}$.
+- Gọi song song chỉ tốn $\max(200\text{ms}, 180\text{ms}, 150\text{ms}) = 200\text{ms}$ (Tiết kiệm 66% thời gian chờ đợi của khách).
+
+---
+
+## 5. ĐẶC TẢ CÁC TOOLS TRONG HỆ THỐNG
+
+| Tool | Methods Khả Dụng | Service Đích | Ghi Chú Logic |
 |---|---|---|---|
-| `InventoryTool` | `GetStock()`, `GetNearExpiry()`, `GetAlternative()`, `GetAvailableBatch()` | `InventoryService` | Kiểm tra số lượng tồn, lô hàng và hạn dùng |
-| `ProductTool` | `Search()`, `GetById()`, `GetAlternative()`, `GetByCategory()` | `ProductService` | Tra cứu thông tin chi tiết và sản phẩm thay thế |
-| `PromotionTool` | `GetVouchers()`, `CheckFlashSale()`, `CalculateDiscount()` | `PromotionService` | Áp dụng mã giảm giá và chiến dịch giờ vàng |
-| `RecipeTool` | `GetRecipe()`, `GetIngredients()`, `SearchByKeyword()` | `RecipeService` | Tra cứu công thức nấu ăn chuẩn Cookpad |
-| `CartTool` | `AddToCart()`, `RemoveFromCart()`, `EstimateCart()` | `OrderService` | Thao tác và tính toán giỏ hàng người dùng |
+| `ProductTool` | `Search()`, `GetById()`, `GetAlternative()` | `ProductService` | Tuyệt đối tuân thủ Category Isolation |
+| `InventoryTool` | `GetStock()`, `GetNearExpiry()`, `GetBatches()` | `InventoryService` | Lọc hàng $\le 3$ ngày để gắn cờ Flash Sale 30% |
+| `PromotionTool` | `GetVouchers()`, `CheckFlashSale()`, `ApplyDiscount()` | `PromotionService` | Áp dụng theo thứ tự ưu tiên trong knowledge base |
+| `RecipeTool` | `GetRecipe()`, `GetIngredients()` | `RecipeService` | Đọc dữ liệu từ cẩm nang Cookpad |
+| `CartTool` | `AddToCart()`, `EstimateCart()` | `OrderService` | Nạp 1-Click vào Session giỏ hàng của khách |
 
 ---
 
-## 4. ĐẶC TẢ CHI TIẾT TỪNG TOOL
+## 6. CƠ CHẾ BẪY LỖI & FALLBACK CỦA TOOL
 
-### 4.1. InventoryTool
-- **Chữ ký phương thức**:
-  - `Task<int> GetStockAsync(int productId)`
-  - `Task<List<NearExpiryItemDto>> GetNearExpiryAsync(int daysThreshold)`
-  - `Task<ProductDto?> GetAlternativeAsync(int outOfStockProductId)`
-  - `Task<List<BatchDto>> GetAvailableBatchAsync(int productId)`
-- **Đặc điểm**: Chỉ đóng vai trò adapter gọi sang `IInventoryService`.
-
-### 4.2. ProductTool
-- **Chữ ký phương thức**:
-  - `Task<List<ProductDto>> SearchAsync(string keyword, int? categoryId)`
-  - `Task<ProductDto?> GetByIdAsync(int productId)`
-  - `Task<ProductDto?> GetAlternativeAsync(int currentProductId, decimal maxPrice)`
-- **Quy tắc cách ly**: Luôn yêu cầu `categoryId` để đảm bảo thực phẩm không bị phân loại nhầm danh mục (Category 9 = Thịt/Trứng/Thủy sản, Category 4 = Rau củ tươi).
-
-### 4.3. PromotionTool
-- **Chữ ký phương thức**:
-  - `Task<List<VoucherDto>> GetVouchersAsync(int customerId)`
-  - `Task<FlashSaleReportDto> CheckFlashSaleAsync()`
-  - `Task<decimal> CalculateDiscountAsync(List<CartItemDto> items, string voucherCode)`
-
-### 4.4. RecipeTool
-- **Chữ ký phương thức**:
-  - `Task<RecipeDto?> GetRecipeAsync(string dishName)`
-  - `Task<List<IngredientDto>> GetIngredientsAsync(int recipeId, int servings)`
-- **Đảm bảo**: Dữ liệu nguyên liệu lấy từ CSDL công thức chuẩn (Cookpad Knowledge Base), ngăn chặn hoàn toàn việc AI bịa ra món ăn không tưởng.
-
-### 4.5. CartTool
-- **Chữ ký phương thức**:
-  - `Task<bool> AddToCartAsync(int cartId, List<CartItemDto> items)`
-  - `Task<CartEstimationDto> EstimateCartAsync(List<CartItemDto> items)`
-
----
-
-## 5. QUY CHUẨN AN TOÀN & BẢO VỆ DỮ LIỆU (SECURITY GUARDRAILS)
-1. **Chế độ Read-Only cho truy vấn**: Các Tool tra cứu chỉ gọi Repository với `.AsNoTracking()`, không thể làm thay đổi trạng thái dữ liệu kho.
-2. **Ngăn chặn rò rỉ giá vốn**: Dữ liệu giá vốn (`CostPrice`) và thông tin nhà cung cấp nội bộ bị loại bỏ hoàn toàn khỏi DTO trả về cho Agent khách hàng.
-3. **Giới hạn số lượng bản ghi (Pagination)**: Mỗi lần truy vấn Tool chỉ trả về tối đa 15 sản phẩm phù hợp nhất, tránh làm tràn Context Token của LLM.
+1. **Lỗi hết hàng (Out of Stock)**: Tool tự động kích hoạt tìm kiếm `GetAlternative()` cùng CategoryId để Agent kịp thời đề xuất cho khách.
+2. **Lỗi ngắt kết nối CSDL**: Tool trả về kết quả cache gần nhất từ `IMemoryCache` (thời hạn 5 phút) để không làm gián đoạn trải nghiệm của người dùng.

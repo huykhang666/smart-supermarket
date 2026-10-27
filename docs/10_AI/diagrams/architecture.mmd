@@ -1,91 +1,113 @@
 flowchart TD
-    subgraph Layer1["Layer 1: Frontend (Client Presentation)"]
-        UI["Frontend Web Client<br/>(AI Chat Component)"]
+    subgraph ClientLayer["1. Client Layer"]
+        User([User / Khách Hàng]) --> UI["Angular / Web Chat UI"]
     end
 
-    subgraph Layer2["Layer 2: API Controller (Thin Layer)"]
-        Ctrl["AIController<br/>POST /api/ai/chat<br/>(Validate & DTO Return)"]
+    subgraph ControllerLayer["2. API Controller Layer"]
+        UI -->|HTTP POST /api/ai/chat| Ctrl["AIController<br/>(Validate & Return DTO)"]
     end
 
-    subgraph Layer3["Layer 3: Agent Orchestrator (Brain & Multi-Agent)"]
-        Orch["Agent Orchestrator<br/>(Phân tích Intent & Điều phối Agent)"]
+    subgraph PipelineLayer["3. Context & Pipeline Layer"]
+        Ctrl --> ConvSvc["ConversationService<br/>(Session Memory & Context History)"]
+        ConvSvc --> PromptBld["PromptBuilder<br/>(System + Task + Fewshot + Knowledge)"]
+    end
+
+    subgraph OrchestrationLayer["4. Agent Orchestrator Layer"]
+        PromptBld --> Orch["AgentOrchestrator<br/>(Intent Analysis & Multi-Agent Coordination)"]
         
-        subgraph Agents["Specialized Agents"]
-            ShoppingAgent["ShoppingAgent<br/>(Planning & Synthesis)"]
-            InventoryAgent["InventoryAgent<br/>(Stock, Batches, Expiry)"]
-            PromotionAgent["PromotionAgent<br/>(Voucher, Flash Sale, Promo)"]
-            RecipeAgent["RecipeAgent<br/>(Cookpad DB & Ingredients)"]
-            BudgetAgent["BudgetAgent<br/>(Tính tổng & Đề xuất thay thế)"]
-            CartAgent["CartAgent<br/>(Add, Remove, Update, Estimate)"]
+        subgraph Agents["Agent Subsystem (BaseAgent Pattern)"]
+            BaseAgent["IAgent / BaseAgent<br/>(Logging, Memory, Retry, Dispatch)"]
+            ShopAgent["ShoppingAgent<br/>(Planning & Synthesis)"]
+            InvAgent["InventoryAgent<br/>(Stock, Batches, Expiry)"]
+            PromoAgent["PromotionAgent<br/>(Voucher, Flash Sale)"]
+            RecAgent["RecipeAgent<br/>(Cookpad Knowledge)"]
+            BudAgent["BudgetAgent<br/>(Rebalance & Substitutions)"]
+            CartAgent["CartAgent<br/>(Add, Remove, Estimate)"]
+
+            BaseAgent -.-> ShopAgent
+            BaseAgent -.-> InvAgent
+            BaseAgent -.-> PromoAgent
+            BaseAgent -.-> RecAgent
+            BaseAgent -.-> BudAgent
+            BaseAgent -.-> CartAgent
         end
+        Orch --> ShopAgent
+        ShopAgent --> RecAgent
+        ShopAgent --> InvAgent
+        ShopAgent --> PromoAgent
+        ShopAgent --> BudAgent
+        ShopAgent --> CartAgent
     end
 
-    subgraph Layer4["Layer 4: Tool Layer (Tool Dispatcher)"]
-        Dispatcher["Tool Dispatcher"]
-        ProductTool["ProductTool<br/>Search(), GetById()"]
-        InventoryTool["InventoryTool<br/>GetStock(), GetNearExpiry(), GetAlternative()"]
-        PromotionTool["PromotionTool<br/>GetVouchers(), CheckFlashSale()"]
-        RecipeTool["RecipeTool<br/>GetRecipe(), GetIngredients()"]
-        CartTool["CartTool<br/>AddToCart(), EstimateCart()"]
+    subgraph GatewayLayer["5. LLM Gateway Layer"]
+        LlmGw["ILLMGateway<br/>(Model Router & Resilient Fallback)"]
+        GeminiGw["GeminiGateway<br/>(Gemini 2.5 Flash)"]
+        GroqGw["GroqGateway<br/>(Llama 3.3 70B LPU)"]
+        OpenAiGw["OpenAIGateway<br/>(GPT-4o Mini)"]
+        LocalGw["LocalFallbackGateway<br/>(Deterministic Engine)"]
+
+        LlmGw --> GeminiGw
+        LlmGw --> GroqGw
+        LlmGw --> OpenAiGw
+        LlmGw --> LocalGw
+
+        Agents <--> LlmGw
     end
 
-    subgraph Layer5["Layer 5: Service Layer (Business Logic)"]
-        ProductService["ProductService"]
-        InventoryService["InventoryService<br/>(Lọc cận date <= 3 ngày, Flash Sale)"]
-        PromotionService["PromotionService<br/>(Tính chiết khấu & điều kiện Voucher)"]
-        RecipeService["RecipeService<br/>(Tra cứu cẩm nang Cookpad)"]
-        OrderService["OrderService / CartService"]
+    subgraph DispatcherLayer["6. Tool Dispatcher Layer"]
+        Dispatcher["Tool Dispatcher<br/>(Logging, Retry, Timeout, Parallel Execution, Metrics)"]
+        
+        Agents --> Dispatcher
     end
 
-    subgraph Layer6["Layer 6: Repository Layer (EF Core Queries)"]
-        ProductRepo["ProductRepository"]
-        InventoryRepo["InventoryRepository"]
-        PromotionRepo["PromotionRepository"]
-        RecipeRepo["RecipeRepository"]
+    subgraph ToolLayer["7. Tool Layer"]
+        ProdTool["ProductTool"]
+        InvTool["InventoryTool"]
+        PromoTool["PromotionTool"]
+        RecTool["RecipeTool"]
+        CartTool["CartTool"]
+
+        Dispatcher --> ProdTool
+        Dispatcher --> InvTool
+        Dispatcher --> PromoTool
+        Dispatcher --> RecTool
+        Dispatcher --> CartTool
+    end
+
+    subgraph BusinessServiceLayer["8. Business Service Layer"]
+        ProdSvc["ProductService"]
+        InvSvc["InventoryService"]
+        PromoSvc["PromotionService"]
+        RecSvc["RecipeService"]
+        OrderSvc["OrderService / CartService"]
+
+        ProdTool --> ProdSvc
+        InvTool --> InvSvc
+        PromoTool --> PromoSvc
+        RecTool --> RecSvc
+        CartTool --> OrderSvc
+    end
+
+    subgraph RepositoryLayer["9. Repository Layer (EF Core)"]
+        ProdRepo["ProductRepository"]
+        InvRepo["InventoryRepository"]
+        PromoRepo["PromotionRepository"]
+        RecRepo["RecipeRepository"]
         OrderRepo["OrderRepository"]
+
+        ProdSvc --> ProdRepo
+        InvSvc --> InvRepo
+        PromoSvc --> PromoRepo
+        RecSvc --> RecRepo
+        OrderSvc --> OrderRepo
     end
 
-    subgraph Layer7["Layer 7: Persistence Layer"]
-        DB[("SQL Server Database<br/>(Products, Inventory, Orders, Promotions, Recipes)")]
+    subgraph DatabaseLayer["10. Data Persistence Layer"]
+        DB[("SQL Server Database<br/>Products, InventoryBatches, Promotions, Orders, Recipes")]
+        
+        ProdRepo --> DB
+        InvRepo --> DB
+        PromoRepo --> DB
+        RecRepo --> DB
+        OrderRepo --> DB
     end
-
-    UI -->|HTTP POST /api/ai/chat| Ctrl
-    Ctrl -->|Call Orchestrator| Orch
-
-    Orch --> ShoppingAgent
-    Orch --> InventoryAgent
-    Orch --> PromotionAgent
-    Orch --> RecipeAgent
-    Orch --> BudgetAgent
-    Orch --> CartAgent
-
-    ShoppingAgent --> Dispatcher
-    InventoryAgent --> Dispatcher
-    PromotionAgent --> Dispatcher
-    RecipeAgent --> Dispatcher
-    BudgetAgent --> Dispatcher
-    CartAgent --> Dispatcher
-
-    Dispatcher --> ProductTool
-    Dispatcher --> InventoryTool
-    Dispatcher --> PromotionTool
-    Dispatcher --> RecipeTool
-    Dispatcher --> CartTool
-
-    ProductTool --> ProductService
-    InventoryTool --> InventoryService
-    PromotionTool --> PromotionService
-    RecipeTool --> RecipeService
-    CartTool --> OrderService
-
-    ProductService --> ProductRepo
-    InventoryService --> InventoryRepo
-    PromotionService --> PromotionRepo
-    RecipeService --> RecipeRepo
-    OrderService --> OrderRepo
-
-    ProductRepo --> DB
-    InventoryRepo --> DB
-    PromotionRepo --> DB
-    RecipeRepo --> DB
-    OrderRepo --> DB
