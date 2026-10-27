@@ -64,7 +64,14 @@ public static class DependencyInjection
         services.AddHttpClient<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.GeminiGateway>();
         services.AddHttpClient<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.GroqGateway>();
         services.AddSingleton<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.LocalFallbackGateway>();
+        services.AddSingleton<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.LocalGateway>();
         services.AddScoped<SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.ILLMGateway, SmartSupermarket.Backend.Infrastructure.External.AI.Gateway.LlmGateway>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Services.Prompt.IPromptBuilder, SmartSupermarket.Backend.Features.AI.Services.Prompt.PromptBuilder>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Context.IConversationContextService, SmartSupermarket.Backend.Features.AI.Services.Context.ConversationContextService>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Services.Intent.IIntentAnalyzer, SmartSupermarket.Backend.Features.AI.Services.Intent.IntentAnalyzer>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Services.Planning.IPlanner, SmartSupermarket.Backend.Features.AI.Services.Planning.Planner>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Dispatcher.IToolDispatcher, SmartSupermarket.Backend.Features.AI.Dispatcher.ToolDispatcher>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Orchestration.IAgentOrchestrator, SmartSupermarket.Backend.Features.AI.Orchestration.AgentOrchestrator>();
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IAiRetailService, AiRetailService>();
         services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
