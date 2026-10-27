@@ -1,0 +1,66 @@
+classDiagram
+    class IAiShoppingConciergeService {
+        <<interface>>
+        +PlanMealAndShopAsync(request, cancellationToken) Task~MealPlanChatResponse~
+    }
+
+    class AiShoppingConciergeService {
+        -AppDbContext _dbContext
+        -ILlmClient _llmClient
+        +PlanMealAndShopAsync(request, cancellationToken) Task~MealPlanChatResponse~
+        -BuildMealOptions(theme, products, batchLookup, servings, budget, prioritizePromotions) List~MealOptionDto~
+        -MatchProductsForQueries(queries, products, batchLookup, prioritizePromotions) List~MealIngredientItemDto~
+        -DetermineDishTheme(prompt, budget, servings, history) string
+        -GenerateChefMealMessageWithMultiOptions(servings, budget, options) string
+        -GenerateCookingTips(theme) string
+    }
+
+    class IAiRetailService {
+        <<interface>>
+        +AnalyzeProductRisksAsync(cancellationToken) Task~AiProductRiskReport~
+        +AnalyzeMarketBasketAsync(daysBack, cancellationToken) Task~AiMarketBasketReport~
+        +GenerateDraftImportOrderAsync(supplierId, cancellationToken) Task~AiDraftImportOrder~
+        +CommitDraftImportOrderAsync(draftOrder, cancellationToken) Task~ImportReceipt~
+    }
+
+    class AiRetailService {
+        -AppDbContext _dbContext
+        -ILlmClient _llmClient
+        +AnalyzeProductRisksAsync(cancellationToken) Task~AiProductRiskReport~
+        +AnalyzeMarketBasketAsync(daysBack, cancellationToken) Task~AiMarketBasketReport~
+        +GenerateDraftImportOrderAsync(supplierId, cancellationToken) Task~AiDraftImportOrder~
+        +CommitDraftImportOrderAsync(draftOrder, cancellationToken) Task~ImportReceipt~
+    }
+
+    class ILlmClient {
+        <<interface>>
+        +string ProviderName
+        +GenerateAsync(prompt, cancellationToken) Task~string~
+        +GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
+    }
+
+    class GeminiService {
+        -HttpClient _httpClient
+        -IConfiguration _configuration
+        -string _apiKey
+        -string _model
+        +GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
+        -CallGeminiAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
+        -CallGroqAsync(prompt, systemInstruction, requireJson, apiKey, cancellationToken) Task~string~
+    }
+
+    class GroqClient {
+        -HttpClient _httpClient
+        -string _apiKey
+        -string _model
+        +GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken) Task~string~
+    }
+
+    IAiShoppingConciergeService <|.. AiShoppingConciergeService
+    IAiRetailService <|.. AiRetailService
+    ILlmClient <|.. GeminiService
+    ILlmClient <|.. GroqClient
+
+    AiShoppingConciergeService --> ILlmClient : uses
+    AiRetailService --> ILlmClient : uses
+    GeminiService ..> GroqClient : fallback to

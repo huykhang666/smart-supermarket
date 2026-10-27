@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph DatabaseEntities["CÁC THỰC THỂ CSDL GỐC (DATABASE ENTITIES)"]
+        P["Products<br/>- ProductId, ProductName, Price, Unit, Barcode"]
+        C["Categories<br/>- CategoryId, CategoryName, Slug"]
+        B["InventoryBatches<br/>- BatchCode, Quantity, ExpiryDate"]
+        R["DiscountRules<br/>- DaysBeforeExpiry, DiscountPercent"]
+        O["OrderDetails<br/>- OrderId, ProductId, Quantity"]
+    end
+
+    subgraph ServiceMapping["LỚP MAPPING NGHIỆP VỤ (SERVICE DOMAIN RECORDS)"]
+        IQ["IngredientQuery<br/>- CategoryId (Bắt buộc)<br/>- Keyword<br/>- DefaultQty<br/>- ExcludeWord"]
+        PBS["ProductBatchSummary<br/>- TotalStock = Sum(Quantity)<br/>- MinExpiry = Min(ExpiryDate)<br/>- DaysLeft"]
+        MBA["BasketCoOccurrence<br/>- Pair(ProductA, ProductB)<br/>- Confidence & Support"]
+    end
+
+    subgraph OutputDTOs["ĐẦU RA CÔNG CỤ & CONTEXT AI (TOOL OUTPUT & PROMPTS)"]
+        MID["MealIngredientItemDto<br/>- FinalPrice = RegularPrice * (1 - Discount)<br/>- IsPromotionOrNearExpiry"]
+        MOD["MealOptionDto<br/>- OptionName, TotalEstimatedCost, Ingredients"]
+        CTX["Compact Prompt Context<br/>- Top 12 sản phẩm đại diện đưa vào LLM"]
+    end
+
+    P & C --> IQ
+    B & R --> PBS
+    O --> MBA
+
+    IQ & PBS --> MID
+    MID --> MOD
+    MID --> CTX

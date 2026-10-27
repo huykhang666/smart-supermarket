@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor User as Khách hàng
+    participant Web as React Web (AiShoppingAssistant)
+    participant API as Backend (AiRetailController)
+    participant Svc as AiShoppingConciergeService
+    participant LLM as Google Gemini 2.5 Flash
+
+    User->>Web: Nhập tin nhắn chào hỏi hoặc hỏi mẹo nấu ăn
+    Web->>API: POST /api/v1/ai/shopping/meal-plan
+    API->>Svc: PlanMealAndShopAsync(request)
+    
+    alt Ý định là Lời chào (Greeting)
+        Svc->>LLM: Gửi Greeting Prompt (Xưng 'mình', gọi 'bạn')
+        LLM-->>Svc: Trả về lời chào ấm áp & hướng dẫn đặt câu hỏi
+    else Ý định là Mẹo ẩm thực (Culinary Advice)
+        Svc->>LLM: Gửi Culinary Prompt (Mẹo luộc rau, ướp thịt bò...)
+        LLM-->>Svc: Trả về các bước hướng dẫn chuẩn vị Cookpad
+    end
+
+    Svc-->>API: Trả về MealPlanChatResponse (HasMealSuggestion = false)
+    API-->>Web: HTTP 200 OK
+    Web->>User: Hiển thị câu trả lời căn lề trái tự nhiên

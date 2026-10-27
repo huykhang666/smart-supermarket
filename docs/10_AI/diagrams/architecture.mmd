@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph Presentation["TẦNG 1: TRÌNH DIỄN & GIAO DIỆN (PRESENTATION TIER)"]
+        Web["React 18 + Vite Web Client<br/>(AiShoppingAssistant.tsx, CartPage.tsx)"]
+        Desktop["Windows Forms Desktop (.NET 10)<br/>(AiCopilotView.cs, PosScanView.cs)"]
+    end
+
+    subgraph API_Services["TẦNG 2: NGHIỆP VỤ & ĐIỀU PHỐI (APPLICATION SERVICE TIER)"]
+        Ctrl["AiRetailController.cs<br/>/api/v1/ai/shopping/meal-plan<br/>/api/v1/ai/retail/*"]
+        Concierge["AiShoppingConciergeService<br/>- Bóc tách Servings & Budget<br/>- Khớp nguyên liệu CategoryId<br/>- Xây dựng 3 Option Cookpad"]
+        Retail["AiRetailService<br/>- Phân tích rổ hàng Market Basket<br/>- Quét hạn dùng lô Shelf-Life<br/>- Lập phiếu nhập kho nháp"]
+    end
+
+    subgraph LLM_Orchestration["TẦNG 3: ĐIỀU PHỐI LLM (LLM ORCHESTRATION TIER)"]
+        ILlm["ILlmClient Interface"]
+        Gemini["GeminiService<br/>(gemini-2.5-flash / gemini-2.0-flash)"]
+        Groq["GroqClient<br/>(Llama-3.3-70b-versatile LPU)"]
+        Local["Local Deterministic Rule Engine<br/>(Cookpad Knowledge Safety Net)"]
+    end
+
+    subgraph Database["TẦNG 4: LƯU TRỮ DỮ LIỆU (PERSISTENCE & DATA TIER)"]
+        DB[(AppDbContext<br/>PostgreSQL / In-Memory EF Core)]
+        SeedData[("products_seed.json<br/>200 Sản phẩm siêu thị")]
+    end
+
+    Web -->|HTTP POST JSON| Ctrl
+    Desktop -->|HTTP POST JSON| Ctrl
+    Ctrl --> Concierge
+    Ctrl --> Retail
+
+    Concierge --> ILlm
+    Retail --> ILlm
+
+    ILlm -->|Ưu tiên 1| Gemini
+    ILlm -->|Ưu tiên 2| Groq
+    ILlm -->|Ưu tiên 3| Local
+
+    Concierge -->|Query Products & Batches| DB
+    Retail -->|Query Orders & Inventory| DB
+    DB -.-> SeedData

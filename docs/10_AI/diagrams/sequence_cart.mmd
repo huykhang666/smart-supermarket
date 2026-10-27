@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor User as Khách hàng
+    participant UI as Thẻ mâm cơm (AiShoppingAssistant)
+    participant Modal as Modal khay nguyên liệu (ActiveMealModal)
+    participant Cart as Giỏ hàng (/cart - LocalStorage/Redux)
+
+    User->>UI: Bấm nút "👉 Chọn mâm này (30.800 đ)"
+    UI->>Modal: Kích hoạt handleOpenMealModal(option)
+    Modal->>User: Hiển thị bảng chi tiết các nguyên liệu kèm ảnh & đơn giá
+    
+    opt Tùy chỉnh khay nguyên liệu
+        User->>Modal: Bấm nút (+) tăng số lượng hoặc (-) giảm số lượng
+        User->>Modal: Bỏ chọn nguyên liệu đã có sẵn ở nhà
+        Modal->>Modal: Cập nhật lại tổng tiền thời gian thực
+    end
+
+    User->>Modal: Bấm "🛒 Thêm nguyên liệu đã chọn vào giỏ hàng"
+    Modal->>Cart: Đẩy danh sách sản phẩm vào Giỏ hàng
+    Modal->>UI: Đóng Modal & hiển thị Toast thông báo thành công
+    UI-->>User: Toast: "Đã thêm thành công nguyên liệu vào giỏ hàng!"
+    User->>Cart: Bấm "Xem giỏ hàng →" để tiến hành thanh toán

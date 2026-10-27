@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    actor User as Khách hàng
+    participant Web as React Web Assistant
+    participant API as Backend (AiRetailController)
+    participant Concierge as AiShoppingConciergeService
+    participant DB as CSDL Siêu thị
+    participant LLM as Google Gemini 2.5 Flash
+
+    User->>Web: "Mình có 30k 1 người ăn thì nấu món gì?"
+    Web->>API: POST /api/v1/ai/shopping/meal-plan
+    API->>Concierge: PlanMealAndShopAsync(request)
+    Concierge->>Concierge: ParseServings=1, ParseBudget=30.000 đ
+    Concierge->>Concierge: DetermineDishTheme -> 'Bữa Ăn Tiết Kiệm'
+    Concierge->>DB: Truy vấn Products & InventoryBatches
+    DB-->>Concierge: Danh sách sản phẩm thực tế
+    Concierge->>Concierge: Ghép 3 mâm cơm chuẩn cẩm nang Cookpad
+    Note over Concierge: Option 1: Trứng chiên & Canh rau muống (30.8k)<br/>Option 2: Mì Omachi xúc xích (44.3k)<br/>Option 3: Cá hộp dưa leo baby (28.9k)
+    Concierge->>LLM: Gửi tóm tắt 3 mâm + yêu cầu tư vấn
+    LLM-->>Concierge: Lời thoại đầu bếp thân thiện
+    Concierge-->>API: Trả về MealPlanChatResponse (AssistantMessage + 3 MealOptionDto)
+    API-->>Web: HTTP 200 OK
+    Web->>User: Hiển thị lời thoại + 3 Thẻ Mâm Cơm Căn Trái
