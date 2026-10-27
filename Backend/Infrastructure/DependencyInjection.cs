@@ -72,6 +72,29 @@ public static class DependencyInjection
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Services.Planning.IPlanner, SmartSupermarket.Backend.Features.AI.Services.Planning.Planner>();
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Dispatcher.IToolDispatcher, SmartSupermarket.Backend.Features.AI.Dispatcher.ToolDispatcher>();
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Orchestration.IAgentOrchestrator, SmartSupermarket.Backend.Features.AI.Orchestration.AgentOrchestrator>();
+
+        // AI Repositories
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Repositories.IAiProductRepository, SmartSupermarket.Backend.Features.AI.Repositories.Implementations.AiProductRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Repositories.IAiInventoryBatchRepository, SmartSupermarket.Backend.Features.AI.Repositories.Implementations.AiInventoryBatchRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Repositories.IAiPromotionRepository, SmartSupermarket.Backend.Features.AI.Repositories.Implementations.AiPromotionRepository>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Repositories.IAiRecipeRepository, SmartSupermarket.Backend.Features.AI.Repositories.Implementations.AiRecipeRepository>();
+
+        // AI Domain Services
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiProductService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiProductService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiInventoryService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiInventoryService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiPromotionService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiPromotionService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiRecipeService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiRecipeService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiBudgetService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiBudgetService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiCartService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiCartService>();
+
+        // AI Tools
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IInventoryTool, SmartSupermarket.Backend.Features.AI.Tools.InventoryTool>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IProductTool, SmartSupermarket.Backend.Features.AI.Tools.ProductTool>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IPromotionTool, SmartSupermarket.Backend.Features.AI.Tools.PromotionTool>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IRecipeTool, SmartSupermarket.Backend.Features.AI.Tools.RecipeTool>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IBudgetTool, SmartSupermarket.Backend.Features.AI.Tools.BudgetTool>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.ICartTool, SmartSupermarket.Backend.Features.AI.Tools.CartTool>();
+
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IAiRetailService, AiRetailService>();
         services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
