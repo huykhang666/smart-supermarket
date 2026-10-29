@@ -31,6 +31,13 @@ builder.Services.AddSwaggerGen(options =>
         Description = "REST API Specification cho Hệ thống Quản lý Siêu thị Thông minh Smart SuperMarket"
     });
 
+    var xmlFilename = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFilename);
+    if (System.IO.File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+
     var jwtSecurityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
