@@ -1,227 +1,454 @@
-# 10_AI - TÀI LIỆU 01: KIẾN TRÚC TỔNG THỂ HỆ THỐNG AI (AI ARCHITECTURE)
+# 01_AI_Architecture.md
+
+# AI Architecture
+
+Version: 1.1
 
 ---
 
-## MỤC LỤC
-1. [Mô hình kiến trúc phân tầng 10 lớp chuẩn Enterprise](#1-mô-hình-kiến-trúc-phân-tầng-10-lớp-chuẩn-enterprise)
-2. [Chi tiết các tầng mở rộng then chốt](#2-chi-tiết-các-tầng-mở-rộng-then-chốt)
-   - [2.1. ConversationService & PromptBuilder](#21-conversationservice--promptbuilder)
-   - [2.2. LLM Gateway Layer (Infrastructure/External/AI)](#22-llm-gateway-layer)
-   - [2.3. Tool Dispatcher (Logging, Retry, Parallel, Metrics)](#23-tool-dispatcher)
-   - [2.4. Agent Subsystem & BaseAgent Pattern](#24-agent-subsystem--baseagent-pattern)
-   - [2.5. Business Services, Repositories & SQL Server](#25-business-services-repositories--sql-server)
-3. [Luồng thực thi đầy đủ (End-to-End Execution Flow)](#3-luồng-thực-thi-đầy-đủ)
-4. [Cấu trúc thư mục Backend chuẩn Clean Architecture](#4-cấu-trúc-thư-mục-backend-chuẩn-clean-architecture)
-5. [Lộ trình tiến hóa: Bản MVP tối giản vs Enterprise Multi-Agent](#5-lộ-trình-tiến-hóa-bản-mvp-tối-giản-vs-enterprise-multi-agent)
+# 1. Overview
+
+AI Shopping Concierge là một module độc lập trong hệ thống Smart SuperMarket.
+
+AI không thay thế Business Layer hiện có mà đóng vai trò điều phối (Orchestrator) giữa người dùng và hệ thống.
+
+Mọi dữ liệu được sử dụng để trả lời khách hàng phải đến từ dữ liệu thật trong hệ thống.
+
+AI không được phép truy cập trực tiếp Database hoặc Repository.
 
 ---
 
-## 1. MÔ HÌNH KIẾN TRÚC PHÂN TẦNG 10 LỚP CHUẨN ENTERPRISE
+# 2. Architecture Goals
 
-Hệ thống AI thực tế của **Smart SuperMarket** áp dụng kiến trúc phân tầng chuyên sâu 10 lớp. Sự bổ sung của **ConversationService**, **PromptBuilder**, **LLM Gateway** và **Tool Dispatcher** đảm bảo hệ thống có khả năng mở rộng tối đa, dễ dàng thay đổi Model AI mà không cần sửa đổi logic nghiệp vụ của Agent.
+Kiến trúc AI được xây dựng với các mục tiêu sau:
 
-```text
-User
-  │
-  ▼
-Angular / Web Chat UI
-  │
-  ▼
-AIController
-  │
-  ▼
-ConversationService       ◄── (Quản lý Session Memory & History)
-  │
-  ▼
-PromptBuilder             ◄── (Ghép nối Identity + Rules + Fewshot + Context)
-  │
-  ▼
-AgentOrchestrator         ◄── (Phân tích Intent & Điều phối Multi-Agent)
-  │
-  ▼
-LLM Gateway               ◄── (ILLMGateway: Gemini, Groq, OpenAI, Claude)
-  │
-  ▼
-Tool Dispatcher           ◄── (Logging, Retry, Timeout, Parallel, Metrics)
-  │
-  ▼
-Tools                     ◄── (ProductTool, InventoryTool, PromotionTool, RecipeTool)
-  │
-  ▼
-Business Services         ◄── (Toàn bộ Business Logic tại đây)
-  │
-  ▼
-Repositories              ◄── (EF Core Queries: Where, Include, AsNoTracking)
-  │
-  ▼
-SQL Server Database
-```
+- Dễ mở rộng (Extensible)
+- Dễ bảo trì (Maintainable)
+- Dễ kiểm thử (Testable)
+- Tái sử dụng Business Logic hiện có
+- Hạn chế Hallucination
+- Không trùng lặp Business Logic
+- Hỗ trợ nhiều AI Agent trong tương lai
+- Hỗ trợ Multi-tier LLM Gateway và Tool Dispatcher an toàn
 
 ---
 
-## 2. CHI TIẾT CÁC TẦNG MỞ RỘNG THEN CHỐT
+# 3. Architecture Principles
 
-### 2.1. ConversationService & PromptBuilder
-- **ConversationService**:
-  - Quản lý phiên làm việc (`SessionId`), lưu trữ và bóc tách lịch sử hội thoại gần nhất (`Sliding Window Memory`).
-  - Đảm bảo AI luôn nhận biết trạng thái giỏ hàng hiện tại của khách hàng.
-- **PromptBuilder**:
-  - Không nhúng hardcode prompt vào code C#.
-  - Tự động nạp và ghép nối nhiều lớp prompt từ thư mục `prompts/`:
-    $$\text{FinalPrompt} = \text{Identity} + \text{Rules} + \text{Style} + \text{TaskPrompt} + \text{FewShotExamples} + \text{GroundTruthKnowledge}$$
+Toàn bộ AI Module phải tuân thủ các nguyên tắc sau:
 
-### 2.2. LLM Gateway Layer (Infrastructure/External/AI)
-**Nguyên tắc vàng**: Agent **tuyệt đối KHÔNG gọi trực tiếp Gemini hay OpenAI**. Agent chỉ tương tác với interface `ILLMGateway`.
-```text
-Features/AI/Infrastructure/External/AI/
-├── ILLMGateway.cs
-├── GeminiGateway.cs        # Kết nối Gemini 2.5 Flash
-├── GroqGateway.cs          # Kết nối Groq Llama 3.3 70B LPU
-├── OpenAIGateway.cs        # Kết nối GPT-4o Mini
-└── LocalGateway.cs         # Dự phòng Offline Deterministic
-```
-- **Lợi ích**: Khi đổi từ Gemini sang Groq hoặc Claude, toàn bộ code của các Agent giữ nguyên 100%.
-- Tự động bẫy lỗi HTTP 429 (ResourceExhausted) hoặc Timeout $>4\text{s}$ để chuyển đổi luân phiên giữa các nhà cung cấp (*Smart Fallback Routing*).
+## 3.1 Modular Architecture
 
-### 2.3. Tool Dispatcher (Logging, Retry, Parallel, Metrics)
-Thay vì Agent gọi Tool một cách tùy tiện, mọi lời gọi Tool đều đi qua **Tool Dispatcher**:
-- **Audit Logging**: Ghi nhận toàn bộ tham số đầu vào và đầu ra của Tool Call để theo dõi hành vi của LLM.
-- **Resilience & Retry**: Tự động thử lại (Retry with exponential backoff) khi truy vấn cơ sở dữ liệu gặp deadlock hoặc gián đoạn.
-- **Timeout Guard**: Giới hạn thời gian thực thi Tool trong vòng $1.5\text{s}$, ngăn chặn Agent bị treo.
-- **Parallel Tool Calling**: Thực thi đồng thời nhiều Tool độc lập (ví dụ: vừa kiểm tra tồn kho vừa kiểm tra voucher khuyến mãi cùng lúc qua `Task.WhenAll`).
-- **Metrics**: Đo lường tần suất gọi Tool và độ trễ trung bình.
+AI được chia thành nhiều module độc lập.
 
-### 2.4. Agent Subsystem & BaseAgent Pattern
-Mọi Agent chuyên trách đều kế thừa từ lớp cơ sở `BaseAgent`:
-```csharp
-public abstract class BaseAgent : IAgent
-{
-    protected readonly ILLMGateway _llmGateway;
-    protected readonly IToolDispatcher _toolDispatcher;
-    protected readonly ILogger _logger;
-    // Tái sử dụng logic: Logging, Parse JSON, Build Context, Dispatch Tool
-}
-```
-- Chia tách Bounded Context nghiêm ngặt:
-  - `ShoppingAgent`: Planning & Synthesis.
-  - `InventoryAgent`: Kiểm tra tồn kho, số lô, hạn dùng. *Không tính tiền, không gợi ý món ăn.*
-  - `PromotionAgent`: Xử lý voucher, flash sale, combo giảm giá.
-  - `BudgetAgent`: Cân đối ngân sách, tự động đề xuất thay thế nguyên liệu rẻ hơn khi tổng chi vượt ngân sách.
-  - `RecipeAgent`: Tra cứu công thức Cookpad. *Không sinh món ăn ảo.*
-  - `CartAgent`: Thực hiện thêm, sửa, xóa giỏ hàng.
+Ví dụ:
 
-### 2.5. Business Services, Repositories & SQL Server
-- **Tool**: Chỉ là cổng trung gian (Facade), không có logic.
-- **Business Service**: Chứa toàn bộ Business Logic (áp dụng chính sách Flash Sale giảm 30% cho hàng cận date $\le 3$ ngày, tính mức chiết khấu).
-- **Repository**: Chỉ chứa các câu lệnh LINQ sạch với EF Core, có `.AsNoTracking()`.
-- **SQL Server**: Nguồn dữ liệu duy nhất lưu trữ sản phẩm, lô hàng, đơn hàng, hóa đơn.
+- Shopping
+- Inventory
+- Promotion
+- Recipe
+- Budget
+- Cart
+
+Mỗi module chỉ chịu trách nhiệm một nghiệp vụ.
 
 ---
 
-## 3. LUỒNG THỰC THI ĐẦY ĐỦ (END-TO-END EXECUTION FLOW)
+## 3.2 Single Responsibility Principle
 
-Tình huống: Khách hàng nhập `"Tôi có 300k, nấu lẩu cho 5 người, ưu tiên giảm giá"`:
+Một Agent chỉ có một nhiệm vụ.
 
-```text
-User 
-  │ (Gửi prompt)
-  ▼
-Angular Chat UI 
-  │ (HTTP POST /api/ai/chat)
-  ▼
-AIController 
-  │ (Validate DTO)
-  ▼
-ConversationService 
-  │ (Nạp lịch sử phiên & trạng thái giỏ)
-  ▼
-PromptBuilder 
-  │ (Ghép Identity + Task + Fewshot + Knowledge)
-  ▼
-AgentOrchestrator 
-  │ (Phân tích Intent: MealPlanning, Hotpot, Budget 300k)
-  ▼
-ShoppingAgent 
-  │ (Lập kế hoạch điều phối)
-  ├─► RecipeAgent    ──► ToolDispatcher ──► RecipeTool    ──► RecipeService    ──► DB
-  ├─► InventoryAgent ──► ToolDispatcher ──► InventoryTool ──► InventoryService ──► DB
-  ├─► PromotionAgent ──► ToolDispatcher ──► PromotionTool ──► PromotionService ──► DB
-  └─► BudgetAgent    ──► ToolDispatcher ──► ProductTool   ──► ProductService   ──► DB
-  │
-  ▼
-LLM Gateway (ILLMGateway)
-  │ (Định dạng phản hồi bằng Gemini 2.5 Flash / Groq)
-  ▼
-AIController 
-  │ (HTTP 200 OK)
-  ▼
-Angular Chat UI 
-  │ (Hiển thị văn bản & 3 thẻ mâm cơm căn trái)
-  ▼
-User
-```
+Ví dụ:
+
+- ShoppingAgent: hiểu yêu cầu và lập kế hoạch tổng thể
+- InventoryAgent: kiểm tra tồn kho, batch, cận date
+- PromotionAgent: kiểm tra voucher, flash sale, chiết khấu
+- RecipeAgent: tra cứu món ăn và nguyên liệu
+- BudgetAgent: so sánh tổng tiền với ngân sách
+- CartAgent: thao tác giỏ hàng
+
+Không Agent nào được làm thay nhiệm vụ của Agent khác.
 
 ---
 
-## 4. CẤU TRÚC THƯ MỤC BACKEND CHUẨN CLEAN ARCHITECTURE
+## 3.3 Tool Calling Architecture
 
-```text
+Agent không được phép truy cập Service trực tiếp.
+
+Mọi nghiệp vụ phải đi qua Tool Layer.
+
+Luồng chuẩn:
+
+Agent
+
+↓
+
+Tool
+
+↓
+
+Business Service
+
+↓
+
+Repository
+
+↓
+
+Database
+
+---
+
+## 3.4 Business Logic Reuse
+
+AI không được viết lại Business Logic.
+
+Nếu `InventoryService` hoặc `PromotionService` đã tồn tại thì phải tái sử dụng.
+
+Không tạo `InventoryServiceAI` hay `PromotionServiceAI`.
+
+---
+
+## 3.5 No Direct Database Access
+
+AI không được phép:
+
+- Query SQL
+- Query DbContext
+- Query Repository
+
+Chỉ Tool mới được gọi Service.
+
+---
+
+## 3.6 Dependency Injection
+
+Toàn bộ component phải sử dụng Dependency Injection.
+
+Không khởi tạo object bằng `new` trong Business Flow.
+
+---
+
+# 4. High-Level Architecture
+
+Luồng tổng thể của hệ thống AI:
+
+User  
+→ Angular Chat UI  
+→ AIController  
+→ ConversationService  
+→ PromptBuilder  
+→ AgentOrchestrator  
+→ LLM Gateway  
+→ Tool Dispatcher  
+→ Tools  
+→ Business Services  
+→ Repositories  
+→ SQL Server
+
+---
+
+# 5. AI Module Structure
+
+AI Module được tổ chức theo Feature-Based Architecture.
+
 Features/
+
 └── AI/
-    ├── Controllers/
-    │   └── AIController.cs
-    │
-    ├── Orchestrator/
-    │   ├── IAgentOrchestrator.cs
-    │   └── AgentOrchestrator.cs
-    │
-    ├── Agents/
-    │   ├── Common/
-    │   │   ├── IAgent.cs
-    │   │   └── BaseAgent.cs            # Kế thừa chia sẻ logging, tool call, memory
-    │   ├── Shopping/
-    │   ├── Inventory/
-    │   ├── Promotion/
-    │   ├── Recipe/
-    │   ├── Budget/
-    │   └── Cart/
-    │
-    ├── Dispatcher/
-    │   ├── IToolDispatcher.cs
-    │   └── ToolDispatcher.cs           # Logging, Retry, Timeout, Parallel
-    │
-    ├── Tools/
-    │   ├── ProductTool.cs
-    │   ├── InventoryTool.cs
-    │   ├── PromotionTool.cs
-    │   ├── RecipeTool.cs
-    │   └── CartTool.cs
-    │
-    ├── Services/
-    │   ├── ConversationService.cs      # Session Memory & Context
-    │   ├── PromptBuilder.cs            # Ghép nối prompt đa tầng
-    │   ├── ProductService.cs
-    │   ├── InventoryService.cs
-    │   └── PromotionService.cs
-    │
-    └── Infrastructure/
-        └── External/
-            └── AI/
-                ├── ILLMGateway.cs      # Interface chung kết nối LLM
-                ├── GeminiGateway.cs    # Google Gemini 2.5 Flash
-                ├── GroqGateway.cs      # Groq Llama 3.3 70B
-                └── OpenAIGateway.cs    # OpenAI GPT-4o Mini
-```
+
+├── Controllers/
+
+├── DTOs/
+
+├── Agents/
+
+├── Tools/
+
+├── Services/
+
+├── Prompts/
+
+├── Memory/
+
+├── Contracts/
+
+├── Models/
+
+├── Constants/
 
 ---
 
-## 5. LỘ TRÌNH TIẾN HÓA: BẢN MVP TỐI GIẢN VS ENTERPRISE MULTI-AGENT
+# 6. Layer Responsibilities
 
-- **Giai đoạn MVP (Khuyên dùng bước đầu)**:
-  - 1 Agent duy nhất: `ShoppingAgent` (kế thừa `BaseAgent`).
-  - 1 Gateway: `ILLMGateway` (kết nối `GeminiGateway` + `LocalGateway`).
-  - 4 Tools: `InventoryTool`, `ProductTool`, `PromotionTool`, `CartTool` thông qua `ToolDispatcher`.
-- **Giai đoạn Enterprise**:
-  - Đầy đủ 6 Sub-Agents độc lập.
-  - Tích hợp `GroqGateway`, `OpenAIGateway`.
-  - Tích hợp RAG Vector Database cho hàng triệu công thức ẩm thực.
+## Controller
+- Nhận HTTP Request
+- Validate Request
+- Gọi ConversationService / AgentOrchestrator
+- Trả Response
+
+Không chứa Business Logic.
+
+## ConversationService
+- Quản lý session hội thoại
+- Giữ context ngắn hạn
+- Ghép dữ liệu hội thoại vào pipeline xử lý
+
+## PromptBuilder
+- Ghép Identity
+- Ghép Rules
+- Ghép Few-shot
+- Ghép Knowledge
+- Ghép Conversation Context
+- Ghép User Input
+
+## AgentOrchestrator
+- Phân tích intent
+- Chọn Agent phù hợp
+- Điều phối Agent
+- Tổng hợp kết quả
+
+Không chứa Business Logic.
+
+## Agent
+- Lập luận
+- Lập kế hoạch
+- Gọi Tool phù hợp
+- Tổng hợp kết quả
+
+Agent không được:
+- Query Database
+- Query Repository
+- Gọi DbContext
+- Viết Business Logic
+
+## Tool
+- Là cầu nối giữa AI và Business Layer
+- Gọi Service
+- Chuyển đổi DTO
+- Chuẩn hóa dữ liệu
+
+Tool không chứa Business Logic.
+
+## Business Service
+- Là nơi duy nhất chứa Business Logic
+
+Ví dụ:
+- ProductService
+- InventoryService
+- PromotionService
+- CustomerService
+- OrderService
+
+## Repository
+- Chỉ thực hiện Query / Insert / Update / Delete
+- Không chứa Business Logic
+
+## Database
+- Là nguồn dữ liệu duy nhất
+
+AI không được phép truy cập trực tiếp.
+
+---
+
+# 7. Request Flow
+
+Ví dụ người dùng hỏi:
+
+“Tôi có 300.000 đồng, hãy gợi ý bữa tối.”
+
+Luồng xử lý:
+
+User  
+→ Angular  
+→ POST /api/v1/ai/chat  
+→ AIController  
+→ ConversationService  
+→ PromptBuilder  
+→ AgentOrchestrator  
+→ ShoppingAgent  
+→ RecipeTool  
+→ RecipeService  
+→ InventoryTool  
+→ InventoryService  
+→ PromotionTool  
+→ PromotionService  
+→ BudgetTool  
+→ Response Builder  
+→ AIController  
+→ Angular  
+→ User
+
+---
+
+# 8. Data Flow
+
+Luồng dữ liệu chuẩn:
+
+Question  
+→ Intent Analysis  
+→ Planning  
+→ Tool Calling  
+→ Business Service  
+→ Repository  
+→ Database  
+→ Business Service  
+→ Tool  
+→ Agent  
+→ Response
+
+---
+
+# 9. Dependency Rules
+
+Được phép:
+
+Controller → ConversationService → PromptBuilder → Orchestrator → Agent → Tool → Service → Repository → DbContext
+
+Không được phép:
+
+- Controller → DbContext
+- Agent → Repository
+- Agent → DbContext
+- Tool → Repository
+- Tool → DbContext
+
+---
+
+# 10. Communication Rules
+
+Agent chỉ giao tiếp với:
+- ConversationService
+- PromptBuilder
+- AgentOrchestrator
+- Tool
+
+Tool chỉ giao tiếp với:
+- Business Service
+- Tool Dispatcher
+
+Business Service chỉ giao tiếp với:
+- Repository
+
+Repository chỉ giao tiếp với:
+- DbContext
+
+Không được bỏ qua bất kỳ tầng nào.
+
+---
+
+# 11. Dependency Injection
+
+Các component phải đăng ký trong DI Container.
+
+Ví dụ:
+
+- IConversationService
+- IPromptBuilder
+- IAgentOrchestrator
+- IToolDispatcher
+- IShoppingAgent
+- IInventoryAgent
+- IPromotionAgent
+- IRecipeAgent
+- IBudgetAgent
+- ICartAgent
+
+Không được khởi tạo trực tiếp bằng `new` trong Business Flow.
+
+---
+
+# 12. Error Handling
+
+Nếu Tool lỗi:
+- Không retry vô hạn
+- Trả lỗi thân thiện
+- Ghi log
+
+Nếu Database lỗi:
+- Không được đoán dữ liệu
+
+Ví dụ sai:
+“Có khoảng 20 sản phẩm.”
+
+Đúng:
+“Hiện tại tôi chưa thể truy cập dữ liệu sản phẩm.”
+
+---
+
+# 13. Logging
+
+AI phải ghi nhận:
+- Conversation Id
+- User Id (nếu có)
+- Agent được gọi
+- Tool được gọi
+- Thời gian xử lý
+- Lỗi phát sinh
+
+Không log:
+- Password
+- JWT
+- API Key
+- Connection String
+
+---
+
+# 14. Security
+
+AI không được gửi cho LLM:
+- Password
+- API Key
+- Connection String
+- JWT Token
+- Entity Framework Entity
+- Internal Exception
+
+LLM chỉ nhận DTO đã được chuẩn hóa.
+
+---
+
+# 15. Performance
+
+Mục tiêu hiệu năng:
+
+- Average Response Time ≤ 3 giây
+- Tool Calling ≤ 500ms mỗi Tool
+- Database Query ≤ 200ms
+
+Không gọi Tool trùng lặp.
+
+Không Query N+1.
+
+Ưu tiên tái sử dụng dữ liệu trong cùng một Request.
+
+---
+
+# 16. Scalability
+
+Kiến trúc phải hỗ trợ mở rộng.
+
+Trong tương lai có thể bổ sung:
+- NutritionAgent
+- RecommendationAgent
+- VoiceAgent
+- OCRAgent
+- ForecastAgent
+- ImageSearchAgent
+
+Không cần sửa ShoppingAgent để hỗ trợ Agent mới.
+
+---
+
+# 17. Future Architecture
+
+Trong các phiên bản tiếp theo sẽ bổ sung:
+- Conversation Memory
+- Redis Cache
+- Vector Database
+- RAG
+- Semantic Search
+- Recommendation Engine
+- Nutrition Knowledge Base
+- Voice Assistant
+- Multi-language Support
+- AI Analytics Dashboard
