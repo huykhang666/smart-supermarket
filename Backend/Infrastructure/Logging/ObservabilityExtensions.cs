@@ -1,6 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -52,6 +53,12 @@ public static class ObservabilityExtensions
                     })
                     .AddSource("SmartSupermarket.AI.Agents")
                     .AddSource("SmartSupermarket.Backend")
+                    .AddConsoleExporter();
+            })
+            .WithMetrics(metrics =>
+            {
+                metrics
+                    .AddMeter("SmartSupermarket.AI")
                     .AddConsoleExporter();
             });
 

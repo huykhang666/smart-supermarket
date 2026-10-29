@@ -79,6 +79,10 @@ public static class DependencyInjection
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IPromptCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.PromptCache>();
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IResponseCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.ResponseCache>();
 
+        // AI Monitoring & Observability Subsystem
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces.IAiMetricsCollector, SmartSupermarket.Backend.Features.AI.Monitoring.Implementations.AiMetricsCollector>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces.IAiMonitoringService, SmartSupermarket.Backend.Features.AI.Monitoring.Implementations.AiMonitoringService>();
+
         services.AddHttpClient<GeminiService>();
         services.AddHttpClient<GroqClient>();
         services.AddScoped<ILlmClient, GeminiService>();

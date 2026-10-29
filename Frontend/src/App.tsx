@@ -4,6 +4,7 @@ import { HomePage } from './pages/HomePage';
 import { CartPage } from './pages/CartPage';
 import { PromotionsPage } from './pages/PromotionsPage';
 import { OrdersPage } from './pages/OrdersPage';
+import { AiMonitoringPage } from './pages/AiMonitoringPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/promotions" element={<MainLayout><PromotionsPage /></MainLayout>} />
         <Route path="/orders" element={<MainLayout><OrdersPage /></MainLayout>} />
+        <Route path="/ai-monitoring" element={<MainLayout><AiMonitoringPage /></MainLayout>} />
       </Routes>
     </BrowserRouter>
   );

@@ -75,4 +75,84 @@ export const aiService = {
     const response = await axiosInstance.post(`/api/v1/ai/retail/market-basket?daysBack=${daysBack}`);
     return unwrapData(response);
   },
+
+  // AI Monitoring Dashboard
+  getMonitoringDashboard: async (): Promise<AiMonitoringDashboard> => {
+    const response = await axiosInstance.get('/api/v1/ai/monitoring/dashboard');
+    return unwrapData(response);
+  },
+
+  // AI Monitoring Metrics Overview
+  getMonitoringMetrics: async (): Promise<AiOverviewMetrics> => {
+    const response = await axiosInstance.get('/api/v1/ai/monitoring/metrics');
+    return unwrapData(response);
+  },
+
+  // Reset Metrics
+  resetMonitoringMetrics: async (): Promise<any> => {
+    const response = await axiosInstance.post('/api/v1/ai/monitoring/reset');
+    return unwrapData(response);
+  },
 };
+
+export interface AiOverviewMetrics {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  successRatePercent: number;
+  averageLatencyMs: number;
+  p95LatencyMs: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  totalCostVnd: number;
+  totalSavedCostUsd: number;
+  cacheHitCount: number;
+  cacheHitRatioPercent: number;
+  serverTimeUtc: string;
+}
+
+export interface AiToolMetric {
+  toolName: string;
+  invocationCount: number;
+  successCount: number;
+  failureCount: number;
+  averageDurationMs: number;
+  minDurationMs: number;
+  maxDurationMs: number;
+  totalDurationMs: number;
+}
+
+export interface AiModelUsageMetric {
+  modelName: string;
+  provider: string;
+  requestCount: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  averageLatencyMs: number;
+}
+
+export interface AiTraceItem {
+  traceId: string;
+  correlationId: string;
+  timestamp: string;
+  operation: string;
+  modelOrTool: string;
+  durationMs: number;
+  promptTokens: number;
+  completionTokens: number;
+  costUsd: number;
+  isSuccess: boolean;
+  errorMessage?: string;
+  fromCache: boolean;
+}
+
+export interface AiMonitoringDashboard {
+  overview: AiOverviewMetrics;
+  toolMetrics: AiToolMetric[];
+  modelMetrics: AiModelUsageMetric[];
+  recentTraces: AiTraceItem[];
+}

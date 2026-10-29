@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SmartSupermarket.Backend.Features.AI.DTOs.Common;
 using SmartSupermarket.Backend.Features.AI.DTOs.Responses;
+using SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces;
 using SmartSupermarket.Backend.Features.AI.Tools;
 
 namespace SmartSupermarket.Backend.Features.AI.Dispatcher;
@@ -18,13 +19,18 @@ public class ToolDispatcher : IToolDispatcher
 {
     private readonly ILogger<ToolDispatcher> _logger;
     private readonly IServiceScopeFactory? _scopeFactory;
+    private readonly IAiMonitoringService? _monitoringService;
     private readonly ConcurrentDictionary<string, Func<Dictionary<string, object>, CancellationToken, Task<object?>>> _handlers = new(StringComparer.OrdinalIgnoreCase);
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMilliseconds(1500);
 
-    public ToolDispatcher(ILogger<ToolDispatcher> logger, IServiceScopeFactory? scopeFactory = null)
+    public ToolDispatcher(
+        ILogger<ToolDispatcher> logger,
+        IServiceScopeFactory? scopeFactory = null,
+        IAiMonitoringService? monitoringService = null)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _monitoringService = monitoringService;
     }
 
     public void RegisterHandler(string toolMethod, Func<Dictionary<string, object>, CancellationToken, Task<object?>> handler)
@@ -69,12 +75,14 @@ public class ToolDispatcher : IToolDispatcher
                 stopwatch.Stop();
                 _logger.LogInformation("[ToolDispatcher] Tool {ToolMethod} thành công trong {ElapsedMs}ms (Lần thử {Attempt})",
                     toolMethod, stopwatch.ElapsedMilliseconds, attempt);
+                _monitoringService?.RecordToolExecution(toolMethod, stopwatch.ElapsedMilliseconds, true);
                 return ToolExecutionResultDto.Success(toolMethod, data, stopwatch.ElapsedMilliseconds);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 stopwatch.Stop();
                 _logger.LogError("[ToolDispatcher] Tool {ToolMethod} bị timeout sau {TimeoutMs}ms", toolMethod, DefaultTimeout.TotalMilliseconds);
+                _monitoringService?.RecordToolExecution(toolMethod, stopwatch.ElapsedMilliseconds, false, error: "Timeout");
                 return ToolExecutionResultDto.Failed(toolMethod, $"Tool '{toolMethod}' bị timeout sau 1500ms.", stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
@@ -83,6 +91,7 @@ public class ToolDispatcher : IToolDispatcher
                 {
                     stopwatch.Stop();
                     _logger.LogError(ex, "[ToolDispatcher] Tool {ToolMethod} thất bại sau {Attempt} lần thử", toolMethod, attempt);
+                    _monitoringService?.RecordToolExecution(toolMethod, stopwatch.ElapsedMilliseconds, false, error: ex.Message);
                     return ToolExecutionResultDto.Failed(toolMethod, ex.Message, stopwatch.ElapsedMilliseconds);
                 }
 

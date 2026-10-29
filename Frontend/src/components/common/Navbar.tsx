@@ -53,6 +53,7 @@ export const Navbar: React.FC = () => {
           )}
         </Link>
         <Link to="/promotions">Khuyến mãi</Link>
+        <Link to="/ai-monitoring" style={{ color: '#16a34a', fontWeight: 700 }}>📊 AI Monitoring</Link>
         <a href="/profile">Thẻ thành viên</a>
       </nav>
     </header>
