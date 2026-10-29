@@ -1,19 +1,19 @@
 using System;
-using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SmartSupermarket.Backend.Features.AI.Cache.Interfaces;
 
 namespace SmartSupermarket.Backend.Features.AI.Services.Prompt;
 
 public class PromptBuilder : IPromptBuilder
 {
     private readonly IHostEnvironment _environment;
+    private readonly IPromptCache _promptCache;
     private readonly ILogger<PromptBuilder> _logger;
-    private readonly ConcurrentDictionary<string, string> _promptCache = new();
 
     private const string BuiltInIdentity =
         "Bạn là Smart SuperMarket AI - Hệ thống Trợ lý Trí tuệ Nhân tạo phục vụ mua sắm và vận hành siêu thị thông minh.\n" +
@@ -32,9 +32,13 @@ public class PromptBuilder : IPromptBuilder
         "Không in lại danh sách chi tiết từng củ hành cọng rau trong text tin nhắn vì thẻ mâm cơm bên dưới đã hiển thị.\n" +
         "Luôn có lời kêu gọi hành động: nhắc người dùng bấm 'Chọn mâm này' để nạp vào giỏ hàng.";
 
-    public PromptBuilder(IHostEnvironment environment, ILogger<PromptBuilder> logger)
+    public PromptBuilder(
+        IHostEnvironment environment,
+        IPromptCache promptCache,
+        ILogger<PromptBuilder> logger)
     {
         _environment = environment;
+        _promptCache = promptCache;
         _logger = logger;
     }
 
@@ -95,19 +99,15 @@ public class PromptBuilder : IPromptBuilder
 
     public async Task<string> GetLayerContentAsync(string layerKey, CancellationToken cancellationToken = default)
     {
-        if (_promptCache.TryGetValue(layerKey, out var cached))
+        return await _promptCache.GetOrSetPromptAsync(layerKey, async ct =>
         {
-            return cached;
-        }
-
-        var content = await TryLoadFromDiskAsync(layerKey, cancellationToken);
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            content = GetBuiltInFallback(layerKey);
-        }
-
-        _promptCache[layerKey] = content;
-        return content;
+            var content = await TryLoadFromDiskAsync(layerKey, ct);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                content = GetBuiltInFallback(layerKey);
+            }
+            return content;
+        }, cancellationToken: cancellationToken);
     }
 
     private async Task<string?> TryLoadFromDiskAsync(string layerKey, CancellationToken cancellationToken)

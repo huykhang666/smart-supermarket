@@ -57,6 +57,28 @@ public static class DependencyInjection
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICustomerService, CustomerService>();
+        // AI Caching Subsystem (Redis with In-Memory fallback)
+        var redisConn = configuration.GetConnectionString("Redis") ?? configuration["Redis:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConn;
+                options.InstanceName = "SmartSupermarket:";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
+        services.AddMemoryCache();
+
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.ICacheService, SmartSupermarket.Backend.Features.AI.Cache.Implementations.RedisCacheService>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IConversationCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.ConversationCache>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IKnowledgeCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.KnowledgeCache>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IPromptCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.PromptCache>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IResponseCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.ResponseCache>();
+
         services.AddHttpClient<GeminiService>();
         services.AddHttpClient<GroqClient>();
         services.AddScoped<ILlmClient, GeminiService>();

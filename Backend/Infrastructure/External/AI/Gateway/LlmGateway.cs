@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using SmartSupermarket.Backend.Features.AI.Cache.Interfaces;
 
 namespace SmartSupermarket.Backend.Infrastructure.External.AI.Gateway;
 
@@ -16,6 +17,7 @@ public class LlmGateway : ILLMGateway
     private readonly GeminiGateway _geminiGateway;
     private readonly GroqGateway _groqGateway;
     private readonly LocalFallbackGateway _localFallbackGateway;
+    private readonly IResponseCache _responseCache;
     private readonly ILogger<LlmGateway> _logger;
     private volatile string _activeProvider = "Unknown";
 
@@ -25,11 +27,13 @@ public class LlmGateway : ILLMGateway
         GeminiGateway geminiGateway,
         GroqGateway groqGateway,
         LocalFallbackGateway localFallbackGateway,
+        IResponseCache responseCache,
         ILogger<LlmGateway> logger)
     {
         _geminiGateway = geminiGateway;
         _groqGateway = groqGateway;
         _localFallbackGateway = localFallbackGateway;
+        _responseCache = responseCache;
         _logger = logger;
     }
 
@@ -72,6 +76,14 @@ public class LlmGateway : ILLMGateway
         bool requireJson,
         CancellationToken cancellationToken)
     {
+        var cached = await _responseCache.GetResponseAsync(prompt, systemInstruction, requireJson, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(cached))
+        {
+            _activeProvider = "Cache-Hit";
+            return cached;
+        }
+
+        string result;
         if (_geminiGateway.IsConfigured)
         {
             try
@@ -80,7 +92,9 @@ public class LlmGateway : ILLMGateway
                 if (!string.IsNullOrWhiteSpace(geminiResult))
                 {
                     _activeProvider = "Gemini-2.5-Flash";
-                    return geminiResult;
+                    result = geminiResult;
+                    await _responseCache.SetResponseAsync(prompt, result, systemInstruction, requireJson, cancellationToken: cancellationToken);
+                    return result;
                 }
             }
             catch (Exception ex)
@@ -97,7 +111,9 @@ public class LlmGateway : ILLMGateway
                 if (!string.IsNullOrWhiteSpace(groqResult))
                 {
                     _activeProvider = "Groq-Llama-3.3-70B";
-                    return groqResult;
+                    result = groqResult;
+                    await _responseCache.SetResponseAsync(prompt, result, systemInstruction, requireJson, cancellationToken: cancellationToken);
+                    return result;
                 }
             }
             catch (Exception ex)
@@ -108,6 +124,11 @@ public class LlmGateway : ILLMGateway
 
         _logger.LogInformation("[LlmGateway] Routing to LocalFallbackGateway.");
         _activeProvider = "Local-Rule-Engine";
-        return await _localFallbackGateway.GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken);
+        result = await _localFallbackGateway.GenerateAsync(prompt, systemInstruction, requireJson, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(result))
+        {
+            await _responseCache.SetResponseAsync(prompt, result, systemInstruction, requireJson, cancellationToken: cancellationToken);
+        }
+        return result;
     }
 }
