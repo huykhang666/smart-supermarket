@@ -95,6 +95,10 @@ public static class DependencyInjection
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IBudgetTool, SmartSupermarket.Backend.Features.AI.Tools.BudgetTool>();
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.ICartTool, SmartSupermarket.Backend.Features.AI.Tools.CartTool>();
 
+        // AI Agents
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Agents.ShoppingAgent>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Agents.Common.IAgent, SmartSupermarket.Backend.Features.AI.Agents.ShoppingAgent>();
+
         services.AddScoped<IAiService, AiService>();
         services.AddScoped<IAiRetailService, AiRetailService>();
         services.AddScoped<IAiShoppingConciergeService, AiShoppingConciergeService>();
