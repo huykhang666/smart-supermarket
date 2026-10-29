@@ -1,9 +1,17 @@
 using Microsoft.OpenApi.Models;
+using Serilog;
 using SmartSupermarket.Backend.Infrastructure;
+using SmartSupermarket.Backend.Infrastructure.Logging;
 using SmartSupermarket.Backend.Infrastructure.Persistence;
 using SmartSupermarket.Backend.Infrastructure.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog with structured logging & daily file rotation
+builder.ConfigureSerilog();
+
+// Add Observability (CorrelationId, OpenTelemetry tracing)
+builder.Services.AddObservability();
 
 // Add Services to the container
 builder.Services.AddControllers();
@@ -89,6 +97,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Middleware Pipeline
+app.UseCorrelationId();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors();
@@ -109,4 +118,16 @@ app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("Khởi động máy chủ Smart SuperMarket Backend...");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Máy chủ Smart SuperMarket Backend bị dừng đột ngột!");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
