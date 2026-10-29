@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SmartSupermarket.Backend.Features.AI.Common;
 using SmartSupermarket.Backend.Features.AI.DTOs.Common;
 using SmartSupermarket.Backend.Features.AI.DTOs.Responses;
 using SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces;
@@ -125,8 +126,8 @@ public class ToolDispatcher : IToolDispatcher
         {
             try
             {
-                var json = JsonSerializer.Serialize(rawResult.Data);
-                var deserialized = JsonSerializer.Deserialize<T>(json);
+                var json = JsonSerializer.Serialize(rawResult.Data, AiJsonDefaults.Options);
+                var deserialized = JsonSerializer.Deserialize<T>(json, AiJsonDefaults.Options);
                 return ToolExecutionResultDto<T>.Success(toolMethod, deserialized, rawResult.ExecutionTimeMs);
             }
             catch
@@ -254,7 +255,7 @@ public class ToolDispatcher : IToolDispatcher
         {
             try
             {
-                var deserialized = JsonSerializer.Deserialize<T>(jsonElement.GetRawText());
+                var deserialized = JsonSerializer.Deserialize<T>(jsonElement.GetRawText(), AiJsonDefaults.Options);
                 if (deserialized != null)
                 {
                     return deserialized;

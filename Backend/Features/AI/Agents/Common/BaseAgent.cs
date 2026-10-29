@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using SmartSupermarket.Backend.Features.AI.Common;
 using SmartSupermarket.Backend.Features.AI.Dispatcher;
 using SmartSupermarket.Backend.Features.AI.DTOs.Common;
 using SmartSupermarket.Backend.Features.AI.Services.Prompt;
@@ -130,9 +132,26 @@ public abstract class BaseAgent : IAgent
 
     protected T? GetMemory<T>(AgentContextDto context, string key)
     {
-        if (context.SharedData != null && context.SharedData.TryGetValue(key, out var val) && val is T typedVal)
+        if (context.SharedData == null || !context.SharedData.TryGetValue(key, out var val) || val == null)
+        {
+            return default;
+        }
+
+        if (val is T typedVal)
         {
             return typedVal;
+        }
+
+        if (val is JsonElement jsonElement)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(jsonElement.GetRawText(), AiJsonDefaults.Options);
+            }
+            catch
+            {
+                return default;
+            }
         }
 
         return default;

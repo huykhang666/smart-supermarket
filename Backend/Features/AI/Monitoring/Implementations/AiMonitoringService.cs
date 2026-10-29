@@ -13,6 +13,7 @@ namespace SmartSupermarket.Backend.Features.AI.Monitoring.Implementations;
 public class AiMonitoringService : IAiMonitoringService
 {
     private const int MaxTraceHistory = 200;
+    private const int MaxLatencySamples = 1000;
     private const decimal UsdToVndRate = 25400m;
 
     private readonly IAiMetricsCollector _metricsCollector;
@@ -30,7 +31,7 @@ public class AiMonitoringService : IAiMonitoringService
     private long _cacheHits;
     private decimal _totalCostUsd;
     private decimal _totalSavedCostUsd;
-    private readonly ConcurrentBag<double> _recentLatencies = new();
+    private readonly ConcurrentQueue<double> _recentLatencies = new();
 
     public AiMonitoringService(
         IAiMetricsCollector metricsCollector,
@@ -134,7 +135,7 @@ public class AiMonitoringService : IAiMonitoringService
             Interlocked.Increment(ref _failedRequests);
         }
 
-        _recentLatencies.Add(latencyMs);
+        AddLatency(latencyMs);
 
         AddTrace(new AiTraceItemDto
         {
@@ -190,6 +191,7 @@ public class AiMonitoringService : IAiMonitoringService
         _toolStats.Clear();
         _modelStats.Clear();
         while (_recentTraces.TryDequeue(out _)) { }
+        while (_recentLatencies.TryDequeue(out _)) { }
         Interlocked.Exchange(ref _totalRequests, 0);
         Interlocked.Exchange(ref _successfulRequests, 0);
         Interlocked.Exchange(ref _failedRequests, 0);
@@ -198,7 +200,12 @@ public class AiMonitoringService : IAiMonitoringService
         Interlocked.Exchange(ref _cacheHits, 0);
         _totalCostUsd = 0;
         _totalSavedCostUsd = 0;
-        _recentLatencies.Clear();
+    }
+
+    private void AddLatency(double latencyMs)
+    {
+        _recentLatencies.Enqueue(latencyMs);
+        while (_recentLatencies.Count > MaxLatencySamples && _recentLatencies.TryDequeue(out _)) { }
     }
 
     private AiOverviewMetricsDto CalculateOverview()

@@ -5,16 +5,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using SmartSupermarket.Backend.Features.AI.Cache.Interfaces;
+using SmartSupermarket.Backend.Features.AI.Common;
 using SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces;
 
 namespace SmartSupermarket.Backend.Infrastructure.External.AI.Gateway;
 
 public class LlmGateway : ILLMGateway
 {
-    private static readonly JsonSerializerOptions DefaultJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    private static readonly JsonSerializerOptions DefaultJsonOptions = AiJsonDefaults.Options;
 
     private readonly GeminiGateway _geminiGateway;
     private readonly GroqGateway _groqGateway;

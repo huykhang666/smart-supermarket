@@ -1,24 +1,18 @@
 using System;
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using SmartSupermarket.Backend.Features.AI.Cache.Interfaces;
+using SmartSupermarket.Backend.Features.AI.Common;
 
 namespace SmartSupermarket.Backend.Features.AI.Cache.Implementations;
 
 public class RedisCacheService : ICacheService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
+    private static readonly JsonSerializerOptions JsonOptions = AiJsonDefaults.Options;
 
     private readonly IDistributedCache _distributedCache;
     private readonly IMemoryCache _memoryCache;
