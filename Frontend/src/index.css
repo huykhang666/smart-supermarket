@@ -109,3 +109,23 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+@keyframes aiDotJump {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
+}
+.ai-dot-1 { animation: aiDotJump 1.4s infinite ease-in-out 0s; }
+.ai-dot-2 { animation: aiDotJump 1.4s infinite ease-in-out 0.2s; }
+.ai-dot-3 { animation: aiDotJump 1.4s infinite ease-in-out 0.4s; }
+
+@keyframes aiBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.ai-cursor {
+  display: inline-block;
+  color: #10b981;
+  font-weight: bold;
+  animation: aiBlink 0.8s infinite;
+  margin-left: 2px;
+}

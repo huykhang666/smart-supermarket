@@ -1,0 +1,155 @@
+<!-- Floating Action Button mở Chatbot -->
+<div class="ai-fab-container" *ngIf="!isOpen">
+  <button class="ai-fab-button" (click)="toggleChat()" aria-label="Mở Trợ lý AI Đi chợ">
+    <span class="ai-fab-icon">🤖</span>
+    <span class="ai-fab-badge">AI</span>
+  </button>
+</div>
+
+<!-- Cửa sổ Chat AI Chính -->
+<div class="ai-chat-window" [class.open]="isOpen" [class.mobile-fullscreen]="isMobile">
+  <!-- Header -->
+  <header class="ai-chat-header">
+    <div class="ai-header-info">
+      <div class="ai-avatar-badge">
+        <span class="avatar-icon">🤖</span>
+        <span class="online-indicator"></span>
+      </div>
+      <div class="ai-title-wrap">
+        <h3 class="ai-title">Trợ Lý AI Đi Chợ</h3>
+        <p class="ai-subtitle">Tư vấn mâm cơm & Săn Flash Sale</p>
+      </div>
+    </div>
+
+    <div class="ai-header-actions">
+      <!-- Nút mở Lịch sử chat -->
+      <button class="header-btn" (click)="toggleHistory()" title="Lịch sử trò chuyện">
+        <span class="icon">📜</span>
+      </button>
+      <!-- Nút tạo cuộc trò chuyện mới -->
+      <button class="header-btn" (click)="startNewChat()" title="Cuộc trò chuyện mới">
+        <span class="icon">➕</span>
+      </button>
+      <!-- Nút đóng -->
+      <button class="header-btn close-btn" (click)="toggleChat()" title="Thu nhỏ">
+        <span class="icon">✕</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Drawer Lịch sử trò chuyện -->
+  <aside class="ai-history-drawer" *ngIf="showHistory">
+    <div class="history-header">
+      <h4>Lịch sử phiên trò chuyện</h4>
+      <button class="btn-text" (click)="clearAllHistory()">Xóa tất cả</button>
+    </div>
+    <div class="history-list">
+      <div
+        class="history-item"
+        *ngFor="let s of chatSessions"
+        (click)="loadSession(s)"
+        [class.active]="s.sessionId === currentSessionId"
+      >
+        <span class="history-icon">💬</span>
+        <div class="history-details">
+          <p class="history-title">{{ s.title }}</p>
+          <span class="history-time">{{ s.createdAt | date:'HH:mm dd/MM' }}</span>
+        </div>
+      </div>
+      <div class="history-empty" *ngIf="chatSessions.length === 0">
+        <p>Chưa có lịch sử cuộc trò chuyện nào.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Danh sách tin nhắn cuộc trò chuyện -->
+  <main class="ai-messages-container" #scrollContainer>
+    <div *ngFor="let msg of messages" class="message-row" [class.user-row]="msg.role === 'user'">
+      <!-- Avatar AI -->
+      <div class="msg-avatar" *ngIf="msg.role === 'assistant'">🤖</div>
+
+      <!-- Bubble nội dung -->
+      <div class="msg-bubble" [class.assistant-bubble]="msg.role === 'assistant'" [class.user-bubble]="msg.role === 'user'">
+        <!-- Render Markdown an toàn -->
+        <div class="msg-content" [innerHTML]="renderMarkdown(msg.content)"></div>
+
+        <!-- Con trỏ Streaming nhấp nháy khi đang gõ từng chữ -->
+        <span class="streaming-cursor" *ngIf="msg.isStreaming">|</span>
+
+        <!-- Thẻ mâm cơm Cookpad (nếu có dữ liệu gợi ý mâm cơm) -->
+        <div class="meal-options-container" *ngIf="msg.mealData && msg.mealData.mealOptions">
+          <div class="meal-card" *ngFor="let opt of msg.mealData.mealOptions">
+            <div class="meal-card-header">
+              <span class="meal-badge">Chuẩn Cookpad</span>
+              <h5 class="meal-title">{{ opt.optionName }}</h5>
+            </div>
+            <p class="meal-desc">{{ opt.description }}</p>
+
+            <div class="meal-pricing">
+              <span class="price-val">{{ opt.totalEstimatedCost | number:'1.0-0' }} đ</span>
+              <span class="saved-val" *ngIf="opt.totalSavedAmount > 0">
+                Tiết kiệm {{ opt.totalSavedAmount | number:'1.0-0' }} đ
+              </span>
+            </div>
+
+            <div class="ingredients-preview">
+              <span class="ing-tag" *ngFor="let ing of opt.ingredients">
+                {{ ing.productName }} ({{ ing.quantityToBuy }} {{ ing.unit }})
+              </span>
+            </div>
+
+            <button class="btn-add-tray" (click)="addMealTrayToCart(opt)">
+              🛒 Chọn mâm này (1-Click)
+            </button>
+          </div>
+        </div>
+
+        <span class="msg-timestamp">{{ msg.timestamp | date:'HH:mm' }}</span>
+      </div>
+    </div>
+
+    <!-- Typing Indicator (3 dấu chấm sóng động khi AI đang chuẩn bị phản hồi) -->
+    <div class="message-row" *ngIf="isLoading">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble assistant-bubble typing-bubble">
+        <div class="typing-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span class="typing-text">Đang tra cứu kho hàng & công thức...</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Gợi ý nhanh (Quick Prompt Chips) -->
+  <div class="quick-suggestions-bar">
+    <button class="suggestion-chip" (click)="sendQuickPrompt('Mình có 30k 1 người ăn thì nấu món gì?')">
+      💡 30k 1 người ăn
+    </button>
+    <button class="suggestion-chip" (click)="sendQuickPrompt('Tư vấn nguyên liệu nấu lẩu bò nấm cho 4 người?')">
+      🍲 Lẩu bò nấm 4 người
+    </button>
+    <button class="suggestion-chip" (click)="sendQuickPrompt('Hôm nay có thực phẩm nào Flash Sale cận date giảm giá không?')">
+      ⚡ Flash Sale cận date
+    </button>
+  </div>
+
+  <!-- Thanh nhập liệu phía dưới -->
+  <footer class="ai-chat-footer">
+    <form (ngSubmit)="sendMessage()" class="chat-input-form">
+      <input
+        type="text"
+        [(ngModel)]="inputText"
+        name="chatInput"
+        placeholder="Hỏi về món ăn, ngân sách, khuyến mãi hôm nay..."
+        class="chat-input"
+        [disabled]="isLoading"
+        autocomplete="off"
+      />
+      <button type="submit" class="send-btn" [disabled]="!inputText.trim() || isLoading">
+        <span class="send-icon">➤</span>
+      </button>
+    </form>
+  </footer>
+</div>

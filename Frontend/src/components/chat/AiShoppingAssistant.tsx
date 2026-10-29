@@ -13,6 +13,19 @@ interface ChatItem {
   content: string;
   mealData?: MealPlanChatResponse;
   timestamp: Date;
+  isStreaming?: boolean;
+}
+
+interface SavedSession {
+  sessionId: string;
+  title: string;
+  createdAt: string;
+  messages: {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+  }[];
 }
 
 interface ActiveMealTray {
@@ -29,12 +42,75 @@ interface SelectedIngredientState {
   quantity: number;
 }
 
+const renderFormattedMarkdown = (raw: string) => {
+  if (!raw) return null;
+  const lines = raw.split('\n');
+  return lines.map((line, idx) => {
+    if (line.startsWith('### ')) {
+      return <h5 key={idx} style={{ margin: '6px 0', fontSize: 13.5, fontWeight: 700, color: '#0F5132' }}>{line.slice(4)}</h5>;
+    }
+    if (line.startsWith('## ')) {
+      return <h4 key={idx} style={{ margin: '8px 0', fontSize: 14.5, fontWeight: 700, color: '#0F5132' }}>{line.slice(3)}</h4>;
+    }
+    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+      const itemContent = line.trim().slice(2);
+      const parts = itemContent.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+      return (
+        <div key={idx} style={{ display: 'flex', gap: 6, paddingLeft: 4, margin: '2px 0' }}>
+          <span style={{ color: '#10b981' }}>•</span>
+          <div>
+            {parts.map((p, pIdx) => {
+              if (p.startsWith('**') && p.endsWith('**')) return <strong key={pIdx}>{p.slice(2, -2)}</strong>;
+              if (p.startsWith('*') && p.endsWith('*')) return <em key={pIdx}>{p.slice(1, -1)}</em>;
+              if (p.startsWith('`') && p.endsWith('`')) return <code key={pIdx} style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 4 }}>{p.slice(1, -1)}</code>;
+              return p;
+            })}
+          </div>
+        </div>
+      );
+    }
+    const parts = line.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    return (
+      <div key={idx} style={{ minHeight: line.trim() ? undefined : 8, textAlign: 'left', margin: '2px 0' }}>
+        {parts.map((p, pIdx) => {
+          if (p.startsWith('**') && p.endsWith('**')) return <strong key={pIdx}>{p.slice(2, -2)}</strong>;
+          if (p.startsWith('*') && p.endsWith('*')) return <em key={pIdx}>{p.slice(1, -1)}</em>;
+          if (p.startsWith('`') && p.endsWith('`')) return <code key={pIdx} style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 4 }}>{p.slice(1, -1)}</code>;
+          return p;
+        })}
+      </div>
+    );
+  });
+};
+
 export const AiShoppingAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [prioritizeFlashSale, setPrioritizeFlashSale] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>([]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const HISTORY_KEY = 'smart_supermarket_ai_sessions';
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY);
+      if (saved) {
+        setSavedSessions(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Error loading history:', e);
+    }
+  }, []);
 
   // Danh sách tin nhắn hội thoại đa lượt
   const [messages, setMessages] = useState<ChatItem[]>([
@@ -194,15 +270,56 @@ export const AiShoppingAssistant: React.FC = () => {
         conversationHistory: historyPayload,
       });
 
-      const assistantMsg: ChatItem = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: response.assistantMessage || 'Mình đã tìm thấy các nguyên liệu phù hợp với yêu cầu của bạn.',
-        mealData: response.hasMealSuggestion ? response : undefined,
-        timestamp: new Date(),
-      };
+      const fullReply = response.assistantMessage || 'Mình đã tìm thấy các nguyên liệu phù hợp với yêu cầu của bạn.';
+      const assistantId = `assistant-${Date.now()}`;
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantId,
+          role: 'assistant',
+          content: '',
+          isStreaming: true,
+          mealData: response.hasMealSuggestion ? response : undefined,
+          timestamp: new Date(),
+        },
+      ]);
+      setLoading(false);
+
+      let charIdx = 0;
+      const interval = setInterval(() => {
+        charIdx += Math.min(Math.floor(Math.random() * 3) + 1, fullReply.length - charIdx);
+        const currentSlice = fullReply.substring(0, charIdx);
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: currentSlice, isStreaming: charIdx < fullReply.length }
+              : m
+          )
+        );
+
+        if (charIdx >= fullReply.length) {
+          clearInterval(interval);
+          try {
+            const newSession: SavedSession = {
+              sessionId: `sess_${Date.now()}`,
+              title: textToSend.substring(0, 30) + '...',
+              createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              messages: [
+                ...historyPayload.map((h, i) => ({ id: `h_${i}`, role: h.role as any, content: h.content, timestamp: '' })),
+                { id: `u_${Date.now()}`, role: 'user', content: textToSend, timestamp: '' },
+                { id: assistantId, role: 'assistant', content: fullReply, timestamp: '' },
+              ],
+            };
+            setSavedSessions((prev) => {
+              const updated = [newSession, ...prev.slice(0, 15)];
+              localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+              return updated;
+            });
+          } catch (e) {}
+        }
+      }, 16);
     } catch (err) {
       console.error('Lỗi khi gọi AI:', err);
       setMessages((prev) => [
@@ -214,7 +331,6 @@ export const AiShoppingAssistant: React.FC = () => {
           timestamp: new Date(),
         },
       ]);
-    } finally {
       setLoading(false);
     }
   };
@@ -268,17 +384,22 @@ export const AiShoppingAssistant: React.FC = () => {
       {isOpen && (
         <div
           style={{
-            width: 540,
-            maxWidth: 'calc(100vw - 32px)',
-            height: 750,
-            maxHeight: 'calc(100vh - 40px)',
+            position: isMobile ? 'fixed' : 'relative',
+            top: isMobile ? 0 : 'auto',
+            left: isMobile ? 0 : 'auto',
+            right: isMobile ? 0 : 20,
+            bottom: isMobile ? 0 : 20,
+            width: isMobile ? '100vw' : 540,
+            maxWidth: isMobile ? '100vw' : 'calc(100vw - 32px)',
+            height: isMobile ? '100vh' : 750,
+            maxHeight: isMobile ? '100vh' : 'calc(100vh - 40px)',
             backgroundColor: '#ffffff',
-            borderRadius: 18,
+            borderRadius: isMobile ? 0 : 18,
             boxShadow: '0 16px 50px rgba(0,0,0,0.25)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            border: '1px solid #cbd5e1',
+            border: isMobile ? 'none' : '1px solid #cbd5e1',
           }}
         >
           {/* Header */}
@@ -317,6 +438,21 @@ export const AiShoppingAssistant: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                style={{
+                  background: 'rgba(255,255,255,0.16)',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: 6,
+                  padding: '5px 10px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+                title="Lịch sử cuộc trò chuyện"
+              >
+                📜 Lịch sử
+              </button>
               <button
                 onClick={() =>
                   setMessages([
@@ -363,6 +499,59 @@ export const AiShoppingAssistant: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Drawer Lịch sử trò chuyện */}
+          {showHistory && (
+            <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 14px', maxHeight: 180, overflowY: 'auto', textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Lịch sử trò chuyện</span>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem(HISTORY_KEY);
+                    setSavedSessions([]);
+                  }}
+                  style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 11, cursor: 'pointer' }}
+                >
+                  Xóa lịch sử
+                </button>
+              </div>
+              {savedSessions.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>Chưa có phiên lưu trữ.</div>
+              ) : (
+                savedSessions.map((s) => (
+                  <div
+                    key={s.sessionId}
+                    onClick={() => {
+                      setMessages(
+                        s.messages.map((m) => ({
+                          id: m.id,
+                          role: m.role,
+                          content: m.content,
+                          timestamp: new Date(),
+                        }))
+                      );
+                      setShowHistory(false);
+                    }}
+                    style={{
+                      padding: '6px 10px',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 8,
+                      marginBottom: 6,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>{s.title}</span>
+                    <span style={{ fontSize: 10.5, color: '#94a3b8' }}>{s.createdAt}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
           {/* Toast thông báo nhanh */}
           {toastMessage && (
@@ -425,21 +614,10 @@ export const AiShoppingAssistant: React.FC = () => {
                     textAlign: 'left', // Căn lề trái tuyệt đối thay vì căn giữa
                   }}
                 >
-                  {/* Nội dung tin nhắn */}
+                  {/* Nội dung tin nhắn render Markdown & Streaming */}
                   <div style={{ textAlign: 'left' }}>
-                    {msg.content.split('\n').map((line, idx) => {
-                      const parts = line.split(/(\*\*.*?\*\*)/g);
-                      return (
-                        <div key={idx} style={{ minHeight: line.trim() ? undefined : 8, textAlign: 'left' }}>
-                          {parts.map((p, pIdx) => {
-                            if (p.startsWith('**') && p.endsWith('**')) {
-                              return <strong key={pIdx}>{p.slice(2, -2)}</strong>;
-                            }
-                            return p;
-                          })}
-                        </div>
-                      );
-                    })}
+                    {renderFormattedMarkdown(msg.content)}
+                    {msg.isStreaming && <span className="ai-cursor">|</span>}
                   </div>
 
                   {/* Hiển thị các Option thực đơn kèm nút chọn mâm */}
@@ -607,11 +785,15 @@ export const AiShoppingAssistant: React.FC = () => {
               </div>
             ))}
 
-            {/* Trạng thái AI đang suy nghĩ */}
+            {/* Typing Indicator: 3 dấu chấm sóng động nhấp nháy */}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0F5132', fontSize: 13, padding: '4px 8px', textAlign: 'left' }}>
-                <span style={{ fontSize: 18 }}>🤖</span>
-                <span>Đang tra cứu dữ liệu kho hàng & chuẩn bị công thức chuẩn vị Cookpad...</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, width: 'fit-content' }}>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <span className="ai-dot-1" style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%' }} />
+                  <span className="ai-dot-2" style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%' }} />
+                  <span className="ai-dot-3" style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%' }} />
+                </div>
+                <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>Đang tra cứu kho hàng & công thức Cookpad...</span>
               </div>
             )}
 
