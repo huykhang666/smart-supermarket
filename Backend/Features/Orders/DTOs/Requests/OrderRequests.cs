@@ -37,6 +37,8 @@ public class CreateOrderDetailRequest
     public int ProductId { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+    public int ConversionRate { get; set; } = 1;
+    public string? UnitName { get; set; }
 }
 
 

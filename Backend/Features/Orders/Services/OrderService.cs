@@ -92,18 +92,20 @@ public class OrderService : IOrderService
             }
         }
 
-        var inventoryItems = new List<(Domain.Entities.Inventory Inv, int Qty)>();
+        var inventoryItems = new List<(Domain.Entities.Inventory Inv, int Qty, string? UnitName, int Rate)>();
         foreach (var item in request.Items)
         {
+            int conv = Math.Max(1, item.ConversionRate);
+            int totalUnitsRequired = item.Quantity * conv;
             var inv = await _inventoryRepository.GetByProductAndBranchAsync(item.ProductId, request.BranchId);
-            if (inv == null || inv.QuantityOnHand < item.Quantity)
+            if (inv == null || inv.QuantityOnHand < totalUnitsRequired)
             {
                 var productName = products[item.ProductId].ProductName;
                 int available = inv?.QuantityOnHand ?? 0;
                 throw new InvalidOperationException(
-                    $"Sản phẩm '{productName}' không đủ tồn kho. Cần {item.Quantity}, còn {available}.");
+                    $"Sản phẩm '{productName}' không đủ tồn kho. Cần {totalUnitsRequired} (quy đổi {item.Quantity} {item.UnitName ?? "món"}), còn {available}.");
             }
-            inventoryItems.Add((inv, item.Quantity));
+            inventoryItems.Add((inv, totalUnitsRequired, item.UnitName, conv));
         }
 
         decimal totalAmount = 0;
@@ -113,7 +115,10 @@ public class OrderService : IOrderService
         {
             var product = products[item.ProductId];
             // Tôn trọng đơn giá hợp lệ từ POS (áp dụng cho hàng xả cận date, khuyến mãi trực tiếp <= giá niêm yết)
-            decimal unitPrice = (item.UnitPrice > 0 && item.UnitPrice <= product.Price) ? item.UnitPrice : product.Price;
+            int conv = Math.Max(1, item.ConversionRate);
+            decimal unitPrice = (item.UnitPrice > 0 && (item.UnitPrice <= product.Price || conv > 1))
+                ? item.UnitPrice
+                : (product.Price * conv);
             decimal subTotal = unitPrice * item.Quantity;
             totalAmount += subTotal;
 
@@ -122,7 +127,9 @@ public class OrderService : IOrderService
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 UnitPrice = unitPrice,
-                SubTotal = subTotal
+                SubTotal = subTotal,
+                ConversionRate = conv,
+                UnitName = item.UnitName
             });
         }
 
@@ -304,13 +311,14 @@ public class OrderService : IOrderService
 
         await _orderRepository.AddAsync(order, cancellationToken);
 
-        foreach (var (inv, qty) in inventoryItems)
+        foreach (var (inv, qty, unitName, rate) in inventoryItems)
         {
             int qtyBefore = inv.QuantityOnHand;
             inv.QuantityOnHand -= qty;
             inv.LastUpdated = DateTime.UtcNow;
             await _inventoryRepository.UpsertAsync(inv);
 
+            string rateInfo = rate > 1 ? $" (Quy đổi {unitName ?? "lốc/thùng"}: x{rate} = -{qty} đv cơ bản)" : "";
             await _inventoryRepository.AddStockHistoryAsync(new StockHistory
             {
                 ProductId = inv.ProductId,
@@ -319,7 +327,7 @@ public class OrderService : IOrderService
                 QuantityChange = -qty,
                 QuantityBefore = qtyBefore,
                 QuantityAfter = inv.QuantityOnHand,
-                Note = $"Bán hàng - Đơn #{order.OrderId}",
+                Note = $"Bán hàng - Đơn #{order.OrderId}{rateInfo}",
                 CreatedByUserId = request.EmployeeId,
                 CreatedAt = DateTime.UtcNow
             });
@@ -434,7 +442,8 @@ public class OrderService : IOrderService
                 if (inv != null)
                 {
                     int qtyBefore = inv.QuantityOnHand;
-                    inv.QuantityOnHand += detail.Quantity;
+                    int restoreQty = detail.Quantity * Math.Max(1, detail.ConversionRate);
+                    inv.QuantityOnHand += restoreQty;
                     inv.LastUpdated = DateTime.UtcNow;
                     await _inventoryRepository.UpsertAsync(inv);
 
@@ -443,7 +452,7 @@ public class OrderService : IOrderService
                         ProductId = inv.ProductId,
                         BranchId = inv.BranchId,
                         ChangeType = StockChangeType.Adjustment,
-                        QuantityChange = detail.Quantity,
+                        QuantityChange = restoreQty,
                         QuantityBefore = qtyBefore,
                         QuantityAfter = inv.QuantityOnHand,
                         Note = $"Hủy đơn hàng #{order.OrderId} - Hoàn kho",
@@ -546,7 +555,8 @@ public class OrderService : IOrderService
             if (inv != null)
             {
                 int qtyBefore = inv.QuantityOnHand;
-                inv.QuantityOnHand += item.QuantityToRefund;
+                int restoreQty = item.QuantityToRefund * Math.Max(1, orderDetail.ConversionRate);
+                inv.QuantityOnHand += restoreQty;
                 inv.LastUpdated = DateTime.UtcNow;
                 await _inventoryRepository.UpsertAsync(inv);
 
@@ -555,7 +565,7 @@ public class OrderService : IOrderService
                     ProductId = inv.ProductId,
                     BranchId = inv.BranchId,
                     ChangeType = StockChangeType.Adjustment,
-                    QuantityChange = item.QuantityToRefund,
+                    QuantityChange = restoreQty,
                     QuantityBefore = qtyBefore,
                     QuantityAfter = inv.QuantityOnHand,
                     Note = $"Khách trả hàng - HĐ #{order.OrderId} ({item.Reason ?? request.Reason})",

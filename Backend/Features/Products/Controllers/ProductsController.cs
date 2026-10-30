@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SmartSupermarket.Backend.Common.Results;
 using SmartSupermarket.Backend.Features.Products.DTOs;
 using SmartSupermarket.Backend.Features.Products.Services;
@@ -17,11 +18,13 @@ public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
     private readonly IBarcodeService _barcodeService;
+    private readonly AppDbContext _dbContext;
 
-    public ProductsController(IProductService productService, IBarcodeService barcodeService)
+    public ProductsController(IProductService productService, IBarcodeService barcodeService, AppDbContext dbContext)
     {
         _productService = productService;
         _barcodeService = barcodeService;
+        _dbContext = dbContext;
     }
 
     /// <summary>
@@ -260,5 +263,122 @@ public class ProductsController : ControllerBase
         }
 
         return Ok(ApiResult<ProductPriceHistoryDto>.Success(priceHistory, "Lấy thông tin giá sản phẩm thành công."));
+    }
+
+    /// <summary>
+    /// Lấy danh sách quy cách đóng gói quy đổi của sản phẩm (Lon, Lốc 6, Thùng 24,...)
+    /// </summary>
+    [HttpGet("{id:int}/units")]
+    [ProducesResponseType(typeof(ApiResult<List<ProductUnitConversionDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProductUnits([FromRoute] int id, CancellationToken cancellationToken = default)
+    {
+        var product = await _dbContext.Products.FindAsync(new object[] { id }, cancellationToken);
+        if (product == null)
+        {
+            return NotFound(ApiResult<List<ProductUnitConversionDto>>.Failure($"Không tìm thấy sản phẩm ID {id}."));
+        }
+
+        var units = await _dbContext.ProductUnitConversions
+            .Where(u => u.ProductId == id)
+            .OrderBy(u => u.ConversionRate)
+            .Select(u => new ProductUnitConversionDto
+            {
+                Id = u.Id,
+                ProductId = u.ProductId,
+                UnitName = u.UnitName,
+                ConversionRate = u.ConversionRate,
+                Price = u.Price,
+                Barcode = u.Barcode,
+                IsDefault = u.IsDefault
+            })
+            .ToListAsync(cancellationToken);
+
+        // Luôn kèm đơn vị cơ sở mặc định nếu chưa có cấu hình
+        if (!units.Any())
+        {
+            units.Add(new ProductUnitConversionDto
+            {
+                Id = 0,
+                ProductId = id,
+                UnitName = string.IsNullOrEmpty(product.Unit) ? "Cái/Lon" : product.Unit,
+                ConversionRate = 1,
+                Price = product.Price,
+                Barcode = product.Barcode,
+                IsDefault = true
+            });
+        }
+
+        return Ok(ApiResult<List<ProductUnitConversionDto>>.Success(units, "Lấy danh sách quy cách đơn vị thành công."));
+    }
+
+    /// <summary>
+    /// Thêm quy cách đóng gói quy đổi cho sản phẩm (VD: Lốc 6, Thùng 24)
+    /// </summary>
+    [HttpPost("{id:int}/units")]
+    [ProducesResponseType(typeof(ApiResult<ProductUnitConversionDto>), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddProductUnit([FromRoute] int id, [FromBody] CreateProductUnitRequest request, CancellationToken cancellationToken = default)
+    {
+        var product = await _dbContext.Products.FindAsync(new object[] { id }, cancellationToken);
+        if (product == null)
+        {
+            return NotFound(ApiResult<ProductUnitConversionDto>.Failure($"Không tìm thấy sản phẩm ID {id}."));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UnitName))
+        {
+            return BadRequest(ApiResult<ProductUnitConversionDto>.Failure("Tên quy cách đóng gói không được để trống."));
+        }
+
+        if (request.ConversionRate <= 0)
+        {
+            return BadRequest(ApiResult<ProductUnitConversionDto>.Failure("Hệ số quy đổi phải lớn hơn 0."));
+        }
+
+        decimal price = request.Price ?? (product.Price * request.ConversionRate);
+
+        var unit = new Domain.Entities.ProductUnitConversion
+        {
+            ProductId = id,
+            UnitName = request.UnitName.Trim(),
+            ConversionRate = request.ConversionRate,
+            Price = price,
+            Barcode = string.IsNullOrWhiteSpace(request.Barcode) ? null : request.Barcode.Trim(),
+            IsDefault = request.IsDefault
+        };
+
+        _dbContext.ProductUnitConversions.Add(unit);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var dto = new ProductUnitConversionDto
+        {
+            Id = unit.Id,
+            ProductId = unit.ProductId,
+            UnitName = unit.UnitName,
+            ConversionRate = unit.ConversionRate,
+            Price = unit.Price,
+            Barcode = unit.Barcode,
+            IsDefault = unit.IsDefault
+        };
+
+        return CreatedAtAction(nameof(GetProductUnits), new { id }, ApiResult<ProductUnitConversionDto>.Success(dto, "Thêm quy cách đóng gói thành công."));
+    }
+
+    /// <summary>
+    /// Xóa quy cách đóng gói quy đổi
+    /// </summary>
+    [HttpDelete("units/{unitId:int}")]
+    [ProducesResponseType(typeof(ApiResult<bool>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DeleteProductUnit([FromRoute] int unitId, CancellationToken cancellationToken = default)
+    {
+        var unit = await _dbContext.ProductUnitConversions.FindAsync(new object[] { unitId }, cancellationToken);
+        if (unit == null)
+        {
+            return NotFound(ApiResult<bool>.Failure($"Không tìm thấy quy cách ID {unitId}."));
+        }
+
+        _dbContext.ProductUnitConversions.Remove(unit);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(ApiResult<bool>.Success(true, "Xóa quy cách thành công."));
     }
 }
