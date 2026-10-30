@@ -267,12 +267,16 @@ public class ProductService : IProductService
         return Task.FromResult(code);
     }
 
-    public async Task<string> UploadProductImageAsync(int productId, Stream imageStream, string fileName, CancellationToken cancellationToken = default)
+    public async Task<string> UploadProductImageAsync(int? productId, Stream imageStream, string fileName, CancellationToken cancellationToken = default)
     {
-        var product = await _productRepository.GetByIdAsync(productId, cancellationToken);
-        if (product == null)
+        Product? product = null;
+        if (productId.HasValue && productId.Value > 0)
         {
-            throw new KeyNotFoundException($"Không tìm thấy sản phẩm với ID {productId}.");
+            product = await _productRepository.GetByIdAsync(productId.Value, cancellationToken);
+            if (product == null)
+            {
+                throw new KeyNotFoundException($"Không tìm thấy sản phẩm với ID {productId.Value}.");
+            }
         }
 
         if (imageStream == null || imageStream.Length == 0)
@@ -302,7 +306,8 @@ public class ProductService : IProductService
         string uploadFolder = Path.Combine(webRoot, "images", "products");
         Directory.CreateDirectory(uploadFolder);
 
-        string uniqueFileName = $"prod_{productId}_{Guid.NewGuid():N}{ext}";
+        string idPart = productId.HasValue && productId.Value > 0 ? productId.Value.ToString() : "new";
+        string uniqueFileName = $"prod_{idPart}_{Guid.NewGuid():N}{ext}";
         string filePath = Path.Combine(uploadFolder, uniqueFileName);
 
         using (var fileStream = new FileStream(filePath, FileMode.Create))
@@ -311,11 +316,13 @@ public class ProductService : IProductService
         }
 
         string relativeUrl = $"/images/products/{uniqueFileName}";
-        product.ImageUrl = relativeUrl;
-        product.UpdatedAt = DateTime.UtcNow;
-
-        _productRepository.Update(product);
-        await _productRepository.SaveChangesAsync(cancellationToken);
+        if (product != null)
+        {
+            product.ImageUrl = relativeUrl;
+            product.UpdatedAt = DateTime.UtcNow;
+            _productRepository.Update(product);
+            await _productRepository.SaveChangesAsync(cancellationToken);
+        }
 
         return relativeUrl;
     }

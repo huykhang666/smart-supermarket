@@ -118,4 +118,49 @@ public class BarcodeServiceTests
         Assert.Equal(10000, result.Price);
         Assert.Equal("Nước giải khát", result.CategoryName);
     }
+
+    [Fact]
+    public void GenerateWeightedEan13_ValidInput_Generates13DigitEanWithCorrectPluAndWeight()
+    {
+        // Arrange: Product ID 1, Weight 0.450 kg (450g)
+        int productId = 1;
+        decimal weightKg = 0.450m;
+
+        // Act
+        string barcode = _barcodeService.GenerateWeightedEan13(productId, weightKg);
+
+        // Assert
+        Assert.Equal(13, barcode.Length);
+        Assert.StartsWith("200000100450", barcode);
+        Assert.True(_barcodeService.IsValidEan13(barcode));
+    }
+
+    [Fact]
+    public void ParseWeightedBarcode_ValidWeightedBarcode_ExtractsProductCodeAndWeightCorrectly()
+    {
+        // Arrange
+        string barcode = _barcodeService.GenerateWeightedEan13(12, 1.250m);
+
+        // Act
+        var parsed = _barcodeService.ParseWeightedBarcode(barcode);
+
+        // Assert
+        Assert.NotNull(parsed);
+        Assert.Equal(12, parsed.Value.ProductCode);
+        Assert.Equal(1.250m, parsed.Value.WeightKg);
+    }
+
+    [Theory]
+    [InlineData("8935001800019")] // Standard EAN-13, not in-store weighted format (doesn't start with 20)
+    [InlineData("2001")]          // Too short
+    [InlineData(null)]
+    [InlineData("")]
+    public void ParseWeightedBarcode_InvalidOrNonWeighted_ReturnsNull(string? barcode)
+    {
+        // Act
+        var result = _barcodeService.ParseWeightedBarcode(barcode!);
+
+        // Assert
+        Assert.Null(result);
+    }
 }

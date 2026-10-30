@@ -666,6 +666,39 @@ public class AddProductForm : Form
             ? SmartSupermarket.Backend.Domain.Enums.ProductStatus.Active 
             : SmartSupermarket.Backend.Domain.Enums.ProductStatus.Inactive;
 
+        string rawImagePath = txtImageUrl.Text.Trim();
+        string finalImageUrl = rawImagePath;
+
+        if (System.IO.File.Exists(rawImagePath))
+        {
+            try
+            {
+                using var formContent = new MultipartFormDataContent();
+                using var fs = System.IO.File.OpenRead(rawImagePath);
+                using var streamContent = new StreamContent(fs);
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                    rawImagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
+                formContent.Add(streamContent, "file", System.IO.Path.GetFileName(rawImagePath));
+
+                var uploadResp = await _httpClient.PostAsync($"{_apiBaseUrl}/api/v1/products/upload-image", formContent);
+                if (uploadResp.IsSuccessStatusCode)
+                {
+                    var upJson = await uploadResp.Content.ReadAsStringAsync();
+                    using var upDoc = JsonDocument.Parse(upJson);
+                    var upRoot = upDoc.RootElement;
+                    var upData = upRoot.TryGetProperty("data", out var d) ? d : upRoot;
+                    if (upData.TryGetProperty("imageUrl", out var iu))
+                    {
+                        finalImageUrl = iu.GetString() ?? rawImagePath;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AddProductForm] Image upload warning: {ex.Message}");
+            }
+        }
+
         var request = new CreateProductRequest
         {
             ProductName = name,
@@ -675,7 +708,7 @@ public class AddProductForm : Form
             Unit = unit,
             CategoryId = cboCategory.SelectedIndex + 1,
             SupplierId = cboSupplier.SelectedIndex == 4 ? null : (cboSupplier.SelectedIndex + 1),
-            ImageUrl = txtImageUrl.Text.Trim()
+            ImageUrl = finalImageUrl
         };
 
         try

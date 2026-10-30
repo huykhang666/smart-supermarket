@@ -10,6 +10,7 @@ public class RevenueProfitReportDto
     public int TotalOrders { get; set; }
     public decimal TotalRevenue { get; set; }
     public decimal TotalCost { get; set; }
+    public decimal TotalLossAmount { get; set; }
     public decimal GrossProfit { get; set; }
     public decimal ProfitMargin { get; set; }
     public decimal TotalDiscount { get; set; }
@@ -33,6 +34,7 @@ public class DailyRevenueProfitDto
     public string Date { get; set; } = string.Empty;
     public decimal Revenue { get; set; }
     public decimal Cost { get; set; }
+    public decimal Loss { get; set; }
     public decimal Profit { get; set; }
     public int OrderCount { get; set; }
 }

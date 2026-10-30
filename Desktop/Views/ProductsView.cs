@@ -25,6 +25,7 @@ public class ProductsView : UserControl
     private ComboBox cbStatus = null!;
     private Button btnSearch = null!;
     private Button btnAddProduct = null!;
+    private Button btnBarcodePrint = null!;
     private Button btnScanBarcode = null!;
     private Button btnExportExcel = null!;
 
@@ -232,6 +233,19 @@ public class ProductsView : UserControl
         AppTheme.ApplyPrimaryButton(btnAddProduct);
         btnAddProduct.Click += BtnAddProduct_Click;
 
+        btnBarcodePrint = new Button
+        {
+            Text = "🏷️ In Tem Cân",
+            Size = new Size(115, 32),
+            Margin = new Padding(0, 0, 4, 0)
+        };
+        AppTheme.ApplySecondaryButton(btnBarcodePrint);
+        btnBarcodePrint.Click += (s, e) =>
+        {
+            using var form = new Desktop.Forms.FormBarcodeLabelPrint();
+            form.ShowDialog(this.FindForm());
+        };
+
         btnScanBarcode = new Button
         {
             Text = "📷 Quét Barcode",
@@ -253,6 +267,7 @@ public class ProductsView : UserControl
         pnlActionsRight.Controls.Add(btnViewTable);
         pnlActionsRight.Controls.Add(btnViewCard);
         pnlActionsRight.Controls.Add(btnAddProduct);
+        pnlActionsRight.Controls.Add(btnBarcodePrint);
         pnlActionsRight.Controls.Add(btnScanBarcode);
         pnlActionsRight.Controls.Add(btnExportExcel);
 

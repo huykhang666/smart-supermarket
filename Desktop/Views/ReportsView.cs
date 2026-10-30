@@ -380,7 +380,10 @@ public class ReportsView : UserControl
             lblRevTotalNote.Text = $"Giá vốn: {totalCost:N0} đ";
 
             lblRevProfitVal.Text = $"{grossProfit:N0} đ";
-            lblRevProfitNote.Text = $"Biên lãi gộp: {profitMargin:N2}%";
+            decimal totalLoss = data.TryGetProperty("totalLossAmount", out var tl) ? tl.GetDecimal() : 0m;
+            lblRevProfitNote.Text = totalLoss > 0
+                ? $"Biên lãi: {profitMargin:N2}% (Hao hụt kho: -{totalLoss:N0} đ)"
+                : $"Biên lãi gộp: {profitMargin:N2}%";
 
             lblRevOrdersVal.Text = $"{totalOrders:N0} đơn";
             lblRevOrdersNote.Text = $"{totalOrders:N0} đơn hoàn tất";

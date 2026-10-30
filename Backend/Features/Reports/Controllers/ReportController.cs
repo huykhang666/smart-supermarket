@@ -69,7 +69,27 @@ public class ReportController : ControllerBase
             }
         }
 
-        decimal grossProfit = totalRevenue - totalCost;
+        // Tinh chi phi hao hut kho thuc te (tu cac bien ban kiem ke can bang kho trong ky co hang thieu/hong/het han)
+        var auditQuery = _context.StockAudits
+            .Include(a => a.Details)
+            .Where(a => a.AuditDate >= startUtc && a.AuditDate <= endUtc
+                        && (a.Status == "Completed" || a.Status == "Reconciled"));
+
+        var audits = await auditQuery.ToListAsync(cancellationToken);
+        decimal totalLossAmount = 0;
+        foreach (var audit in audits)
+        {
+            foreach (var d in audit.Details)
+            {
+                if (d.VarianceQty < 0)
+                {
+                    totalLossAmount += Math.Abs(d.VarianceQty) * d.UnitPrice;
+                }
+            }
+        }
+
+        // Loi nhuan gop thuc te = Doanh thu - Gia von - Chi phi hao hut kho
+        decimal grossProfit = totalRevenue - totalCost - totalLossAmount;
         decimal profitMargin = totalRevenue > 0 ? Math.Round((grossProfit / totalRevenue) * 100m, 2) : 0m;
         decimal avgOrder = totalOrders > 0 ? Math.Round(totalRevenue / totalOrders, 0) : 0m;
 
@@ -117,6 +137,15 @@ public class ReportController : ControllerBase
             var dayOrders = orders.Where(o => o.OrderDate >= curStartUtc && o.OrderDate < curEndUtc).ToList();
             decimal dayRev = dayOrders.Sum(o => o.FinalAmount);
             decimal dayCost = 0;
+            decimal dayLoss = 0;
+            var dayAudits = audits.Where(a => a.AuditDate >= curStartUtc && a.AuditDate < curEndUtc).ToList();
+            foreach (var a in dayAudits)
+            {
+                foreach (var d in a.Details)
+                {
+                    if (d.VarianceQty < 0) dayLoss += Math.Abs(d.VarianceQty) * d.UnitPrice;
+                }
+            }
             foreach (var o in dayOrders)
             {
                 foreach (var d in o.OrderDetails)
@@ -133,7 +162,8 @@ public class ReportController : ControllerBase
                 Date = curDayVn.ToString("dd/MM/yyyy"),
                 Revenue = dayRev,
                 Cost = dayCost,
-                Profit = dayRev - dayCost,
+                Loss = dayLoss,
+                Profit = dayRev - dayCost - dayLoss,
                 OrderCount = dayOrders.Count
             });
         }
@@ -145,6 +175,7 @@ public class ReportController : ControllerBase
             TotalOrders = totalOrders,
             TotalRevenue = totalRevenue,
             TotalCost = totalCost,
+            TotalLossAmount = totalLossAmount,
             GrossProfit = grossProfit,
             ProfitMargin = profitMargin,
             TotalDiscount = totalDiscount,

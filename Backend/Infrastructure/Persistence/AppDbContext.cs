@@ -45,6 +45,7 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<StockAudit> StockAudits => Set<StockAudit>();
     public DbSet<StockAuditDetail> StockAuditDetails => Set<StockAuditDetail>();
+    public DbSet<ProductUnitConversion> ProductUnitConversions => Set<ProductUnitConversion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

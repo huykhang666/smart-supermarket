@@ -104,6 +104,78 @@ public class ReportControllerTests
     }
 
     [Fact]
+    public async Task GetRevenueProfit_WithStockLoss_DeductsLossFromGrossProfit()
+    {
+        // Arrange
+        var cat = new Category { CategoryId = 3, CategoryName = "Thực phẩm", Slug = "thuc-pham" };
+        var prod = new Product
+        {
+            ProductId = 20,
+            ProductName = "Sữa Tươi",
+            Barcode = "893999999",
+            CategoryId = 3,
+            Price = 20000m,
+            CostPrice = 14000m,
+            Status = ProductStatus.Active
+        };
+        await _dbContext.Categories.AddAsync(cat);
+        await _dbContext.Products.AddAsync(prod);
+
+        var order = new Order
+        {
+            OrderId = 201,
+            EmployeeId = 1,
+            BranchId = 1,
+            OrderDate = DateTime.UtcNow,
+            TotalAmount = 20000m,
+            FinalAmount = 20000m,
+            Status = OrderStatus.Completed,
+            OrderDetails = new List<OrderDetail>
+            {
+                new OrderDetail { OrderDetailId = 201, ProductId = 20, Quantity = 1, UnitPrice = 20000m, SubTotal = 20000m }
+            }
+        };
+        await _dbContext.Orders.AddAsync(order);
+
+        // Biên bản kiểm kê có 1 mặt hàng thất thoát/hư hỏng (VarianceQty = -1, UnitPrice = 2000 => Loss = 2000)
+        var audit = new StockAudit
+        {
+            Id = Guid.NewGuid(),
+            CreatedBy = "Admin",
+            Zone = "A",
+            AuditDate = DateTime.UtcNow,
+            Status = "Completed",
+            Details = new List<StockAuditDetail>
+            {
+                new StockAuditDetail
+                {
+                    Id = Guid.NewGuid(),
+                    Barcode = "893999999",
+                    SystemQty = 5,
+                    ActualQty = 4, // Thiếu 1
+                    UnitPrice = 2000m, // Hao hụt 2,000đ
+                    LossReason = "Hàng dập nát"
+                }
+            }
+        };
+        await _dbContext.StockAudits.AddAsync(audit);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var actionResult = await _controller.GetRevenueProfit(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(1), 1);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
+        var apiResult = Assert.IsType<ApiResult<RevenueProfitReportDto>>(okResult.Value);
+        var report = apiResult.Data;
+        Assert.NotNull(report);
+
+        Assert.Equal(2000m, report.TotalLossAmount);
+        // Doanh thu (20k) - Giá vốn (14k) - Hao hụt (2k) = 4,000đ
+        Assert.Equal(4000m, report.GrossProfit);
+    }
+
+    [Fact]
     public async Task GetBestSellers_ReturnsTopProductsOrderedByQuantity()
     {
         // Arrange: 2 products

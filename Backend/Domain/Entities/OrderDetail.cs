@@ -8,6 +8,8 @@ public class OrderDetail
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal SubTotal { get; set; }
+    public int ConversionRate { get; set; } = 1;
+    public string? UnitName { get; set; }
 
     public Order Order { get; set; } = null!;
     public Product Product { get; set; } = null!;

@@ -364,6 +364,12 @@ public class PosScanView : UserControl
         dgvCart.Columns["Total"].FillWeight = 18;
         dgvCart.Columns["Total"].MinimumWidth = 90;
 
+        var cmsCart = new ContextMenuStrip();
+        cmsCart.Items.Add("📦 Đổi quy cách: Đơn vị lẻ (Lon/Chai/Gói - x1)", null, (s, e) => ChangeSelectedUnit(1, "Cái"));
+        cmsCart.Items.Add("📦 Đổi quy cách: Lốc 6 (x6 số lượng)", null, (s, e) => ChangeSelectedUnit(6, "Lốc 6"));
+        cmsCart.Items.Add("📦 Đổi quy cách: Thùng 24 (x24 số lượng)", null, (s, e) => ChangeSelectedUnit(24, "Thùng 24"));
+        dgvCart.ContextMenuStrip = cmsCart;
+
         pnlCartContainer.Controls.Add(dgvCart);
         pnlCartContainer.Controls.Add(pnlCartToolbar);
 
@@ -999,7 +1005,8 @@ public class PosScanView : UserControl
         foreach (var item in _cart)
         {
             decimal itemSubTotal = item.Price * item.Quantity;
-            string displayName = item.IsNearExpiry ? $"{item.Name} [-{item.DiscountPercent:N0}% Cận date]" : item.Name;
+            string unitDisplay = item.ConversionRate > 1 ? $" [{item.UnitName} x{item.ConversionRate}]" : "";
+            string displayName = item.IsNearExpiry ? $"{item.Name}{unitDisplay} [-{item.DiscountPercent:N0}% Cận date]" : $"{item.Name}{unitDisplay}";
             string discountNote = item.IsNearExpiry ? $"-{(item.OriginalPrice - item.Price) * item.Quantity:N0} đ" : "0 đ";
 
             dgvCart.Rows.Add(
@@ -1096,6 +1103,23 @@ public class PosScanView : UserControl
         }
     }
 
+    private void ChangeSelectedUnit(int rate, string unitName)
+    {
+        if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
+        int idx = dgvCart.CurrentRow.Index;
+        if (idx < 0 || idx >= _cart.Count) return;
+
+        var item = _cart[idx];
+        item.ConversionRate = rate;
+        item.UnitName = unitName;
+        // Nhân giá bán tương ứng theo hệ số quy cách
+        decimal basePrice = item.OriginalPrice > 0 ? item.OriginalPrice : item.Price;
+        item.Price = basePrice * rate;
+
+        RefreshCartGrid();
+        AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã chuyển '{item.Name}' sang quy cách {unitName} (x{rate})!");
+    }
+
     private void RemoveSelectedItem()
     {
         if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
@@ -1170,6 +1194,64 @@ public class PosScanView : UserControl
     {
         string code = txtBarcode.Text.Trim();
         if (string.IsNullOrEmpty(code)) return;
+
+        // Xử lý mã vạch tem cân nội bộ (GS1-13 in-store weighted format: 20 + 5 số ID + 5 số gram + 1 số C/D)
+        if (code.Length == 13 && code.StartsWith("20") && long.TryParse(code, out _))
+        {
+            int pId = int.Parse(code.Substring(2, 5));
+            int grams = int.Parse(code.Substring(7, 5));
+            decimal weightKg = grams / 1000m;
+
+            var weightedProd = _catalog.FirstOrDefault(p => p.Id == pId);
+            if (weightedProd == null)
+            {
+                var dsProd = DataStore.Products.FirstOrDefault(p => p.ProductId == pId);
+                if (dsProd != null)
+                {
+                    weightedProd = new CatalogProduct
+                    {
+                        Id = dsProd.ProductId,
+                        Barcode = dsProd.Barcode,
+                        Name = dsProd.ProductName,
+                        Price = dsProd.Price,
+                        Stock = 100
+                    };
+                    _catalog.Add(weightedProd);
+                }
+            }
+
+            if (weightedProd != null)
+            {
+                decimal itemPrice = Math.Round(weightedProd.Price * weightKg, 0);
+                string weightStr = $"{weightKg:0.000}kg";
+                var existingWeighted = _cart.FirstOrDefault(c => c.Barcode == code);
+                if (existingWeighted != null)
+                {
+                    existingWeighted.Quantity++;
+                }
+                else
+                {
+                    _cart.Add(new CartItem
+                    {
+                        ProductId = weightedProd.Id,
+                        Barcode = code,
+                        Name = $"{weightedProd.Name} ({weightStr})",
+                        CategoryId = weightedProd.CategoryId,
+                        Price = itemPrice,
+                        OriginalPrice = itemPrice,
+                        Quantity = 1,
+                        VatPercent = 8,
+                        ConversionRate = 1,
+                        UnitName = "Khay"
+                    });
+                }
+                RefreshCartGrid();
+                AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã quét tem cân '{weightedProd.Name}' ({weightStr}): {itemPrice:N0} đ");
+                txtBarcode.Clear();
+                txtBarcode.Focus();
+                return;
+            }
+        }
 
         var prod = _catalog.FirstOrDefault(p => p.Barcode == code);
         if (prod == null)
@@ -1888,7 +1970,9 @@ public class PosScanView : UserControl
             Barcode = c.Barcode,
             Name = c.Name,
             Price = c.Price,
-            Quantity = c.Quantity
+            Quantity = c.Quantity,
+            ConversionRate = c.ConversionRate,
+            UnitName = c.UnitName
         }).ToList();
         _cart.Clear();
         RefreshCartGrid();
@@ -1937,7 +2021,9 @@ public class PosScanView : UserControl
                 {
                     ProductId = c.ProductId,
                     Quantity = c.Quantity,
-                    UnitPrice = c.Price
+                    UnitPrice = c.Price,
+                    ConversionRate = c.ConversionRate,
+                    UnitName = c.UnitName
                 }).ToList()
             };
             string jsonBody = JsonSerializer.Serialize(reqObj);
@@ -2070,5 +2156,7 @@ public class PosScanView : UserControl
         public string ExpiryNote { get; set; } = "";
         public int Quantity { get; set; }
         public decimal VatPercent { get; set; }
+        public int ConversionRate { get; set; } = 1;
+        public string UnitName { get; set; } = "Cái";
     }
 }

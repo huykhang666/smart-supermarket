@@ -270,5 +270,22 @@ public class ProductServiceTests
         Assert.True(result.IsNegativeMarginWarning);
     }
 
+    [Fact]
+    public async Task UploadProductImageAsync_WithoutExistingProductId_ShouldSaveImageAndReturnPath()
+    {
+        // Arrange
+        _mockEnvironment.Setup(e => e.WebRootPath).Returns(Path.GetTempPath());
+        var bytes = System.Text.Encoding.UTF8.GetBytes("fake-image-bytes");
+        using var stream = new MemoryStream(bytes);
+
+        // Act
+        var url = await _productService.UploadProductImageAsync(null, stream, "sample.jpg");
+
+        // Assert
+        Assert.NotNull(url);
+        Assert.StartsWith("/images/products/prod_new_", url);
+        Assert.EndsWith(".jpg", url);
+    }
+
     #endregion
 }

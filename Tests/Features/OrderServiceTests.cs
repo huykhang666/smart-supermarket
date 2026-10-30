@@ -414,4 +414,46 @@ public class OrderServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<KeyNotFoundException>(() => _orderService.GenerateInvoicePdfAsync(999));
     }
+
+    [Fact]
+    public async Task CreateOrderAsync_WithUnitConversion_DeductsInventoryByConversionRate()
+    {
+        // Arrange: Sản phẩm Bia Sài Gòn (Cost: 10k, Price: 15k). Mua 2 Thùng 24 (ConversionRate = 24)
+        var product = new Product { ProductId = 50, ProductName = "Bia Sài Gòn", Price = 15000m, Unit = "Lon" };
+        _dbContext.Products.Add(product);
+        await _dbContext.SaveChangesAsync();
+
+        var inventory = new Inventory { ProductId = 50, BranchId = 1, QuantityOnHand = 100 };
+        _mockInventoryRepo.Setup(r => r.GetByProductAndBranchAsync(50, 1))
+            .ReturnsAsync(inventory);
+
+        var request = new CreateOrderRequest
+        {
+            EmployeeId = 1,
+            BranchId = 1,
+            Items = new List<CreateOrderDetailRequest>
+            {
+                new CreateOrderDetailRequest
+                {
+                    ProductId = 50,
+                    Quantity = 2,
+                    ConversionRate = 24, // 2 Thùng 24 lon = 48 lon
+                    UnitPrice = 350000m,
+                    UnitName = "Thùng 24"
+                }
+            },
+            Payments = new List<CreatePaymentRequest>
+            {
+                new CreatePaymentRequest { PaymentMethod = PaymentMethod.Cash, AmountPaid = 700000m }
+            }
+        };
+
+        // Act
+        var result = await _orderService.CreateOrderAsync(request);
+
+        // Assert: Tồn kho giảm 2 * 24 = 48 lon (100 - 48 = 52)
+        Assert.NotNull(result);
+        Assert.Equal(52, inventory.QuantityOnHand);
+        Assert.Equal(700000m, result.FinalAmount);
+    }
 }
