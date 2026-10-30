@@ -231,14 +231,34 @@ public class AddProductForm : Form
             Font = new Font("Segoe UI", 9.5f)
         };
         cboCategory.Items.AddRange(new object[] {
-            "Nước giải khát",
+            "Nước giải khát & Đồ uống",
             "Sữa & Sản phẩm từ sữa",
             "Bánh kẹo & Ăn vặt",
             "Rau củ quả tươi",
             "Gia vị & Đồ khô",
-            "Đồ dùng gia đình"
+            "Đồ dùng gia đình & Nhà bếp",
+            "Hóa phẩm & Giặt xả",
+            "Chăm sóc cá nhân",
+            "Thịt, Thủy hải sản & Trứng",
+            "Đồ ăn liền & Đóng hộp"
         });
         cboCategory.SelectedIndex = 0;
+        cboCategory.SelectedIndexChanged += (s, e) =>
+        {
+            switch (cboCategory.SelectedIndex)
+            {
+                case 0: cboUnit.Text = "lon"; break;   // Nước giải khát
+                case 1: cboUnit.Text = "hộp"; break;   // Sữa
+                case 2: cboUnit.Text = "gói"; break;   // Bánh kẹo
+                case 3: cboUnit.Text = "kg"; break;    // Rau củ quả
+                case 4: cboUnit.Text = "chai"; break;  // Gia vị
+                case 5: cboUnit.Text = "cái"; break;   // Đồ dùng gia đình
+                case 6: cboUnit.Text = "chai"; break;  // Hóa phẩm
+                case 7: cboUnit.Text = "tuýp"; break;  // Chăm sóc cá nhân
+                case 8: cboUnit.Text = "kg"; break;    // Thịt, Thủy sản
+                case 9: cboUnit.Text = "gói"; break;   // Đồ ăn liền
+            }
+        };
 
         var lblUnit = new Label
         {
@@ -253,7 +273,7 @@ public class AddProductForm : Form
             Size = new Size(138, 29),
             Font = new Font("Segoe UI", 9.5f)
         };
-        cboUnit.Items.AddRange(new object[] { "lon", "chai", "hộp", "gói", "kg", "lốc", "thùng", "vỉ", "túi", "bó" });
+        cboUnit.Items.AddRange(new object[] { "lon", "chai", "hộp", "gói", "kg", "khay", "lốc", "thùng", "vỉ", "túi", "bó", "tuýp", "cái" });
         cboUnit.SelectedIndex = 0;
 
         pnlContent.Controls.AddRange(new Control[] { lblCategory, cboCategory, lblUnit, cboUnit });

@@ -102,7 +102,10 @@ public class PosScanView : UserControl
                 Barcode = p.Barcode,
                 Name = p.ProductName,
                 Price = p.Price,
-                Stock = 10
+                CategoryId = p.CategoryId,
+                CategoryName = p.CategoryName ?? "",
+                Unit = string.IsNullOrWhiteSpace(p.Unit) ? "Cái" : p.Unit,
+                Stock = p.Stock ?? 10
             });
             if (txtSearchProd != null)
             {
@@ -365,9 +368,25 @@ public class PosScanView : UserControl
         dgvCart.Columns["Total"].MinimumWidth = 90;
 
         var cmsCart = new ContextMenuStrip();
-        cmsCart.Items.Add("📦 Đổi quy cách: Đơn vị lẻ (Lon/Chai/Gói - x1)", null, (s, e) => ChangeSelectedUnit(1, "Cái"));
-        cmsCart.Items.Add("📦 Đổi quy cách: Lốc 6 (x6 số lượng)", null, (s, e) => ChangeSelectedUnit(6, "Lốc 6"));
-        cmsCart.Items.Add("📦 Đổi quy cách: Thùng 24 (x24 số lượng)", null, (s, e) => ChangeSelectedUnit(24, "Thùng 24"));
+        cmsCart.Font = AppTheme.FontBody;
+        cmsCart.Opening += (s, e) =>
+        {
+            if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0 || dgvCart.CurrentRow.Index >= _cart.Count)
+            {
+                e.Cancel = true;
+                return;
+            }
+            BuildUnitContextMenu(cmsCart);
+        };
+        dgvCart.CellMouseDown += (s, e) =>
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+            {
+                dgvCart.ClearSelection();
+                dgvCart.Rows[e.RowIndex].Selected = true;
+                dgvCart.CurrentCell = dgvCart.Rows[e.RowIndex].Cells[e.ColumnIndex >= 0 ? e.ColumnIndex : 0];
+            }
+        };
         dgvCart.ContextMenuStrip = cmsCart;
 
         pnlCartContainer.Controls.Add(dgvCart);
@@ -775,6 +794,8 @@ public class PosScanView : UserControl
 
                         if (!string.IsNullOrEmpty(barcode) && !_catalog.Any(c => c.Barcode == barcode))
                         {
+                            string catName = item.TryGetProperty("categoryName", out var pCn) ? (pCn.GetString() ?? "") : "";
+                            string unit = item.TryGetProperty("unit", out var pUnit) ? (pUnit.GetString() ?? "Cái") : "Cái";
                             _catalog.Add(new CatalogProduct
                             {
                                 Id = id,
@@ -782,6 +803,8 @@ public class PosScanView : UserControl
                                 Name = name,
                                 Price = price,
                                 CategoryId = catId,
+                                CategoryName = catName,
+                                Unit = unit,
                                 Stock = 100
                             });
                         }
@@ -802,6 +825,8 @@ public class PosScanView : UserControl
                     Name = dsProd.ProductName,
                     Price = dsProd.Price,
                     CategoryId = dsProd.CategoryId,
+                    CategoryName = dsProd.CategoryName ?? "",
+                    Unit = string.IsNullOrWhiteSpace(dsProd.Unit) ? "Cái" : dsProd.Unit,
                     Stock = 100
                 });
             }
@@ -982,13 +1007,17 @@ public class PosScanView : UserControl
                 Barcode = prod.Barcode,
                 Name = prod.Name,
                 CategoryId = prod.CategoryId,
+                CategoryName = prod.CategoryName,
+                BaseUnit = string.IsNullOrWhiteSpace(prod.Unit) ? "Cái" : prod.Unit,
+                UnitName = string.IsNullOrWhiteSpace(prod.Unit) ? "Cái" : prod.Unit,
                 Price = prod.Price,
                 OriginalPrice = prod.OriginalPrice > 0 ? prod.OriginalPrice : prod.Price,
                 DiscountPercent = prod.DiscountPercent,
                 IsNearExpiry = prod.IsNearExpiry,
                 ExpiryNote = prod.ExpiryNote,
                 Quantity = 1,
-                VatPercent = 8
+                VatPercent = 8,
+                ConversionRate = 1
             });
         }
         RefreshCartGrid();
@@ -1120,6 +1149,156 @@ public class PosScanView : UserControl
         AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã chuyển '{item.Name}' sang quy cách {unitName} (x{rate})!");
     }
 
+    private void BuildUnitContextMenu(ContextMenuStrip menu)
+    {
+        menu.Items.Clear();
+        if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0 || dgvCart.CurrentRow.Index >= _cart.Count) return;
+        var item = _cart[dgvCart.CurrentRow.Index];
+
+        string baseUnit = string.IsNullOrWhiteSpace(item.BaseUnit) ? "Cái" : item.BaseUnit;
+        string cat = item.CategoryName?.ToLowerInvariant() ?? "";
+        string name = item.Name.ToLowerInvariant();
+
+        // Tiêu đề context menu
+        var lblHeader = new ToolStripLabel($"📦 Quy cách: {item.Name}")
+        {
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+            ForeColor = AppTheme.Primary
+        };
+        menu.Items.Add(lblHeader);
+        menu.Items.Add(new ToolStripSeparator());
+
+        // 1. Phân loại hàng tươi sống & rau củ quả cân ký (KHÔNG áp dụng Thùng/Lốc)
+        bool isFreshProduce = cat.Contains("rau") || cat.Contains("củ") || cat.Contains("quả tươi") 
+            || cat.Contains("thịt") || cat.Contains("thủy") || cat.Contains("hải sản") || cat.Contains("tươi sống")
+            || baseUnit.Equals("kg", StringComparison.OrdinalIgnoreCase) 
+            || baseUnit.Equals("gam", StringComparison.OrdinalIgnoreCase)
+            || baseUnit.Equals("khay", StringComparison.OrdinalIgnoreCase)
+            || item.Barcode.StartsWith("20");
+
+        if (isFreshProduce)
+        {
+            var mnuFresh = new ToolStripMenuItem($"🥩/🥬 Đơn vị: {baseUnit} (Bán theo trọng lượng/khay lẻ)")
+            {
+                Checked = true,
+                Enabled = false
+            };
+            var mnuNote = new ToolStripMenuItem("⚠️ Hàng tươi sống/cân ký không áp dụng quy đổi Lốc/Thùng")
+            {
+                Enabled = false
+            };
+            menu.Items.Add(mnuFresh);
+            menu.Items.Add(mnuNote);
+            return;
+        }
+
+        // Đơn vị cơ sở lẻ (luôn có)
+        var mnuBase = new ToolStripMenuItem($"🔹 Đơn vị bán lẻ: {baseUnit} (x1)", null, (s, e) => ChangeSelectedUnit(1, baseUnit))
+        {
+            Checked = (item.ConversionRate == 1)
+        };
+        menu.Items.Add(mnuBase);
+
+        // 2. Phân loại Sữa & Sản phẩm từ sữa (Hộp/Hũ -> Lốc 4 -> Thùng 48)
+        bool isDairy = cat.Contains("sữa") || name.Contains("sữa ") || name.Contains("sữa chua") || name.Contains("vinamilk") || name.Contains("th true milk") || name.Contains("yakult");
+
+        // 3. Phân loại Nước giải khát, Bia, Nước ngọt (Lon/Chai -> Lốc 6 -> Thùng 24)
+        bool isBeverage = cat.Contains("giải khát") || cat.Contains("đồ uống") || cat.Contains("bia") 
+            || name.Contains("coca") || name.Contains("pepsi") || name.Contains("bia") || name.Contains("7up") || name.Contains("aquafina") || name.Contains("nước tăng lực") || name.Contains("sting") || name.Contains("redbull")
+            || baseUnit.Equals("lon", StringComparison.OrdinalIgnoreCase);
+
+        // 4. Phân loại Mì ăn liền, Cháo, Phở gói, Đồ hộp (Gói/Lon -> Lốc 5 -> Thùng 30)
+        bool isInstantFood = cat.Contains("đồ ăn liền") || cat.Contains("đóng hộp") || cat.Contains("mì")
+            || name.Contains("mì ") || name.Contains("hảo hảo") || name.Contains("omachi") || name.Contains("kokomi") || name.Contains("cháo") || name.Contains("phở") || baseUnit.Equals("gói", StringComparison.OrdinalIgnoreCase);
+
+        // 5. Phân loại Trứng gia cầm (Quả -> Vỉ 10 -> Thùng 30 vỉ)
+        bool isEggs = name.Contains("trứng") || baseUnit.Equals("quả", StringComparison.OrdinalIgnoreCase);
+
+        // 6. Phân loại Gia vị, Dầu ăn, Nước mắm (Chai/Gói -> Lốc 2 -> Thùng 12)
+        bool isSpice = cat.Contains("gia vị") || cat.Contains("đồ khô") || name.Contains("nước mắm") || name.Contains("dầu ăn") || name.Contains("nước tương") || name.Contains("hạt nêm");
+
+        // 7. Phân loại Bánh kẹo & Ăn vặt (Gói/Thanh -> Dây 10 -> Thùng 20)
+        bool isSnack = cat.Contains("bánh kẹo") || cat.Contains("ăn vặt") || name.Contains("bánh") || name.Contains("kẹo") || name.Contains("snack") || name.Contains("orion") || name.Contains("chocopie");
+
+        if (isDairy)
+        {
+            menu.Items.Add(new ToolStripMenuItem($"🥛 Lốc 4 {baseUnit} (x4 số lượng)", null, (s, e) => ChangeSelectedUnit(4, $"Lốc 4 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 4)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 48 {baseUnit} (x48 số lượng)", null, (s, e) => ChangeSelectedUnit(48, $"Thùng 48 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 48)
+            });
+        }
+        else if (isBeverage)
+        {
+            menu.Items.Add(new ToolStripMenuItem($"🥤 Lốc 6 {baseUnit} (x6 số lượng)", null, (s, e) => ChangeSelectedUnit(6, $"Lốc 6 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 6)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 24 {baseUnit} (x24 số lượng)", null, (s, e) => ChangeSelectedUnit(24, $"Thùng 24 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 24)
+            });
+        }
+        else if (isInstantFood)
+        {
+            menu.Items.Add(new ToolStripMenuItem($"🍜 Lốc 5 {baseUnit} (x5 số lượng)", null, (s, e) => ChangeSelectedUnit(5, $"Lốc 5 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 5)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 30 {baseUnit} (x30 số lượng)", null, (s, e) => ChangeSelectedUnit(30, $"Thùng 30 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 30)
+            });
+        }
+        else if (isEggs)
+        {
+            menu.Items.Add(new ToolStripMenuItem($"🥚 Vỉ 10 {baseUnit} (x10 số lượng)", null, (s, e) => ChangeSelectedUnit(10, $"Vỉ 10 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 10)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 30 vỉ (x300 {baseUnit})", null, (s, e) => ChangeSelectedUnit(300, $"Thùng 30 vỉ"))
+            {
+                Checked = (item.ConversionRate == 300)
+            });
+        }
+        else if (isSpice)
+        {
+            menu.Items.Add(new ToolStripMenuItem($"🍶 Lốc 2 {baseUnit} (x2 số lượng)", null, (s, e) => ChangeSelectedUnit(2, $"Lốc 2 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 2)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 12 {baseUnit} (x12 số lượng)", null, (s, e) => ChangeSelectedUnit(12, $"Thùng 12 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 12)
+            });
+        }
+        else if (isSnack)
+        {
+            menu.Items.Add(new ToolStripMenuItem($"🍬 Dây 10 {baseUnit} (x10 số lượng)", null, (s, e) => ChangeSelectedUnit(10, $"Dây 10 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 10)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 20 {baseUnit} (x20 số lượng)", null, (s, e) => ChangeSelectedUnit(20, $"Thùng 20 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 20)
+            });
+        }
+        else
+        {
+            menu.Items.Add(new ToolStripMenuItem($"📦 Lốc / Combo 2 {baseUnit} (x2 số lượng)", null, (s, e) => ChangeSelectedUnit(2, $"Combo 2 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 2)
+            });
+            menu.Items.Add(new ToolStripMenuItem($"📦 Thùng 12 {baseUnit} (x12 số lượng)", null, (s, e) => ChangeSelectedUnit(12, $"Thùng 12 {baseUnit}"))
+            {
+                Checked = (item.ConversionRate == 12)
+            });
+        }
+    }
+
     private void RemoveSelectedItem()
     {
         if (dgvCart.CurrentRow == null || dgvCart.CurrentRow.Index < 0) return;
@@ -1214,6 +1393,9 @@ public class PosScanView : UserControl
                         Barcode = dsProd.Barcode,
                         Name = dsProd.ProductName,
                         Price = dsProd.Price,
+                        CategoryId = dsProd.CategoryId,
+                        CategoryName = dsProd.CategoryName ?? "Rau củ quả tươi",
+                        Unit = string.IsNullOrWhiteSpace(dsProd.Unit) ? "kg" : dsProd.Unit,
                         Stock = 100
                     };
                     _catalog.Add(weightedProd);
@@ -1237,6 +1419,8 @@ public class PosScanView : UserControl
                         Barcode = code,
                         Name = $"{weightedProd.Name} ({weightStr})",
                         CategoryId = weightedProd.CategoryId,
+                        CategoryName = weightedProd.CategoryName,
+                        BaseUnit = "Khay",
                         Price = itemPrice,
                         OriginalPrice = itemPrice,
                         Quantity = 1,
@@ -1265,6 +1449,9 @@ public class PosScanView : UserControl
                     Barcode = dsProd.Barcode,
                     Name = dsProd.ProductName,
                     Price = dsProd.Price,
+                    CategoryId = dsProd.CategoryId,
+                    CategoryName = dsProd.CategoryName ?? "",
+                    Unit = string.IsNullOrWhiteSpace(dsProd.Unit) ? "Cái" : dsProd.Unit,
                     Stock = 10
                 };
                 _catalog.Add(prod);
@@ -1295,6 +1482,9 @@ public class PosScanView : UserControl
                         Barcode = newProd.Barcode,
                         Name = newProd.ProductName,
                         Price = newProd.Price,
+                        CategoryId = newProd.CategoryId,
+                        CategoryName = newProd.CategoryName ?? "",
+                        Unit = string.IsNullOrWhiteSpace(newProd.Unit) ? "Cái" : newProd.Unit,
                         Stock = 10
                     };
                     _catalog.Add(catalogItem);
@@ -2135,6 +2325,8 @@ public class PosScanView : UserControl
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
         public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = "";
+        public string Unit { get; set; } = "Cái";
         public decimal Price { get; set; }
         public decimal OriginalPrice { get; set; }
         public decimal DiscountPercent { get; set; }
@@ -2149,6 +2341,8 @@ public class PosScanView : UserControl
         public string Barcode { get; set; } = "";
         public string Name { get; set; } = "";
         public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = "";
+        public string BaseUnit { get; set; } = "Cái";
         public decimal Price { get; set; }
         public decimal OriginalPrice { get; set; }
         public decimal DiscountPercent { get; set; }

@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Desktop.Services;
+using SmartSupermarket.Backend.Domain.Enums;
 using SmartSupermarket.Backend.Features.Products.DTOs;
 
 namespace Desktop.Views;
@@ -26,7 +27,6 @@ public class ProductsView : UserControl
     private Button btnSearch = null!;
     private Button btnAddProduct = null!;
     private Button btnBarcodePrint = null!;
-    private Button btnScanBarcode = null!;
     private Button btnExportExcel = null!;
 
     private Button btnViewTable = null!;
@@ -70,7 +70,10 @@ public class ProductsView : UserControl
             decimal cost = p.CostPrice ?? 0m;
             decimal marginPercent = p.Price > 0 ? Math.Round(((p.Price - cost) / p.Price) * 100, 1) : 0;
             string marginText = $"{marginPercent}% {(marginPercent < 0 ? "⚠️ Bán Lỗ" : "")}";
-            dgvProducts.Rows.Insert(0, p.ProductId, p.Barcode, p.ProductName, p.CategoryName ?? "Chưa phân loại", $"{p.Price:N0} đ", $"{cost:N0} đ", marginText, p.Unit, "🟢 Đang bán");
+            string mfg = p.ManufacturingDate.HasValue ? p.ManufacturingDate.Value.ToString("dd/MM/yyyy") : "-";
+            string exp = p.ExpiryDate.HasValue ? p.ExpiryDate.Value.ToString("dd/MM/yyyy") : "-";
+            string statusText = p.Status == ProductStatus.Active ? "🟢 Đang bán" : "🔴 Ngừng bán";
+            dgvProducts.Rows.Insert(0, p.ProductId, p.Barcode, p.ProductName, p.CategoryName ?? "Chưa phân loại", $"{p.Price:N0} đ", $"{cost:N0} đ", marginText, p.Unit, mfg, exp, statusText);
         }
 
         // 2. Refresh Card View if active
@@ -108,9 +111,9 @@ public class ProductsView : UserControl
         pnlTopBar = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 62,
+            Height = 58,
             BackColor = AppTheme.SurfaceWhite,
-            Padding = new Padding(15, 12, 15, 12),
+            Padding = new Padding(12, 10, 12, 10),
             Margin = new Padding(0, 0, 0, 8)
         };
         AppTheme.ApplyCardPanel(pnlTopBar);
@@ -118,19 +121,19 @@ public class ProductsView : UserControl
         // Left Filters Group (FlowLayoutPanel for clean 32px height vertical alignment)
         var pnlFiltersLeft = new FlowLayoutPanel
         {
-            Dock = DockStyle.Left,
-            AutoSize = true,
+            Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             BackColor = Color.Transparent,
-            Padding = new Padding(0, 2, 0, 0)
+            Padding = new Padding(0, 2, 0, 0),
+            AutoScroll = false
         };
 
         txtSearch = new TextBox
         {
             PlaceholderText = "🔍 Tìm Tên / Barcode...",
             Font = AppTheme.FontBody,
-            Size = new Size(160, 32),
+            Size = new Size(150, 32),
             Margin = new Padding(0, 0, 6, 0),
             BorderStyle = BorderStyle.FixedSingle
         };
@@ -145,7 +148,7 @@ public class ProductsView : UserControl
 
         cbCategory = new ComboBox
         {
-            Size = new Size(150, 32),
+            Size = new Size(140, 32),
             DropDownWidth = 240,
             Margin = new Padding(0, 0, 6, 0)
         };
@@ -169,7 +172,7 @@ public class ProductsView : UserControl
 
         cbStatus = new ComboBox
         {
-            Size = new Size(130, 32),
+            Size = new Size(115, 32),
             Margin = new Padding(0, 0, 6, 0)
         };
         AppTheme.ApplyComboBoxStyle(cbStatus, 32);
@@ -179,9 +182,11 @@ public class ProductsView : UserControl
 
         btnSearch = new Button
         {
-            Text = "Tìm kiếm",
-            Size = new Size(80, 32),
-            Margin = new Padding(0)
+            Text = "🔍",
+            Size = new Size(38, 32),
+            Margin = new Padding(0),
+            Font = new Font("Segoe UI Emoji", 10f, FontStyle.Regular),
+            Cursor = Cursors.Hand
         };
         AppTheme.ApplySecondaryButton(btnSearch);
         btnSearch.Click += (s, e) => ApplyFilters();
@@ -191,11 +196,12 @@ public class ProductsView : UserControl
         pnlFiltersLeft.Controls.Add(cbStatus);
         pnlFiltersLeft.Controls.Add(btnSearch);
 
-        // Right Actions Group (Docked to Right Edge for Perfect Alignment)
+        // Right Actions Group (Docked to Right Edge with AutoSize)
         var pnlActionsRight = new FlowLayoutPanel
         {
             Dock = DockStyle.Right,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             BackColor = Color.Transparent,
@@ -205,19 +211,19 @@ public class ProductsView : UserControl
         // Mode Switch Buttons
         btnViewTable = new Button
         {
-            Text = "📋 Bảng",
-            Size = new Size(75, 32),
+            Text = "📋",
+            Size = new Size(38, 32),
             Margin = new Padding(0, 0, 4, 0),
-            Font = AppTheme.FontBodyBold,
+            Font = new Font("Segoe UI Emoji", 11f, FontStyle.Regular),
             Cursor = Cursors.Hand
         };
 
         btnViewCard = new Button
         {
-            Text = "🎴 Thẻ",
-            Size = new Size(75, 32),
+            Text = "🎴",
+            Size = new Size(38, 32),
             Margin = new Padding(0, 0, 8, 0),
-            Font = AppTheme.FontBodyBold,
+            Font = new Font("Segoe UI Emoji", 11f, FontStyle.Regular),
             Cursor = Cursors.Hand
         };
 
@@ -227,7 +233,7 @@ public class ProductsView : UserControl
         btnAddProduct = new Button
         {
             Text = "➕ Thêm SP",
-            Size = new Size(115, 32),
+            Size = new Size(100, 32),
             Margin = new Padding(0, 0, 4, 0)
         };
         AppTheme.ApplyPrimaryButton(btnAddProduct);
@@ -236,7 +242,7 @@ public class ProductsView : UserControl
         btnBarcodePrint = new Button
         {
             Text = "🏷️ In Tem Cân",
-            Size = new Size(115, 32),
+            Size = new Size(105, 32),
             Margin = new Padding(0, 0, 4, 0)
         };
         AppTheme.ApplySecondaryButton(btnBarcodePrint);
@@ -246,19 +252,10 @@ public class ProductsView : UserControl
             form.ShowDialog(this.FindForm());
         };
 
-        btnScanBarcode = new Button
-        {
-            Text = "📷 Quét Barcode",
-            Size = new Size(125, 32),
-            Margin = new Padding(0, 0, 4, 0)
-        };
-        AppTheme.ApplySecondaryButton(btnScanBarcode);
-        btnScanBarcode.Click += (s, e) => AntdUI.Message.info(this.FindForm() ?? new Form(), "Vui lòng quét barcode sản phẩm...");
-
         btnExportExcel = new Button
         {
             Text = "📥 Xuất Excel",
-            Size = new Size(115, 32),
+            Size = new Size(102, 32),
             Margin = new Padding(0)
         };
         AppTheme.ApplySuccessButton(btnExportExcel);
@@ -268,11 +265,10 @@ public class ProductsView : UserControl
         pnlActionsRight.Controls.Add(btnViewCard);
         pnlActionsRight.Controls.Add(btnAddProduct);
         pnlActionsRight.Controls.Add(btnBarcodePrint);
-        pnlActionsRight.Controls.Add(btnScanBarcode);
         pnlActionsRight.Controls.Add(btnExportExcel);
 
-        pnlTopBar.Controls.Add(pnlActionsRight);
         pnlTopBar.Controls.Add(pnlFiltersLeft);
+        pnlTopBar.Controls.Add(pnlActionsRight);
 
         // --- 3. Content Container (Table or Card Grid) ---
         pnlContentContainer = new Panel
@@ -902,7 +898,10 @@ public class ProductsView : UserControl
                 decimal cost = p.CostPrice ?? 0m;
                 decimal marginPercent = p.Price > 0 ? Math.Round(((p.Price - cost) / p.Price) * 100, 1) : 0;
                 string marginText = $"{marginPercent}% {(marginPercent < 0 ? "⚠️ Bán Lỗ" : "")}";
-                dgvProducts.Rows.Insert(0, p.ProductId, p.Barcode, p.ProductName, p.CategoryName, $"{p.Price:N0} đ", $"{cost:N0} đ", marginText, p.Unit, "🟢 Đang bán");
+                string mfg = p.ManufacturingDate.HasValue ? p.ManufacturingDate.Value.ToString("dd/MM/yyyy") : "-";
+                string exp = p.ExpiryDate.HasValue ? p.ExpiryDate.Value.ToString("dd/MM/yyyy") : "-";
+                string statusText = p.Status == ProductStatus.Active ? "🟢 Đang bán" : "🔴 Ngừng bán";
+                dgvProducts.Rows.Insert(0, p.ProductId, p.Barcode, p.ProductName, p.CategoryName ?? "Chưa phân loại", $"{p.Price:N0} đ", $"{cost:N0} đ", marginText, p.Unit, mfg, exp, statusText);
 
                 if (_currentViewMode == ViewMode.Card)
                 {
