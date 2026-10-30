@@ -23,7 +23,7 @@ public interface IProductService
     Task<ProductBarcodeDto?> GetBarcodeInfoAsync(string barcode, CancellationToken cancellationToken = default);
     Task<string> GenerateBarcodeAsync(int? productId = null, CancellationToken cancellationToken = default);
     Task<string> GenerateInternalProductCodeAsync(CancellationToken cancellationToken = default);
-    Task<string> UploadProductImageAsync(int productId, Stream imageStream, string fileName, CancellationToken cancellationToken = default);
+    Task<string> UploadProductImageAsync(int? productId, Stream imageStream, string fileName, CancellationToken cancellationToken = default);
     Task<ProductDto> UpdateProductPriceAsync(int productId, UpdatePriceRequest request, CancellationToken cancellationToken = default);
     Task<ProductPriceHistoryDto?> GetProductPriceHistoryAsync(int productId, CancellationToken cancellationToken = default);
 }

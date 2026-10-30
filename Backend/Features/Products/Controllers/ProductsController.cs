@@ -11,6 +11,7 @@ namespace SmartSupermarket.Backend.Features.Products.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Produces("application/json")]
 public class ProductsController : ControllerBase
 {
@@ -179,14 +180,13 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Tải lên Hình ảnh cho Sản phẩm (Yêu cầu Role Admin hoặc Manager)
+    /// Tải lên Hình ảnh cho Sản phẩm trực tiếp từ máy (Lưu vào máy chủ server wwwroot/images/products)
     /// </summary>
     [HttpPost("upload-image")]
-    [Authorize(Roles = "Admin,Manager")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ApiResult<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResult<object>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UploadImage([FromForm] int productId, IFormFile file, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> UploadImage([FromForm] int? productId, IFormFile file, CancellationToken cancellationToken = default)
     {
         if (file == null || file.Length == 0)
         {
