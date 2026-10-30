@@ -50,6 +50,47 @@ public class BarcodeService : IBarcodeService
         throw new InvalidOperationException("Không thể tự động sinh mã vạch EAN-13 duy nhất sau 50 lần thử.");
     }
 
+    /// <summary>
+    /// Sinh mã vạch nội bộ GS1-13 cho hàng tươi sống cân ký (Thịt, cá, rau củ)
+    /// Cấu trúc: 20 (tiền tố hàng cân) + PPPPP (mã sản phẩm 5 số) + WWWWW (khối lượng gam 5 số) + K (số kiểm tra)
+    /// </summary>
+    public string GenerateWeightedEan13(int productCode, decimal weightKg)
+    {
+        int weightGrams = (int)Math.Round(weightKg * 1000m, 0);
+        string prefix = "20";
+        string pCodeStr = (productCode % 100000).ToString("D5");
+        string weightStr = (weightGrams % 100000).ToString("D5");
+        string first12 = prefix + pCodeStr + weightStr;
+        char checkDigit = CalculateEan13CheckDigit(first12);
+        return first12 + checkDigit;
+    }
+
+    /// <summary>
+    /// Giải mã barcode hàng cân ký nội bộ 20PPPPPWWWWWK
+    /// </summary>
+    public (int ProductCode, decimal WeightKg)? ParseWeightedBarcode(string barcode)
+    {
+        if (string.IsNullOrWhiteSpace(barcode) || barcode.Length != 13 || !barcode.StartsWith("20"))
+        {
+            return null;
+        }
+
+        if (!IsValidEan13(barcode))
+        {
+            return null;
+        }
+
+        string pCodeStr = barcode.Substring(2, 5);
+        string weightStr = barcode.Substring(7, 5);
+
+        if (int.TryParse(pCodeStr, out int pCode) && int.TryParse(weightStr, out int grams))
+        {
+            return (pCode, grams / 1000m);
+        }
+
+        return null;
+    }
+
     public string GenerateQrCode(string barcode, string productName, decimal price)
     {
         if (string.IsNullOrWhiteSpace(barcode))

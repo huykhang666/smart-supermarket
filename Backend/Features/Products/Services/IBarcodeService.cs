@@ -7,6 +7,8 @@ public interface IBarcodeService
     // Barcode Generator
     string GenerateEan13(string? customPrefix = "200", int? sequence = null);
     Task<string> GenerateEan13Async(string? customPrefix = "200", CancellationToken cancellationToken = default);
+    string GenerateWeightedEan13(int productCode, decimal weightKg);
+    (int ProductCode, decimal WeightKg)? ParseWeightedBarcode(string barcode);
     string GenerateQrCode(string barcode, string productName, decimal price);
 
     // Barcode Validation

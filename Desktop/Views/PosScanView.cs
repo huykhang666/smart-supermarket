@@ -1195,6 +1195,64 @@ public class PosScanView : UserControl
         string code = txtBarcode.Text.Trim();
         if (string.IsNullOrEmpty(code)) return;
 
+        // Xử lý mã vạch tem cân nội bộ (GS1-13 in-store weighted format: 20 + 5 số ID + 5 số gram + 1 số C/D)
+        if (code.Length == 13 && code.StartsWith("20") && long.TryParse(code, out _))
+        {
+            int pId = int.Parse(code.Substring(2, 5));
+            int grams = int.Parse(code.Substring(7, 5));
+            decimal weightKg = grams / 1000m;
+
+            var weightedProd = _catalog.FirstOrDefault(p => p.Id == pId);
+            if (weightedProd == null)
+            {
+                var dsProd = DataStore.Products.FirstOrDefault(p => p.ProductId == pId);
+                if (dsProd != null)
+                {
+                    weightedProd = new CatalogProduct
+                    {
+                        Id = dsProd.ProductId,
+                        Barcode = dsProd.Barcode,
+                        Name = dsProd.ProductName,
+                        Price = dsProd.Price,
+                        Stock = 100
+                    };
+                    _catalog.Add(weightedProd);
+                }
+            }
+
+            if (weightedProd != null)
+            {
+                decimal itemPrice = Math.Round(weightedProd.Price * weightKg, 0);
+                string weightStr = $"{weightKg:0.000}kg";
+                var existingWeighted = _cart.FirstOrDefault(c => c.Barcode == code);
+                if (existingWeighted != null)
+                {
+                    existingWeighted.Quantity++;
+                }
+                else
+                {
+                    _cart.Add(new CartItem
+                    {
+                        ProductId = weightedProd.Id,
+                        Barcode = code,
+                        Name = $"{weightedProd.Name} ({weightStr})",
+                        CategoryId = weightedProd.CategoryId,
+                        Price = itemPrice,
+                        OriginalPrice = itemPrice,
+                        Quantity = 1,
+                        VatPercent = 8,
+                        ConversionRate = 1,
+                        UnitName = "Khay"
+                    });
+                }
+                RefreshCartGrid();
+                AntdUI.Message.success(this.FindForm() ?? new Form(), $"Đã quét tem cân '{weightedProd.Name}' ({weightStr}): {itemPrice:N0} đ");
+                txtBarcode.Clear();
+                txtBarcode.Focus();
+                return;
+            }
+        }
+
         var prod = _catalog.FirstOrDefault(p => p.Barcode == code);
         if (prod == null)
         {
