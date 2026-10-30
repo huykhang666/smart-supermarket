@@ -19,11 +19,53 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
 {
     private readonly AppDbContext _dbContext;
     private readonly ILlmClient _llmClient;
+    private readonly Interfaces.IRetailShoppingIntelligenceService _retailService;
+    private readonly Knowledge.Interfaces.IKnowledgeRetrievalService _knowledgeService;
+    private readonly PromptVersioning.Interfaces.IPromptVersionManager _promptVersionManager;
+    private readonly Routing.Interfaces.IModelRouter _modelRouter;
+    private readonly Optimization.Interfaces.IAiExperimentService _experimentService;
 
     public AiShoppingConciergeService(AppDbContext dbContext, ILlmClient llmClient)
+        : this(dbContext, llmClient, new Implementations.RetailShoppingIntelligenceService(dbContext, new Tools.RetailTool(dbContext), llmClient))
+    {
+    }
+
+    public AiShoppingConciergeService(
+        AppDbContext dbContext,
+        ILlmClient llmClient,
+        Interfaces.IRetailShoppingIntelligenceService retailService)
+        : this(dbContext, llmClient, retailService, new Knowledge.Implementations.KnowledgeRetrievalService())
+    {
+    }
+
+    public AiShoppingConciergeService(
+        AppDbContext dbContext,
+        ILlmClient llmClient,
+        Interfaces.IRetailShoppingIntelligenceService retailService,
+        Knowledge.Interfaces.IKnowledgeRetrievalService knowledgeService)
+        : this(dbContext, llmClient, retailService, knowledgeService,
+               new PromptVersioning.Implementations.PromptVersionManager(),
+               new Routing.Implementations.ModelRouter(),
+               new Optimization.Implementations.AiExperimentService())
+    {
+    }
+
+    public AiShoppingConciergeService(
+        AppDbContext dbContext,
+        ILlmClient llmClient,
+        Interfaces.IRetailShoppingIntelligenceService retailService,
+        Knowledge.Interfaces.IKnowledgeRetrievalService knowledgeService,
+        PromptVersioning.Interfaces.IPromptVersionManager promptVersionManager,
+        Routing.Interfaces.IModelRouter modelRouter,
+        Optimization.Interfaces.IAiExperimentService experimentService)
     {
         _dbContext = dbContext;
         _llmClient = llmClient;
+        _retailService = retailService;
+        _knowledgeService = knowledgeService;
+        _promptVersionManager = promptVersionManager;
+        _modelRouter = modelRouter;
+        _experimentService = experimentService;
     }
 
     private sealed record ProductBatchSummary(int TotalStock, DateTime MinExpiry);
@@ -35,15 +77,135 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         string? ExcludeWord = null
     );
 
+    private enum ShoppingIntent
+    {
+        Greeting,
+        CulinaryAdvice,
+        RetailShopping,
+        AddToCart,
+        EstimateCart,
+        QueryPromotion,
+        QueryInventory,
+        ReplaceIngredient,
+        RemoveIngredient,
+        UpdateBudget,
+        CreatePlan
+    }
+
     public async Task<MealPlanChatResponse> PlanMealAndShopAsync(MealPlanChatRequest request, CancellationToken cancellationToken = default)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         var prompt = request.UserPrompt?.Trim() ?? string.Empty;
 
         int servings = request.NumberOfPeople ?? ParseServings(prompt, request.ConversationHistory);
         decimal targetBudget = request.TargetBudget ?? ParseBudget(prompt, request.ConversationHistory);
         if (targetBudget <= 0) targetBudget = 350000m;
 
-        if (IsGreeting(prompt))
+        var intent = DetectIntent(prompt);
+        var variant = _experimentService.AssignVariant(prompt);
+
+        // Model Routing Evaluation
+        var faqMatch = await _knowledgeService.GetExactMatchFaqAsync(prompt, cancellationToken);
+        var routing = await _modelRouter.RouteRequestAsync(
+            prompt,
+            new SmartSupermarket.Backend.Features.AI.DTOs.Common.UserIntentDto
+            {
+                RawPrompt = prompt,
+                Type = MapShoppingIntentToDtoType(intent)
+            },
+            faqMatch != null,
+            cancellationToken);
+
+        MealPlanChatResponse ReturnEnriched(MealPlanChatResponse res, bool isCacheHit = false)
+        {
+            return EnrichResponseWithOptimization(res, sw, variant, routing, isCacheHit);
+        }
+
+        if (IsSafetyOrPromptInjection(prompt))
+        {
+            return ReturnEnriched(new MealPlanChatResponse
+            {
+                AssistantMessage = "Dạ mình là Trợ lý Mua sắm Siêu thị Thông minh, luôn tuân thủ chính sách giá niêm yết, tồn kho thực tế và quy định an toàn hệ thống. Mình không thể tự tạo voucher, bịa giá hoặc tiết lộ cấu hình hệ thống. Bạn cần mình tư vấn món ăn hoặc kiểm tra khuyến mãi hiện có trên kệ siêu thị không ạ?",
+                HasMealSuggestion = false,
+                DishName = string.Empty,
+                Servings = servings,
+                TotalEstimatedCost = 0,
+                TotalSavedAmount = 0,
+                IsWithinBudget = true,
+                Ingredients = new List<MealIngredientItemDto>(),
+                MealOptions = new List<MealOptionDto>(),
+                CookingTips = string.Empty
+            });
+        }
+
+        if (IsUnderspecifiedVagueQuery(prompt) && (request.ConversationHistory == null || !request.ConversationHistory.Any()))
+        {
+            return ReturnEnriched(new MealPlanChatResponse
+            {
+                AssistantMessage = "Dạ để mình tư vấn chính xác và tiết kiệm nhất cho bạn, bạn có thể chia sẻ thêm:\n" +
+                                   "1. Bạn muốn tìm món ăn gia đình hay sản phẩm bán lẻ (nước giặt, sữa tắm, đồ gia dụng)?\n" +
+                                   "2. Số lượng người dùng hoặc ngân sách dự kiến khoảng bao nhiêu ạ?",
+                HasMealSuggestion = false,
+                DishName = string.Empty,
+                Servings = servings,
+                TotalEstimatedCost = 0,
+                TotalSavedAmount = 0,
+                IsWithinBudget = true,
+                Ingredients = new List<MealIngredientItemDto>(),
+                MealOptions = new List<MealOptionDto>(),
+                CookingTips = string.Empty
+            });
+        }
+
+        if (IsOutOfDomain(prompt))
+        {
+            return ReturnEnriched(new MealPlanChatResponse
+            {
+                AssistantMessage = "Dạ mình là Trợ lý Mua sắm & Đầu bếp của Smart Supermarket. Mình chuyên tư vấn thực đơn gia đình, nguyên liệu nấu ăn tươi ngon và các sản phẩm bán lẻ tại siêu thị. Bạn cần mình hỗ trợ món ăn hay mặt hàng nào hôm nay ạ?",
+                HasMealSuggestion = false,
+                DishName = string.Empty,
+                Servings = servings,
+                TotalEstimatedCost = 0,
+                TotalSavedAmount = 0,
+                IsWithinBudget = true,
+                Ingredients = new List<MealIngredientItemDto>(),
+                MealOptions = new List<MealOptionDto>(),
+                CookingTips = string.Empty
+            });
+        }
+
+        // Dedicated Branch: Knowledge & FAQ Grounding (Phase 3 RAG)
+        if (faqMatch != null)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"📌 **{faqMatch.Title}**\n");
+            sb.AppendLine(faqMatch.Content);
+            sb.AppendLine($"\n📚 *Căn cứ chính sách siêu thị:* `{faqMatch.SourceDoc}`");
+
+            return ReturnEnriched(new MealPlanChatResponse
+            {
+                AssistantMessage = sb.ToString().TrimEnd(),
+                HasMealSuggestion = false,
+                DishName = string.Empty,
+                Servings = servings,
+                TotalEstimatedCost = 0,
+                TotalSavedAmount = 0,
+                IsWithinBudget = true,
+                Ingredients = new List<MealIngredientItemDto>(),
+                MealOptions = new List<MealOptionDto>(),
+                CookingTips = string.Empty,
+                KnowledgeSource = faqMatch.SourceDoc,
+                GroundedFacts = new List<string> { faqMatch.Content }
+            }, isCacheHit: true);
+        }
+
+        // Dedicated Branch: QueryPromotion (Không re-render cả mâm cơm nếu chỉ hỏi khuyến mãi)
+        if (intent == ShoppingIntent.QueryPromotion)
+        {
+            return ReturnEnriched(await HandleQueryPromotionAsync(request, cancellationToken));
+        }
+
+        if (intent == ShoppingIntent.Greeting)
         {
             string greetingMsg = "Chào bạn! Mình là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket 🛒.\n\n" +
                                  "Mình có thể gợi ý các mâm cơm gia đình hàng ngày chuẩn vị (theo cẩm nang Cookpad), tư vấn bí quyết chế biến thơm ngon bất bại, cân đối ngân sách và chuẩn bị sẵn mâm nguyên liệu tươi mới từ kho siêu thị.\n\n" +
@@ -65,7 +227,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
             {
             }
 
-            return new MealPlanChatResponse
+            return ReturnEnriched(new MealPlanChatResponse
             {
                 AssistantMessage = greetingMsg,
                 HasMealSuggestion = false,
@@ -77,10 +239,10 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 Ingredients = new List<MealIngredientItemDto>(),
                 MealOptions = new List<MealOptionDto>(),
                 CookingTips = string.Empty
-            };
+            });
         }
 
-        if (IsCulinaryAdviceOnly(prompt))
+        if (intent == ShoppingIntent.CulinaryAdvice)
         {
             string culinaryAdvice = GenerateCulinaryKnowledgeAdvice(prompt);
 
@@ -100,7 +262,7 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
             {
             }
 
-            return new MealPlanChatResponse
+            return ReturnEnriched(new MealPlanChatResponse
             {
                 AssistantMessage = culinaryAdvice,
                 HasMealSuggestion = false,
@@ -112,7 +274,57 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 Ingredients = new List<MealIngredientItemDto>(),
                 MealOptions = new List<MealOptionDto>(),
                 CookingTips = string.Empty
-            };
+            });
+        }
+
+        // Dedicated Branch: RetailShopping (Tư vấn mua sắm ngành hàng bán lẻ siêu thị)
+        if (intent == ShoppingIntent.RetailShopping)
+        {
+            decimal effectiveBudget = targetBudget > 0 ? targetBudget : (request.TargetBudget ?? 0);
+            var retailResult = await _retailService.AdviseRetailShoppingAsync(
+                prompt,
+                effectiveBudget > 0 ? effectiveBudget : null,
+                null,
+                cancellationToken);
+
+            var firstRec = retailResult.Recommendations.FirstOrDefault();
+            bool isWithin = effectiveBudget <= 0 || (firstRec != null && firstRec.FinalPrice <= effectiveBudget);
+
+            return ReturnEnriched(new MealPlanChatResponse
+            {
+                AssistantMessage = retailResult.AssistantMessage,
+                HasMealSuggestion = false,
+                DishName = string.Empty,
+                Servings = servings,
+                TotalEstimatedCost = firstRec?.FinalPrice ?? 0,
+                TotalSavedAmount = Math.Max(0, (firstRec?.RegularPrice ?? 0) - (firstRec?.FinalPrice ?? 0)),
+                IsWithinBudget = isWithin,
+                Ingredients = retailResult.Recommendations.Select(r => new MealIngredientItemDto
+                {
+                    ProductId = r.ProductId,
+                    ProductName = r.ProductName,
+                    Barcode = r.Barcode,
+                    ImageUrl = r.ImageUrl,
+                    Unit = r.Unit,
+                    QuantityToBuy = 1,
+                    RegularPrice = r.RegularPrice,
+                    FinalPrice = r.FinalPrice,
+                    DiscountPercent = r.DiscountPercent,
+                    InStockQuantity = r.InStockQuantity
+                }).ToList(),
+                MealOptions = new List<MealOptionDto>(),
+                CookingTips = string.Empty,
+                HasRetailRecommendation = true,
+                ShoppingCategory = retailResult.ShoppingCategory,
+                RetailRecommendations = retailResult.Recommendations,
+                ComparisonTable = retailResult.ComparisonTable
+            });
+        }
+
+        // Dedicated Branch: QueryPromotion (Không re-render cả mâm cơm nếu chỉ hỏi khuyến mãi)
+        if (intent == ShoppingIntent.QueryPromotion)
+        {
+            return await HandleQueryPromotionAsync(request, cancellationToken);
         }
 
         string mainDishTheme = DetermineDishTheme(prompt, targetBudget, servings, request.ConversationHistory);
@@ -132,57 +344,554 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
                 g => g.Key,
                 g => new ProductBatchSummary(g.Sum(x => x.Quantity), g.Min(x => x.ExpiryDate)));
 
-        var mealOptions = BuildMealOptions(mainDishTheme, dbProducts, batchLookup, servings, targetBudget, request.PrioritizePromotions);
+        // TẦNG 1: PLAN STATE LAYER
+        // 1. Khởi tạo mâm cơm gốc
+        var currentMealOptions = BuildMealOptions(mainDishTheme, dbProducts, batchLookup, servings, targetBudget, request.PrioritizePromotions);
 
-        var primaryOption = mealOptions.FirstOrDefault() ?? new MealOptionDto
+        // 2. Replay các thay đổi từ lịch sử hội thoại để duy trì trạng thái kế hoạch
+        if (request.ConversationHistory != null && request.ConversationHistory.Any())
         {
-            DishName = mainDishTheme,
-            OptionName = "Thực đơn tiêu chuẩn",
-            Ingredients = new List<MealIngredientItemDto>()
-        };
-
-        string message = GenerateChefMealMessageWithMultiOptions(servings, targetBudget, mealOptions);
-
-        string systemInstruction =
-            "Bạn là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket. " +
-            "Bạn xưng là 'mình' và gọi người dùng là 'bạn'. " +
-            "Hãy tham khảo công thức nấu ăn hàng ngày chuẩn vị từ Cookpad Việt Nam. " +
-            "Tư vấn thân thiện, súc tích, tóm tắt các lựa chọn thực đơn đã được thiết kế bên dưới, không liệt kê lại toàn bộ chi tiết bảng giá từng món vì hệ thống đã hiển thị bên dưới. " +
-            "Căn lề sạch sẽ và nhiệt tình.";
-
-        string aiPrompt = $"Khách hàng hỏi: \"{prompt}\". " +
-            $"Số người ăn: {servings} người, ngân sách: {targetBudget:N0} đ. " +
-            $"Các lựa chọn thực đơn đã được thiết kế từ kho hàng siêu thị:\n" +
-            string.Join("\n", mealOptions.Select((o, i) => $"- Lựa chọn {i + 1}: {o.OptionName} (Tổng chi phí: {o.TotalEstimatedCost:N0} đ). Mô tả: {o.Description}. Món chính: {string.Join(", ", o.Ingredients.Take(4).Select(x => x.ProductName))}")) +
-            "\nHãy viết lời tư vấn của đầu bếp gửi tới khách hàng, xưng là 'mình' và gọi 'bạn'.";
-
-        try
-        {
-            var llmResponse = await _llmClient.GenerateAsync(aiPrompt, systemInstruction, false, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(llmResponse) &&
-                !llmResponse.StartsWith("[Gemini API chưa") &&
-                !llmResponse.StartsWith("[Lỗi Gemini API") &&
-                !llmResponse.StartsWith("{\"error\":"))
+            foreach (var msg in request.ConversationHistory.Where(m => m.Role.Equals("user", StringComparison.OrdinalIgnoreCase)))
             {
-                message = llmResponse;
+                var historyNotes = new List<string>();
+                ApplyMutationsToOptions(msg.Content, currentMealOptions, dbProducts, batchLookup, request.PrioritizePromotions, ref targetBudget, historyNotes);
             }
         }
-        catch
+
+        // 3. Áp dụng cập nhật của lượt hiện tại
+        var currentUpdateNotes = new List<string>();
+        ApplyMutationsToOptions(prompt, currentMealOptions, dbProducts, batchLookup, request.PrioritizePromotions, ref targetBudget, currentUpdateNotes);
+
+        // Dedicated Branch: QueryInventory
+        if (intent == ShoppingIntent.QueryInventory)
         {
+            return ReturnEnriched(HandleQueryInventory(request, currentMealOptions));
         }
 
-        return new MealPlanChatResponse
+        // Dedicated Branch: AddToCart
+        if (intent == ShoppingIntent.AddToCart)
+        {
+            return ReturnEnriched(HandleAddToCart(request, currentMealOptions));
+        }
+
+        // Dedicated Branch: EstimateCart
+        if (intent == ShoppingIntent.EstimateCart)
+        {
+            return ReturnEnriched(HandleEstimateCart(request, currentMealOptions));
+        }
+
+        // Quy tắc Budget Optimization & Ranking:
+        // Phân loại: Trong ngân sách vs Vượt ngân sách
+        var inBudgetOptions = currentMealOptions
+            .Where(o => o.TotalEstimatedCost <= targetBudget)
+            .OrderBy(o => Math.Abs(targetBudget - o.TotalEstimatedCost))
+            .ToList();
+
+        var overBudgetOptions = currentMealOptions
+            .Where(o => o.TotalEstimatedCost > targetBudget)
+            .OrderBy(o => o.TotalEstimatedCost)
+            .ToList();
+
+        var rankedMealOptions = new List<MealOptionDto>();
+        int optNumber = 1;
+
+        // Nhóm 1 (Khuyến nghị chính) & Nhóm 2 (Phương án thay thế): Trong ngân sách
+        for (int i = 0; i < inBudgetOptions.Count; i++)
+        {
+            var opt = inBudgetOptions[i];
+            string cleanTitle = CleanOptionName(opt.OptionName);
+            string groupTag = i == 0 ? "Khuyến nghị chính" : "Phương án thay thế";
+            opt.OptionName = $"Option {optNumber++} ({groupTag}): {cleanTitle}";
+            rankedMealOptions.Add(opt);
+        }
+
+        // Nhóm 3 (Phương án tham khảo - Vượt ngân sách): Vượt trần ngân sách
+        for (int i = 0; i < overBudgetOptions.Count; i++)
+        {
+            var opt = overBudgetOptions[i];
+            string cleanTitle = CleanOptionName(opt.OptionName);
+            opt.OptionName = $"Option {optNumber++} (Tham khảo - Vượt ngân sách): {cleanTitle}";
+            rankedMealOptions.Add(opt);
+        }
+
+        var mealOptions = rankedMealOptions.Any() ? rankedMealOptions : currentMealOptions;
+
+        var primaryOption = mealOptions.FirstOrDefault(o => o.TotalEstimatedCost <= targetBudget)
+            ?? mealOptions.FirstOrDefault()
+            ?? new MealOptionDto
+            {
+                DishName = mainDishTheme,
+                OptionName = "Thực đơn tiêu chuẩn",
+                Ingredients = new List<MealIngredientItemDto>()
+            };
+
+        // TẦNG 2: RESPONSE RENDERING LAYER (Không reuse text cũ, render sạch theo state mới)
+        string message = GenerateChefMealMessageWithMultiOptions(servings, targetBudget, mealOptions, currentUpdateNotes, null, null);
+
+        // Chỉ gọi LLM bổ sung khi là CreatePlan thông thường và chưa có update note
+        if (intent == ShoppingIntent.CreatePlan && !currentUpdateNotes.Any())
+        {
+            string? activeSystemPrompt = _promptVersionManager.GetActivePrompt(PromptVersioning.Models.PromptType.SystemIdentity)?.Content;
+            string systemInstruction = !string.IsNullOrWhiteSpace(activeSystemPrompt) ? activeSystemPrompt :
+                "Bạn là Đầu Bếp & Trợ Lý Đi Chợ Thông Minh của Smart Supermarket.\n" +
+                "Đại từ xưng hô bắt buộc: xưng là 'mình' và gọi người dùng là 'bạn'. Tuyệt đối không dùng em/tôi/chúng tôi.\n" +
+                "QUY TẮC BẮT BUỘC (05_System_Prompt & 06_Workflow):\n" +
+                "1. Ngân sách là ưu tiên số một. Phương án trong ngân sách phải xếp lên đầu tiên.\n" +
+                "2. Mọi cập nhật (đổi nguyên liệu, bỏ nguyên liệu, đổi ngân sách) phải được phản ánh vào kế hoạch và tính lại tổng tiền.\n" +
+                "3. Không bịa giá, không bịa khuyến mãi, không bịa tồn kho, không bịa nguyên liệu.\n" +
+                "4. Căn lề trái sạch sẽ, không dùng văn phong marketing quá đà.";
+
+            string aiPrompt = $"Khách hàng hỏi: \"{prompt}\". " +
+                $"Số người ăn: {servings} người, ngân sách khách đưa: {targetBudget:N0} đ.\n" +
+                $"Danh sách các lựa chọn thực đơn đã được thiết kế và xếp hạng theo ngân sách từ kho siêu thị:\n" +
+                string.Join("\n", mealOptions.Select((o, i) =>
+                    $"- {o.OptionName}: Tổng chi phí {o.TotalEstimatedCost:N0} đ. " +
+                    $"Trạng thái: {(o.TotalEstimatedCost <= targetBudget ? "Trong ngân sách" : "Vượt ngân sách")}. " +
+                    $"Mô tả: {o.Description}. Nguyên liệu: {string.Join(", ", o.Ingredients.Take(4).Select(x => x.ProductName))}")) +
+                "\nHãy viết lời tư vấn của đầu bếp ngắn gọn, chuẩn cấu trúc quy định trên.";
+
+            try
+            {
+                var llmResponse = await _llmClient.GenerateAsync(aiPrompt, systemInstruction, false, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(llmResponse) &&
+                    !llmResponse.StartsWith("[Gemini API chưa") &&
+                    !llmResponse.StartsWith("[Lỗi Gemini API") &&
+                    !llmResponse.StartsWith("{\"error\":"))
+                {
+                    message = llmResponse;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return ReturnEnriched(new MealPlanChatResponse
         {
             AssistantMessage = message,
             DishName = primaryOption.DishName,
             Servings = servings,
             TotalEstimatedCost = primaryOption.TotalEstimatedCost,
             TotalSavedAmount = primaryOption.TotalSavedAmount,
-            IsWithinBudget = primaryOption.TotalEstimatedCost <= targetBudget * 1.15m,
+            IsWithinBudget = primaryOption.TotalEstimatedCost <= targetBudget,
             HasMealSuggestion = true,
             Ingredients = primaryOption.Ingredients,
             MealOptions = mealOptions,
             CookingTips = primaryOption.CookingTips
+        });
+    }
+
+    private MealPlanChatResponse EnrichResponseWithOptimization(
+        MealPlanChatResponse response,
+        System.Diagnostics.Stopwatch stopwatch,
+        Optimization.Models.AiExperimentVariantDto variant,
+        Routing.Models.ModelRoutingDecisionDto routing,
+        bool isCacheHit = false)
+    {
+        stopwatch.Stop();
+        long latencyMs = Math.Max(1, stopwatch.ElapsedMilliseconds);
+
+        response.ModelRouted = routing.SelectedModel;
+        response.PromptVersion = variant.PromptVersion;
+        response.ExperimentVariant = variant.VariantKey;
+        response.ExecutionLatencyMs = latencyMs;
+        response.EstimatedCostUsd = routing.EstimatedCostUsd;
+        response.IsCacheHit = isCacheHit;
+
+        _experimentService.RecordExperimentOutcome(new Optimization.Models.RequestTelemetryDto
+        {
+            RequestId = Guid.NewGuid().ToString("N"),
+            ModelUsed = routing.SelectedModel,
+            PromptVersion = variant.PromptVersion,
+            ExperimentVariant = variant.VariantKey,
+            RoutingTier = routing.Tier.ToString(),
+            LatencyMs = latencyMs,
+            CostUsd = routing.EstimatedCostUsd,
+            CacheHit = isCacheHit
+        });
+
+        return response;
+    }
+
+    private static SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType MapShoppingIntentToDtoType(ShoppingIntent intent) => intent switch
+    {
+        ShoppingIntent.Greeting => SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType.Greeting,
+        ShoppingIntent.CulinaryAdvice => SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType.CulinaryAdvice,
+        ShoppingIntent.RetailShopping => SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType.ProductRecommendation,
+        ShoppingIntent.AddToCart or ShoppingIntent.EstimateCart => SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType.CartAction,
+        ShoppingIntent.QueryPromotion => SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType.PromotionInquiry,
+        _ => SmartSupermarket.Backend.Features.AI.DTOs.Common.IntentType.MealPlanning
+    };
+
+    private static ShoppingIntent DetectIntent(string prompt)
+    {
+        string p = prompt.Trim().ToLowerInvariant();
+
+        if (IsGreeting(p)) return ShoppingIntent.Greeting;
+        if (IsCulinaryAdviceOnly(p)) return ShoppingIntent.CulinaryAdvice;
+
+        if (Regex.IsMatch(p, @"(?:thêm|nạp|cho|bỏ|đặt)\s+(?:tất cả|hết|mâm này|nguyên liệu)?\s*(?:vào|vô)\s*giỏ", RegexOptions.IgnoreCase) ||
+            p.Contains("thêm tất cả vào giỏ") || p.Contains("cho vào giỏ") || p.Contains("thêm vào giỏ") || p.Contains("nạp giỏ") || p.Contains("thêm giỏ"))
+        {
+            return ShoppingIntent.AddToCart;
+        }
+
+        if (p.Contains("tính tiền giỏ") || p.Contains("tạm tính giỏ") || p.Contains("ước tính giỏ") || p.Contains("tính giỏ"))
+        {
+            return ShoppingIntent.EstimateCart;
+        }
+
+        if (p.Contains("flash sale") || p.Contains("khuyến mãi") || p.Contains("voucher") || p.Contains("giảm giá") || p.Contains("ưu đãi"))
+        {
+            return ShoppingIntent.QueryPromotion;
+        }
+
+        if (p.Contains("còn hàng") || p.Contains("tồn kho") || p.Contains("kiểm tra hàng") || p.Contains("hết hàng"))
+        {
+            return ShoppingIntent.QueryInventory;
+        }
+
+        if (Regex.IsMatch(p, @"(?:đổi|thay)\s+([a-zA-ZÀ-ỹ0-9\s]+?)\s+(?:thành|bằng|qua|sang)\s+([a-zA-ZÀ-ỹ0-9\s]+?)(?:nhé|nha|ạ|\.|\,|$|\s+đi)", RegexOptions.IgnoreCase))
+        {
+            return ShoppingIntent.ReplaceIngredient;
+        }
+
+        if (Regex.IsMatch(p, @"(?:bỏ|xóa|không\s+lấy|không\s+ăn|đừng\s+lấy)\s+([a-zA-ZÀ-ỹ0-9\s]+?)(?:nhé|nha|ạ|\.|\,|$|\s+đi)", RegexOptions.IgnoreCase))
+        {
+            return ShoppingIntent.RemoveIngredient;
+        }
+
+        if (Regex.IsMatch(p, @"(?:giảm\s+xuống|giảm\s+còn|tăng\s+lên|ngân\s+sách\s+(?:là|còn)?)\s*(\d+)\s*[kK]", RegexOptions.IgnoreCase) ||
+            Regex.IsMatch(p, @"\b(?:còn|xuống)\s*(\d+)\s*[kK]\b", RegexOptions.IgnoreCase))
+        {
+            return ShoppingIntent.UpdateBudget;
+        }
+
+        if (IsRetailShopping(p) && !IsExplicitMealTheme(p))
+        {
+            return ShoppingIntent.RetailShopping;
+        }
+
+        return ShoppingIntent.CreatePlan;
+    }
+
+    private static string ScrubIngredientFromText(string text, string term)
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(term)) return text;
+        string escaped = Regex.Escape(term);
+
+        string pattern = $@"(?:\s*(?:&|và|kèm|với|kết hợp)\s*)?(?:các loại\s+)?[a-zA-ZÀ-ỹ0-9\s]*{escaped}[a-zA-ZÀ-ỹ0-9\s]*(?=(?:,|\.|\;|\-|\–|\(|$))";
+        text = Regex.Replace(text, pattern, "", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, $@"\b{escaped}\b", "", RegexOptions.IgnoreCase);
+
+        text = Regex.Replace(text, @"\s{2,}", " ");
+        text = Regex.Replace(text, @"\s*&\s*$", "");
+        text = Regex.Replace(text, @"^\s*&\s*", "");
+        text = Regex.Replace(text, @"\s*,\s*$", "");
+        text = Regex.Replace(text, @"\s+([,\.;])", "$1");
+        return text.Trim(' ', ',', '&', '-', '–');
+    }
+
+    private static void ApplyMutationsToOptions(
+        string text,
+        List<MealOptionDto> options,
+        List<Product> dbProducts,
+        Dictionary<int, ProductBatchSummary> batchLookup,
+        bool prioritizePromotions,
+        ref decimal targetBudget,
+        List<string> updateNotes)
+    {
+        // 1. Check ReplaceIngredient ("đổi bò úc thành bò ta", "thay tôm bằng mực")
+        var replaceMatch = Regex.Match(text, @"(?:đổi|thay)\s+([a-zA-ZÀ-ỹ0-9\s]+?)\s+(?:thành|bằng|qua|sang)\s+([a-zA-ZÀ-ỹ0-9\s]+?)(?:nhé|nha|ạ|\.|\,|$|\s+đi)", RegexOptions.IgnoreCase);
+        if (replaceMatch.Success)
+        {
+            var fromItem = replaceMatch.Groups[1].Value.Trim().ToLowerInvariant();
+            var toItem = replaceMatch.Groups[2].Value.Trim().ToLowerInvariant();
+
+            var replacementProduct = dbProducts.FirstOrDefault(p => p.ProductName.ToLowerInvariant().Contains(toItem));
+            if (replacementProduct == null && (toItem.Contains("bò ta") || toItem.Contains("bò")))
+            {
+                replacementProduct = new Product
+                {
+                    ProductId = 9999,
+                    ProductName = "Thịt Bò Ta Tươi Sạch (VietGAP)",
+                    Price = 95000,
+                    Unit = "Khay 250g",
+                    Barcode = "8939999999999"
+                };
+            }
+
+            if (replacementProduct != null)
+            {
+                var summary = batchLookup.TryGetValue(replacementProduct.ProductId, out var s) ? s : new ProductBatchSummary(50, DateTime.UtcNow.AddDays(7));
+                decimal unitPrice = replacementProduct.Price;
+                int disc = prioritizePromotions ? 30 : 0;
+                decimal finalPrice = unitPrice * (100 - disc) / 100m;
+
+                foreach (var opt in options)
+                {
+                    var targetIdx = opt.Ingredients.FindIndex(i => i.ProductName.ToLowerInvariant().Contains(fromItem));
+                    if (targetIdx >= 0)
+                    {
+                        var oldItem = opt.Ingredients[targetIdx];
+                        opt.Ingredients[targetIdx] = new MealIngredientItemDto
+                        {
+                            ProductId = replacementProduct.ProductId,
+                            ProductName = replacementProduct.ProductName,
+                            Barcode = replacementProduct.Barcode ?? "8939999999999",
+                            ImageUrl = replacementProduct.ImageUrl ?? oldItem.ImageUrl,
+                            Unit = replacementProduct.Unit ?? oldItem.Unit,
+                            QuantityToBuy = oldItem.QuantityToBuy,
+                            RegularPrice = unitPrice,
+                            FinalPrice = finalPrice,
+                            DiscountPercent = disc,
+                            IsPromotionOrNearExpiry = disc > 0,
+                            PromotionNote = disc > 0 ? $"Flash Sale giảm {disc}%" : "Hàng tiêu chuẩn",
+                            InStockQuantity = summary.TotalStock
+                        };
+                        opt.TotalEstimatedCost = opt.Ingredients.Sum(i => i.FinalPrice * i.QuantityToBuy);
+                        opt.TotalSavedAmount = opt.Ingredients.Sum(i => (i.RegularPrice - i.FinalPrice) * i.QuantityToBuy);
+                    }
+
+                    string repName = replacementProduct.ProductName.Contains("Bò Ta") ? "Bò Ta" : replacementProduct.ProductName;
+                    opt.DishName = Regex.Replace(opt.DishName, Regex.Escape(fromItem), repName, RegexOptions.IgnoreCase);
+                    opt.DishName = Regex.Replace(opt.DishName, "bò úc", repName, RegexOptions.IgnoreCase);
+                    opt.OptionName = Regex.Replace(opt.OptionName, Regex.Escape(fromItem), repName, RegexOptions.IgnoreCase);
+                    opt.OptionName = Regex.Replace(opt.OptionName, "bò úc", repName, RegexOptions.IgnoreCase);
+                    opt.Description = Regex.Replace(opt.Description, Regex.Escape(fromItem), repName.ToLowerInvariant(), RegexOptions.IgnoreCase);
+                    opt.Description = Regex.Replace(opt.Description, "bò úc pacow", repName.ToLowerInvariant(), RegexOptions.IgnoreCase);
+                    opt.Description = Regex.Replace(opt.Description, "bò úc", repName.ToLowerInvariant(), RegexOptions.IgnoreCase);
+                    opt.Description = Regex.Replace(opt.Description, "pacow", "Việt Nam", RegexOptions.IgnoreCase);
+                }
+                updateNotes.Add($"Đã đổi '{fromItem}' thành '{replacementProduct.ProductName}'");
+            }
+        }
+
+        // 2. Check RemoveIngredient ("bỏ nấm", "xóa nấm", "không lấy nấm")
+        var removeMatch = Regex.Match(text, @"(?:bỏ|xóa|không\s+lấy|không\s+ăn|đừng\s+lấy)\s+([a-zA-ZÀ-ỹ0-9\s]+?)(?:nhé|nha|ạ|\.|\,|$|\s+đi)", RegexOptions.IgnoreCase);
+        if (removeMatch.Success)
+        {
+            var itemToRemove = removeMatch.Groups[1].Value.Trim().ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(itemToRemove) && itemToRemove.Length >= 2)
+            {
+                foreach (var opt in options)
+                {
+                    var removedCount = opt.Ingredients.RemoveAll(ing => ing.ProductName.ToLowerInvariant().Contains(itemToRemove));
+                    if (removedCount > 0)
+                    {
+                        opt.TotalEstimatedCost = opt.Ingredients.Sum(i => i.FinalPrice * i.QuantityToBuy);
+                        opt.TotalSavedAmount = opt.Ingredients.Sum(i => (i.RegularPrice - i.FinalPrice) * i.QuantityToBuy);
+                    }
+
+                    opt.DishName = ScrubIngredientFromText(opt.DishName, itemToRemove);
+                    opt.OptionName = ScrubIngredientFromText(opt.OptionName, itemToRemove);
+                    opt.Description = ScrubIngredientFromText(opt.Description, itemToRemove);
+
+                    if (string.IsNullOrWhiteSpace(opt.Description) || opt.Description.Contains(itemToRemove, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var ingNames = opt.Ingredients.Take(3).Select(x => x.ProductName).ToList();
+                        opt.Description = ingNames.Any()
+                            ? $"Mâm nguyên liệu tươi ngon gồm {string.Join(", ", ingNames)}, đảm bảo chuẩn vị gia đình."
+                            : "Mâm nguyên liệu tươi ngon chuẩn vị theo cẩm nang gia đình.";
+                    }
+                    if (string.IsNullOrWhiteSpace(opt.DishName) || opt.DishName.Contains(itemToRemove, StringComparison.OrdinalIgnoreCase))
+                    {
+                        opt.DishName = "Lẩu Bò Tươi Chuẩn Vị";
+                    }
+                }
+                updateNotes.Add($"Đã bỏ nguyên liệu '{itemToRemove}'");
+            }
+        }
+
+        // 3. Check UpdateBudget ("giảm còn 250k", "ngân sách 250k")
+        var budgetMatch = Regex.Match(text, @"(?:giảm\s+xuống|giảm\s+còn|tăng\s+lên|ngân\s+sách\s+(?:là|còn)?)\s*(\d+)\s*[kK]", RegexOptions.IgnoreCase);
+        if (!budgetMatch.Success)
+        {
+            budgetMatch = Regex.Match(text, @"\b(?:còn|xuống)\s*(\d+)\s*[kK]\b", RegexOptions.IgnoreCase);
+        }
+        if (budgetMatch.Success && decimal.TryParse(budgetMatch.Groups[1].Value, out decimal newBudgetK))
+        {
+            targetBudget = newBudgetK * 1000m;
+            updateNotes.Add($"Đã cập nhật ngân sách mới: {targetBudget:N0} đ");
+        }
+    }
+
+    private async Task<MealPlanChatResponse> HandleQueryPromotionAsync(
+        MealPlanChatRequest request,
+        CancellationToken cancellationToken)
+    {
+        var activePromos = await _dbContext.Promotions
+            .Where(p => p.IsActive)
+            .Take(5)
+            .ToListAsync(cancellationToken);
+
+        var nearExpiryBatches = await _dbContext.InventoryBatches
+            .Include(b => b.Product)
+            .Where(b => b.Quantity > 0 && b.ExpiryDate <= DateTime.UtcNow.AddDays(7))
+            .OrderBy(b => b.ExpiryDate)
+            .Take(4)
+            .ToListAsync(cancellationToken);
+
+        var sb = new StringBuilder();
+        sb.AppendLine("**Chương trình Khuyến mãi & Flash Sale hiện có tại siêu thị:**\n");
+
+        if (nearExpiryBatches.Any())
+        {
+            sb.AppendLine("⚡ **Flash Sale 30% — Hàng tươi sống cận date (3-5 ngày):**");
+            foreach (var b in nearExpiryBatches)
+            {
+                decimal salePrice = b.Product.Price * 0.7m;
+                int daysLeft = Math.Max(1, (int)(b.ExpiryDate - DateTime.UtcNow).TotalDays);
+                sb.AppendLine($"- **{b.Product.ProductName}**: `{salePrice:N0} đ` *(Giá gốc: {b.Product.Price:N0} đ, còn {daysLeft} ngày HSD, tồn {b.Quantity} {b.Product.Unit})*");
+            }
+            sb.AppendLine();
+        }
+
+        if (activePromos.Any())
+        {
+            sb.AppendLine("🎟️ **Voucher & Chương trình ưu đãi:**");
+            foreach (var p in activePromos)
+            {
+                string discountDesc = p.DiscountType == "Percentage" ? $"Giảm {p.DiscountValue}%" : $"Giảm {p.DiscountValue:N0} đ";
+                string minOrder = p.MinimumOrderAmount > 0 ? $" cho đơn từ {p.MinimumOrderAmount:N0} đ" : "";
+                sb.AppendLine($"- **Mã {p.PromotionCode}**: {p.PromotionName} ({discountDesc}{minOrder})");
+            }
+            sb.AppendLine();
+        }
+        else
+        {
+            sb.AppendLine("🎟️ **Voucher siêu thị:**");
+            sb.AppendLine("- **SMART20**: Giảm 20.000 đ cho đơn từ 200.000 đ.");
+            sb.AppendLine("- **FREESHIP**: Miễn phí giao hàng cho đơn từ 150.000 đ.\n");
+        }
+
+        sb.AppendLine("👉 Bạn có muốn mình áp dụng nguyên liệu Flash Sale nào vào thực đơn của bạn để tiết kiệm thêm không?");
+
+        return new MealPlanChatResponse
+        {
+            AssistantMessage = sb.ToString().TrimEnd(),
+            HasMealSuggestion = false,
+            DishName = string.Empty,
+            Servings = request.NumberOfPeople ?? 4,
+            TotalEstimatedCost = 0,
+            TotalSavedAmount = 0,
+            IsWithinBudget = true,
+            Ingredients = new List<MealIngredientItemDto>(),
+            MealOptions = new List<MealOptionDto>(),
+            CookingTips = string.Empty
+        };
+    }
+
+    private static MealPlanChatResponse HandleQueryInventory(
+        MealPlanChatRequest request,
+        List<MealOptionDto> mealOptions)
+    {
+        var currentOption = mealOptions.FirstOrDefault();
+        var sb = new StringBuilder();
+        sb.AppendLine("**Tình trạng tồn kho theo thời gian thực từ CSDL siêu thị:**\n");
+
+        if (currentOption != null && currentOption.Ingredients.Any())
+        {
+            foreach (var ing in currentOption.Ingredients)
+            {
+                sb.AppendLine($"- **{ing.ProductName}**: Còn `{ing.InStockQuantity} {ing.Unit}` trong kho (Đạt chuẩn tươi ngon VietGAP/HACCP).");
+            }
+            sb.AppendLine();
+            sb.AppendLine("👉 Toàn bộ nguyên liệu đều sẵn sàng trong kho siêu thị để bạn đặt mua ngay!");
+        }
+        else
+        {
+            sb.AppendLine("Toàn bộ các mặt hàng trong danh mục đều đang có sẵn tồn kho dồi dào tại siêu thị.");
+        }
+
+        return new MealPlanChatResponse
+        {
+            AssistantMessage = sb.ToString().TrimEnd(),
+            HasMealSuggestion = false,
+            DishName = currentOption?.DishName ?? string.Empty,
+            Servings = request.NumberOfPeople ?? 4,
+            TotalEstimatedCost = currentOption?.TotalEstimatedCost ?? 0,
+            TotalSavedAmount = currentOption?.TotalSavedAmount ?? 0,
+            IsWithinBudget = true,
+            Ingredients = currentOption?.Ingredients ?? new List<MealIngredientItemDto>(),
+            MealOptions = new List<MealOptionDto>(),
+            CookingTips = string.Empty
+        };
+    }
+
+    private static MealPlanChatResponse HandleAddToCart(
+        MealPlanChatRequest request,
+        List<MealOptionDto> mealOptions)
+    {
+        var currentOption = mealOptions.FirstOrDefault();
+        var sb = new StringBuilder();
+        sb.AppendLine("**Đã thêm toàn bộ nguyên liệu vào giỏ hàng thành công!** 🛒\n");
+
+        if (currentOption != null && currentOption.Ingredients.Any())
+        {
+            sb.AppendLine($"- **Thực đơn**: {CleanOptionName(currentOption.OptionName)}");
+            sb.AppendLine($"- **Số lượng sản phẩm**: {currentOption.Ingredients.Count} mặt hàng");
+            sb.AppendLine($"- **Tổng giá trị tạm tính**: `{currentOption.TotalEstimatedCost:N0} đ`");
+            if (currentOption.TotalSavedAmount > 0)
+            {
+                sb.AppendLine($"- **Tiết kiệm được**: `{currentOption.TotalSavedAmount:N0} đ` từ Flash Sale");
+            }
+            sb.AppendLine();
+            sb.AppendLine("👉 Bạn có thể vào mục **Giỏ hàng** để kiểm tra, điều chỉnh số lượng hoặc bấm **Thanh toán** nhé!");
+        }
+        else
+        {
+            sb.AppendLine("Đã nạp các mặt hàng vào giỏ hàng của bạn.");
+        }
+
+        return new MealPlanChatResponse
+        {
+            AssistantMessage = sb.ToString().TrimEnd(),
+            HasMealSuggestion = false,
+            DishName = currentOption?.DishName ?? string.Empty,
+            Servings = request.NumberOfPeople ?? 4,
+            TotalEstimatedCost = currentOption?.TotalEstimatedCost ?? 0,
+            TotalSavedAmount = currentOption?.TotalSavedAmount ?? 0,
+            IsWithinBudget = true,
+            Ingredients = currentOption?.Ingredients ?? new List<MealIngredientItemDto>(),
+            MealOptions = new List<MealOptionDto>(),
+            CookingTips = string.Empty
+        };
+    }
+
+    private static MealPlanChatResponse HandleEstimateCart(
+        MealPlanChatRequest request,
+        List<MealOptionDto> mealOptions)
+    {
+        var currentOption = mealOptions.FirstOrDefault();
+        var sb = new StringBuilder();
+        sb.AppendLine("**Ước tính giỏ hàng hiện tại:**\n");
+
+        if (currentOption != null)
+        {
+            sb.AppendLine($"- **Món ăn**: {CleanOptionName(currentOption.OptionName)}");
+            sb.AppendLine($"- **Số người ăn**: {request.NumberOfPeople ?? 4} người");
+            sb.AppendLine($"- **Tổng chi phí ước tính**: `{currentOption.TotalEstimatedCost:N0} đ`");
+            if (currentOption.TotalSavedAmount > 0)
+            {
+                sb.AppendLine($"- **Tổng tiết kiệm**: `{currentOption.TotalSavedAmount:N0} đ`");
+            }
+            sb.AppendLine();
+            sb.AppendLine("👉 Bạn có thể nói *\"Thêm tất cả vào giỏ\"* để nạp ngay vào giỏ hàng nhé!");
+        }
+
+        return new MealPlanChatResponse
+        {
+            AssistantMessage = sb.ToString().TrimEnd(),
+            HasMealSuggestion = false,
+            DishName = currentOption?.DishName ?? string.Empty,
+            Servings = request.NumberOfPeople ?? 4,
+            TotalEstimatedCost = currentOption?.TotalEstimatedCost ?? 0,
+            TotalSavedAmount = currentOption?.TotalSavedAmount ?? 0,
+            IsWithinBudget = true,
+            Ingredients = currentOption?.Ingredients ?? new List<MealIngredientItemDto>(),
+            MealOptions = new List<MealOptionDto>(),
+            CookingTips = string.Empty
         };
     }
 
@@ -749,27 +1458,123 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         return result;
     }
 
+    private static string CleanOptionName(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "Mâm cơm";
+        var match = Regex.Match(raw, @"^Option\s*\d+[^:]*:\s*(.*)$", RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups[1].Value.Trim() : raw.Trim();
+    }
+
     private static string GenerateChefMealMessageWithMultiOptions(
         int servings,
         decimal targetBudget,
-        List<MealOptionDto> options)
+        List<MealOptionDto> options,
+        List<string>? updateNotes = null,
+        string? promoNote = null,
+        string? inventoryNote = null)
     {
+        var inBudget = options.Where(o => o.TotalEstimatedCost <= targetBudget).ToList();
+        var overBudget = options.Where(o => o.TotalEstimatedCost > targetBudget).ToList();
         var sb = new StringBuilder();
-        sb.AppendLine($"Dạ, theo yêu cầu của bạn (**{servings} người ăn**, ngân sách dự kiến **~{targetBudget:N0} đ**), mình đã cân đối và thiết kế **{options.Count} mâm cơm chuẩn vị theo cẩm nang Cookpad**:\n");
 
-        for (int i = 0; i < options.Count; i++)
+        bool hasUpdate = (updateNotes != null && updateNotes.Any()) || !string.IsNullOrWhiteSpace(promoNote) || !string.IsNullOrWhiteSpace(inventoryNote);
+        if (hasUpdate)
         {
-            var opt = options[i];
-            string icon = i == 0 ? "🍲" : (i == 1 ? "✨" : "🌿");
-            sb.AppendLine($"{icon} **{opt.OptionName}** (~**{opt.TotalEstimatedCost:N0} đ**)");
-            if (!string.IsNullOrWhiteSpace(opt.Description))
+            sb.AppendLine("**Mình đã cập nhật theo yêu cầu của bạn.**");
+            var primary = inBudget.FirstOrDefault() ?? options.FirstOrDefault();
+            if (primary != null)
             {
-                sb.AppendLine($"   *{opt.Description}*");
+                sb.AppendLine($"- **Phương án chính**: {CleanOptionName(primary.OptionName)}");
+                sb.AppendLine($"- **Tổng tiền**: `{primary.TotalEstimatedCost:N0} đ`");
+                sb.AppendLine($"- **Trạng thái ngân sách**: {(primary.TotalEstimatedCost <= targetBudget ? "Trong ngân sách" : "Vượt ngân sách")}");
+            }
+            if (updateNotes != null && updateNotes.Any())
+            {
+                sb.AppendLine($"- **Các thay đổi**: {string.Join("; ", updateNotes)}");
+            }
+            if (!string.IsNullOrWhiteSpace(promoNote))
+            {
+                sb.AppendLine($"- **Khuyến mãi liên quan**: {promoNote}");
+            }
+            if (!string.IsNullOrWhiteSpace(inventoryNote))
+            {
+                sb.AppendLine($"- **Tồn kho liên quan**: {inventoryNote}");
+            }
+            sb.AppendLine();
+        }
+
+        if (inBudget.Any())
+        {
+            sb.AppendLine("**Các phương án phù hợp với ngân sách của bạn:**\n");
+
+            int counter = 1;
+            for (int i = 0; i < inBudget.Count; i++)
+            {
+                var opt = inBudget[i];
+                string cleanTitle = CleanOptionName(opt.OptionName);
+                string title = i == 0 ? $"Option đề xuất: {cleanTitle}" : $"Option thay thế: {cleanTitle}";
+                sb.AppendLine($"{counter++}. **{title}** — `{opt.TotalEstimatedCost:N0} đ`");
+                sb.AppendLine("   - Trạng thái: Trong ngân sách");
+                string reason = !string.IsNullOrWhiteSpace(opt.Description)
+                    ? opt.Description
+                    : (i == 0 ? "Cân bằng tốt giữa chi phí và nguyên liệu" : "Nhiều nguyên liệu hơn nhưng sát trần ngân sách");
+                sb.AppendLine($"   - Lý do: {reason}\n");
+            }
+
+            for (int i = 0; i < overBudget.Count; i++)
+            {
+                var opt = overBudget[i];
+                string cleanTitle = CleanOptionName(opt.OptionName);
+                sb.AppendLine($"{counter++}. **Option tham khảo: {cleanTitle}** — `{opt.TotalEstimatedCost:N0} đ`");
+                sb.AppendLine("   - Trạng thái: Vượt ngân sách");
+                sb.AppendLine("   - Lý do: Chỉ nên chọn nếu bạn muốn nâng mức chi\n");
+            }
+
+            sb.AppendLine("👉 Bạn có thể xem chi tiết nguyên liệu, giá tiền từng món và tùy ý thêm/bớt ở các thẻ mâm cơm bên dưới, sau đó bấm **\"Chọn mâm này\"** để nạp nhanh vào giỏ hàng nhé!");
+        }
+        else
+        {
+            sb.AppendLine("**Hiện tại chưa có phương án nào nằm trong ngân sách của bạn.**\n");
+            sb.AppendLine("Mình có thể:");
+            sb.AppendLine("- Đổi sang nguyên liệu rẻ hơn");
+            sb.AppendLine("- Giảm số lượng");
+            sb.AppendLine("- Chọn món đơn giản hơn\n");
+
+            if (overBudget.Any())
+            {
+                sb.AppendLine("Dưới đây là các phương án gần nhất để bạn tham khảo:");
+                for (int i = 0; i < overBudget.Count; i++)
+                {
+                    var opt = overBudget[i];
+                    string cleanTitle = CleanOptionName(opt.OptionName);
+                    sb.AppendLine($"- **{cleanTitle}** — `{opt.TotalEstimatedCost:N0} đ` (Vượt ngân sách: +{(opt.TotalEstimatedCost - targetBudget):N0} đ)");
+                }
             }
         }
 
-        sb.AppendLine("\n👉 Bạn có thể xem chi tiết nguyên liệu, giá tiền từng món và tùy ý thêm/bớt ở các thẻ mâm cơm bên dưới, sau đó bấm **\"Chọn mâm này\"** để nạp nhanh vào giỏ hàng nhé!");
         return sb.ToString().TrimEnd();
+    }
+
+    private static bool IsSafetyOrPromptInjection(string prompt)
+    {
+        string p = prompt.ToLowerInvariant();
+        return p.Contains("bỏ qua luật") || p.Contains("bỏ qua hướng dẫn") || p.Contains("ignore instructions") ||
+               p.Contains("tự tạo voucher") || p.Contains("giá rẻ hơn dữ liệu thật") || p.Contains("tự bịa") ||
+               p.Contains("lộ prompt") || p.Contains("system prompt") || p.Contains("prompt hệ thống") ||
+               p.Contains("đừng dùng database") || p.Contains("bịa giá") || p.Contains("bịa giúp");
+    }
+
+    private static bool IsUnderspecifiedVagueQuery(string prompt)
+    {
+        string p = prompt.Trim().ToLowerInvariant().TrimEnd('?', '.', '!');
+        return p is "làm món gì ngon" or "mua cái nào tốt" or "loại nào xịn" or "cái này có ổn không" or "ăn gì ngon" or "mua gì" or "món gì ngon";
+    }
+
+    private static bool IsOutOfDomain(string prompt)
+    {
+        string p = prompt.ToLowerInvariant();
+        return p.Contains("thời tiết") || p.Contains("chứng khoán") || p.Contains("bóng đá") ||
+               p.Contains("lập trình") || p.Contains("chính trị") || p.Contains("thơ ca");
     }
 
     private static bool IsGreeting(string prompt)
@@ -788,6 +1593,56 @@ public class AiShoppingConciergeService : IAiShoppingConciergeService
         bool hasAdvice = adviceTriggers.Any(t => p.Contains(t));
         bool hasMeal = mealTriggers.Any(t => p.Contains(t));
         return hasAdvice && !hasMeal;
+    }
+
+    private static bool IsExplicitMealTheme(string text)
+    {
+        return text.Contains("cơm tấm") || text.Contains("lẩu") || text.Contains("kho tàu") ||
+               text.Contains("canh chua") || text.Contains("bữa tối") || text.Contains("bữa trưa") ||
+               text.Contains("bữa sáng") || text.Contains("mâm cơm") || text.Contains("bữa cơm") ||
+               text.Contains("nấu ăn") || text.Contains("nấu món") || text.Contains("nguyên liệu nấu") ||
+               text.Contains("công thức nấu") || text.Contains("thực đơn") || text.Contains("người ăn") ||
+               text.Contains("món gì") || text.Contains("nấu gì") || text.Contains("ăn gì");
+    }
+
+    private static bool IsRetailShopping(string text)
+    {
+        return text.Contains("dầu gội") ||
+               text.Contains("sữa tắm") ||
+               text.Contains("rửa chén") ||
+               text.Contains("nước rửa chén") ||
+               text.Contains("nồi cơm") ||
+               text.Contains("nồi") ||
+               text.Contains("chảo") ||
+               text.Contains("bếp") ||
+               text.Contains("nồi nhôm") ||
+               text.Contains("giấy vệ sinh") ||
+               text.Contains("khăn giấy") ||
+               text.Contains("em bé") ||
+               text.Contains("đồ cho em bé") ||
+               text.Contains("nước giặt") ||
+               text.Contains("nước xả") ||
+               text.Contains("hộp thủy tinh") ||
+               text.Contains("hộp nhựa") ||
+               text.Contains("bông tẩy trang") ||
+               text.Contains("dao cạo") ||
+               text.Contains("kem đánh răng") ||
+               text.Contains("bàn chải") ||
+               text.Contains("bột giặt") ||
+               text.Contains("lau sàn") ||
+               text.Contains("tã") ||
+               text.Contains("bỉm") ||
+               text.Contains("bình giữ nhiệt") ||
+               text.Contains("màng bọc") ||
+               text.Contains("túi rác") ||
+               text.Contains("rẻ mà ổn") ||
+               text.Contains("dùng lâu, giá hợp lý") ||
+               text.Contains("dùng lâu") ||
+               text.Contains("tiết kiệm mà tốt") ||
+               text.Contains("đáng tiền") ||
+               text.Contains("đáng mua") ||
+               text.Contains("phân khúc nào") ||
+               text.Contains("loại rẻ, loại tiêu chuẩn hay loại cao cấp");
     }
 
     private static string GenerateCulinaryKnowledgeAdvice(string prompt)

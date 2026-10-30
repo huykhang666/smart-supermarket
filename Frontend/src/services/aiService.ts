@@ -38,6 +38,48 @@ export interface MealOption {
   cookingTips: string;
 }
 
+export type RetailTier = 1 | 2 | 3 | 4;
+export const RetailTier = {
+  Tier1CheapestAcceptable: 1,
+  Tier2BalancedValue: 2,
+  Tier3DurableHighPerformance: 3,
+  Tier4PremiumLuxury: 4,
+} as const;
+
+export interface RetailProductRecommendation {
+  productId: number;
+  productName: string;
+  barcode: string;
+  imageUrl: string;
+  unit: string;
+  regularPrice: number;
+  finalPrice: number;
+  discountPercent: number;
+  inStockQuantity: number;
+  tier: RetailTier;
+  tierLabel: string;
+  highlightReason: string;
+  pricePerUnitMetric: string;
+  pros: string[];
+  cons: string[];
+  isRecommendedChoice: boolean;
+  isWithinBudget: boolean;
+  categoryName: string;
+}
+
+export interface ComparisonRow {
+  criteria: string;
+  tier1CheapValue: string;
+  tier2StandardValue: string;
+  tier3PremiumValue: string;
+}
+
+export interface RetailComparisonTable {
+  title: string;
+  headers: string[];
+  rows: ComparisonRow[];
+}
+
 export interface MealPlanChatResponse {
   assistantMessage: string;
   dishName: string;
@@ -49,6 +91,24 @@ export interface MealPlanChatResponse {
   ingredients: MealIngredientItem[];
   mealOptions?: MealOption[];
   cookingTips: string;
+
+  // Phase 2: Retail Shopping Intelligence
+  hasRetailRecommendation?: boolean;
+  shoppingCategory?: string;
+  retailRecommendations?: RetailProductRecommendation[];
+  comparisonTable?: RetailComparisonTable;
+
+  // Phase 3: Knowledge & Grounding RAG
+  knowledgeSource?: string;
+  groundedFacts?: string[];
+
+  // Phase 4: Optimization, Performance & Production Readiness
+  modelRouted?: string;
+  promptVersion?: string;
+  experimentVariant?: string;
+  executionLatencyMs?: number;
+  estimatedCostUsd?: number;
+  isCacheHit?: boolean;
 }
 
 const unwrapData = (res: any) => {
@@ -91,6 +151,32 @@ export const aiService = {
   // Reset Metrics
   resetMonitoringMetrics: async (): Promise<any> => {
     const response = await axiosInstance.post('/api/v1/ai/monitoring/reset');
+    return unwrapData(response);
+  },
+
+  // Phase 5: Operations, Rollback & Health
+  getPromptVersions: async (): Promise<any> => {
+    const response = await axiosInstance.get('/api/v1/ai/monitoring/prompt-versions');
+    return unwrapData(response);
+  },
+
+  setActivePromptVersion: async (version: string): Promise<any> => {
+    const response = await axiosInstance.post('/api/v1/ai/monitoring/prompt-versions/active', { version });
+    return unwrapData(response);
+  },
+
+  rollbackPromptVersion: async (targetVersion: string): Promise<any> => {
+    const response = await axiosInstance.post('/api/v1/ai/monitoring/prompt-versions/rollback', { targetVersion });
+    return unwrapData(response);
+  },
+
+  getExperimentStats: async (): Promise<any> => {
+    const response = await axiosInstance.get('/api/v1/ai/monitoring/experiments');
+    return unwrapData(response);
+  },
+
+  getAiHealth: async (): Promise<any> => {
+    const response = await axiosInstance.get('/api/v1/ai/health');
     return unwrapData(response);
   },
 };

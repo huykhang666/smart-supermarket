@@ -5,6 +5,7 @@ import {
   type MealIngredientItem,
   type MealOption,
   type ChatMessage,
+  type RetailProductRecommendation,
 } from '../../services/aiService';
 
 interface ChatItem {
@@ -130,13 +131,46 @@ export const AiShoppingAssistant: React.FC = () => {
   const [customizingItems, setCustomizingItems] = useState<SelectedIngredientState[]>([]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isUserAtBottomRef = useRef(true);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
-  // Tự động cuộn xuống tin nhắn mới nhất
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isAtBottom = distanceToBottom < 70;
+    isUserAtBottomRef.current = isAtBottom;
+    setShowScrollBottomBtn(!isAtBottom && distanceToBottom > 160);
+  };
+
+  const scrollToBottom = (force = false, smooth = false) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    if (force || isUserAtBottomRef.current) {
+      if (smooth) {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      } else {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  };
+
+  // Cuộn xuống khi có tin nhắn mới hoặc thay đổi trạng thái mở
   useEffect(() => {
     if (isOpen) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom(false, false);
     }
-  }, [messages, isOpen, loading]);
+  }, [messages.length, isOpen, loading]);
+
+  // Khi người dùng bấm mở chat, cuộn xuống dưới cùng 1 lần
+  useEffect(() => {
+    if (isOpen) {
+      isUserAtBottomRef.current = true;
+      const timer = setTimeout(() => scrollToBottom(true, false), 60);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Khi mở modal mâm nguyên liệu, khởi tạo danh sách món được chọn
   const handleOpenMealModal = (meal: ActiveMealTray) => {
@@ -241,6 +275,48 @@ export const AiShoppingAssistant: React.FC = () => {
     }
   };
 
+  // Thêm 1 sản phẩm bán lẻ đơn lẻ vào giỏ hàng
+  const handleAddSingleProductToCart = (item: MealIngredientItem) => {
+    try {
+      const existingCartStr = localStorage.getItem('smart_supermarket_cart');
+      const existingCart: { productId: number; productName: string; price: number; quantity: number; unit: string; imageUrl: string }[] =
+        existingCartStr ? JSON.parse(existingCartStr) : [];
+
+      const found = existingCart.find((c) => c.productId === item.productId);
+      if (found) {
+        found.quantity += 1;
+      } else {
+        existingCart.push({
+          productId: item.productId,
+          productName: item.productName,
+          price: item.finalPrice,
+          quantity: 1,
+          unit: item.unit,
+          imageUrl: item.imageUrl,
+        });
+      }
+
+      localStorage.setItem('smart_supermarket_cart', JSON.stringify(existingCart));
+      window.dispatchEvent(new Event('cart-updated'));
+
+      setToastMessage(`✓ Đã thêm "${item.productName}" vào giỏ hàng!`);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `cart-${Date.now()}`,
+          role: 'assistant',
+          content: `🛒 **Đã thêm thành công:** 1 x **"${item.productName}"** (${item.finalPrice.toLocaleString()} đ) vào giỏ hàng của bạn. Bạn có thể mở giỏ hàng để kiểm tra hoặc đặt hàng ngay!`,
+          timestamp: new Date(),
+        },
+      ]);
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (e) {
+      console.error(e);
+      setToastMessage('Lỗi khi lưu giỏ hàng.');
+    }
+  };
+
   // Gửi tin nhắn chat
   const handleSendMessage = async (customPrompt?: string) => {
     const textToSend = (customPrompt ?? inputText).trim();
@@ -257,6 +333,8 @@ export const AiShoppingAssistant: React.FC = () => {
     setInputText('');
     setLoading(true);
     setToastMessage(null);
+    isUserAtBottomRef.current = true;
+    setTimeout(() => scrollToBottom(true, true), 30);
 
     // Chuẩn bị lịch sử hội thoại gửi lên Backend
     const historyPayload: ChatMessage[] = messages
@@ -264,11 +342,15 @@ export const AiShoppingAssistant: React.FC = () => {
       .map((m) => ({ role: m.role, content: m.content }));
 
     try {
-      const response = await aiService.planMealAndShop({
-        userPrompt: textToSend,
-        prioritizePromotions: prioritizeFlashSale,
-        conversationHistory: historyPayload,
-      });
+      // Thiết lập khoảng đệm suy nghĩ tự nhiên (tối thiểu 600ms) để đối soát kho & cân đối ngân sách
+      const [response] = await Promise.all([
+        aiService.planMealAndShop({
+          userPrompt: textToSend,
+          prioritizePromotions: prioritizeFlashSale,
+          conversationHistory: historyPayload,
+        }),
+        new Promise((resolve) => setTimeout(resolve, 600)),
+      ]);
 
       const fullReply = response.assistantMessage || 'Mình đã tìm thấy các nguyên liệu phù hợp với yêu cầu của bạn.';
       const assistantId = `assistant-${Date.now()}`;
@@ -280,15 +362,16 @@ export const AiShoppingAssistant: React.FC = () => {
           role: 'assistant',
           content: '',
           isStreaming: true,
-          mealData: response.hasMealSuggestion ? response : undefined,
+          mealData: (response.hasMealSuggestion || response.hasRetailRecommendation || !!response.knowledgeSource || !!response.modelRouted) ? response : undefined,
           timestamp: new Date(),
         },
       ]);
       setLoading(false);
+      setTimeout(() => scrollToBottom(true, false), 30);
 
       let charIdx = 0;
       const interval = setInterval(() => {
-        charIdx += Math.min(Math.floor(Math.random() * 3) + 1, fullReply.length - charIdx);
+        charIdx += Math.min(Math.floor(Math.random() * 4) + 4, fullReply.length - charIdx);
         const currentSlice = fullReply.substring(0, charIdx);
 
         setMessages((prev) =>
@@ -298,6 +381,11 @@ export const AiShoppingAssistant: React.FC = () => {
               : m
           )
         );
+
+        // Chỉ tự động cuộn nếu người dùng đang ở đáy; không cản trở hay làm giật khi người dùng lướt lên xem tin cũ
+        if (isUserAtBottomRef.current) {
+          scrollToBottom(false, false);
+        }
 
         if (charIdx >= fullReply.length) {
           clearInterval(interval);
@@ -320,14 +408,23 @@ export const AiShoppingAssistant: React.FC = () => {
           } catch (e) {}
         }
       }, 16);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi khi gọi AI:', err);
+      const isTimeout =
+        err?.message?.toLowerCase().includes('timeout') ||
+        err?.message?.toLowerCase().includes('thời gian chờ') ||
+        err?.message?.toLowerCase().includes('quá hạn');
+
+      const errorContent = isTimeout
+        ? '⏱️ Yêu cầu xử lý vượt quá thời gian chờ (Timeout). Cơ sở dữ liệu kho hoặc máy chủ phản hồi quá lâu, hệ thống đã ngắt an toàn để bảo vệ phiên làm việc của bạn. Bạn vui lòng thử lại nhé!'
+        : '⚠️ Không thể kết nối tới máy chủ AI hoặc kho hàng. Bạn vui lòng kiểm tra lại kết nối mạng và thử lại nhé!';
+
       setMessages((prev) => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           role: 'assistant',
-          content: '⚠️ Không thể kết nối tới máy chủ AI hoặc kho hàng. Bạn vui lòng kiểm tra lại kết nối mạng và thử lại nhé!',
+          content: errorContent,
           timestamp: new Date(),
         },
       ]);
@@ -339,10 +436,14 @@ export const AiShoppingAssistant: React.FC = () => {
   const quickPills = [
     '🍲 Lẩu Thái hải sản 4 người',
     '🥩 Thịt ba chỉ kho tàu',
-    '🥖 Bò Úc sốt vang kèm bánh mì',
-    '🥗 Mâm cơm chay thanh đạm',
+    '🧴 Mua dầu gội nào rẻ mà ổn?',
+    '🍳 Chảo nào dùng lâu, giá hợp lý?',
+    '🧼 Nước rửa chén nào tiết kiệm mà tốt?',
+    '🧻 Giấy vệ sinh loại nào đáng tiền?',
+    '👶 Mua đồ em bé chọn phân khúc nào?',
+    '❓ Hàng flash sale cận date có an toàn không?',
+    '🔄 Đổi trả thực phẩm tươi sống thế nào?',
     '🥬 Cách luộc rau muống xanh giòn',
-    '🥩 Bí quyết ướp thịt bò mềm mọng',
   ];
 
   return (
@@ -578,14 +679,18 @@ export const AiShoppingAssistant: React.FC = () => {
 
           {/* Thân cửa sổ chat: Cuộn tin nhắn */}
           <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
             style={{
               flex: 1,
               overflowY: 'auto',
+              overscrollBehavior: 'contain',
               padding: '16px',
               backgroundColor: '#f8fafc',
               display: 'flex',
               flexDirection: 'column',
               gap: 14,
+              position: 'relative',
             }}
           >
             {messages.map((msg) => (
@@ -769,6 +874,237 @@ export const AiShoppingAssistant: React.FC = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Phase 2: Hiển thị Thẻ đề xuất sản phẩm Bán Lẻ & Bảng So Sánh */}
+                  {msg.mealData && msg.mealData.hasRetailRecommendation && (
+                    <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left' }}>
+                      {/* Tiêu đề ngành hàng bán lẻ */}
+                      {msg.mealData.shoppingCategory && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                          <span>🏷️</span>
+                          <span>Ngành hàng: {msg.mealData.shoppingCategory}</span>
+                        </div>
+                      )}
+
+                      {/* Danh sách thẻ sản phẩm Retail Recommendations */}
+                      {msg.mealData.retailRecommendations && msg.mealData.retailRecommendations.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {msg.mealData.retailRecommendations.map((prod: RetailProductRecommendation, pIdx: number) => {
+                            const isTier2 = prod.tier === 2;
+                            const isTier3 = prod.tier === 3;
+                            const badgeBg = isTier2 ? '#dcfce7' : isTier3 ? '#dbeafe' : '#f1f5f9';
+                            const badgeColor = isTier2 ? '#166534' : isTier3 ? '#1e40af' : '#475569';
+                            const borderCol = prod.isRecommendedChoice ? '#86efac' : '#e2e8f0';
+
+                            return (
+                              <div
+                                key={pIdx}
+                                style={{
+                                  padding: 12,
+                                  backgroundColor: prod.isRecommendedChoice ? '#f0fdf4' : '#ffffff',
+                                  borderRadius: 10,
+                                  border: `1.5px solid ${borderCol}`,
+                                  boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          fontWeight: 700,
+                                          padding: '2px 8px',
+                                          borderRadius: 8,
+                                          backgroundColor: badgeBg,
+                                          color: badgeColor,
+                                        }}
+                                      >
+                                        {prod.tierLabel}
+                                      </span>
+                                      {prod.isRecommendedChoice && (
+                                        <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 2 }}>
+                                          ⭐ Khuyên dùng
+                                        </span>
+                                      )}
+                                    </div>
+                                    <strong style={{ fontSize: 13.5, color: '#0f172a' }}>{prod.productName}</strong>
+                                  </div>
+
+                                  <div style={{ textAlign: 'right', minWidth: 90 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0F5132' }}>
+                                      {prod.finalPrice.toLocaleString()} đ
+                                    </div>
+                                    <div style={{ fontSize: 11, color: '#64748b' }}>/{prod.unit}</div>
+                                  </div>
+                                </div>
+
+                                {prod.pricePerUnitMetric && (
+                                  <div style={{ fontSize: 11.5, color: '#059669', fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <span>📊</span>
+                                    <span>Chỉ số: {prod.pricePerUnitMetric}</span>
+                                  </div>
+                                )}
+
+                                {prod.highlightReason && (
+                                  <div style={{ fontSize: 12, color: '#475569', fontStyle: 'italic', marginBottom: 8 }}>
+                                    {prod.highlightReason}
+                                  </div>
+                                )}
+
+                                {/* Pros & Cons */}
+                                <div style={{ fontSize: 11.5, marginBottom: 10, lineHeight: 1.5 }}>
+                                  {prod.pros && prod.pros.map((pro, proIdx) => (
+                                    <div key={proIdx} style={{ color: '#166534', display: 'flex', gap: 4 }}>
+                                      <span>✓</span>
+                                      <span>{pro}</span>
+                                    </div>
+                                  ))}
+                                  {prod.cons && prod.cons.map((con, conIdx) => (
+                                    <div key={conIdx} style={{ color: '#b45309', display: 'flex', gap: 4 }}>
+                                      <span>⚠</span>
+                                      <span>{con}</span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Nút thêm sản phẩm vào giỏ hàng */}
+                                <button
+                                  onClick={() => handleAddSingleProductToCart({
+                                    productId: prod.productId,
+                                    productName: prod.productName,
+                                    barcode: prod.barcode,
+                                    imageUrl: prod.imageUrl,
+                                    unit: prod.unit,
+                                    quantityToBuy: 1,
+                                    regularPrice: prod.regularPrice,
+                                    finalPrice: prod.finalPrice,
+                                    discountPercent: prod.discountPercent,
+                                    isPromotionOrNearExpiry: false,
+                                    promotionNote: '',
+                                    inStockQuantity: prod.inStockQuantity,
+                                  })}
+                                  style={{
+                                    width: '100%',
+                                    backgroundColor: prod.isRecommendedChoice ? '#2563eb' : '#0F5132',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    fontSize: 12.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                  }}
+                                >
+                                  🛒 Thêm {prod.productName} vào giỏ
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Bảng so sánh các phân khúc (Comparison Table) */}
+                      {msg.mealData.comparisonTable && msg.mealData.comparisonTable.rows && msg.mealData.comparisonTable.rows.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: 10,
+                            backgroundColor: '#f8fafc',
+                            borderRadius: 10,
+                            border: '1px solid #e2e8f0',
+                            overflowX: 'auto',
+                          }}
+                        >
+                          <strong style={{ fontSize: 12.5, color: '#334155', display: 'block', marginBottom: 8 }}>
+                            📊 {msg.mealData.comparisonTable.title || 'Bảng so sánh các phân khúc'}
+                          </strong>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                            <thead>
+                              <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1.5px solid #cbd5e1' }}>
+                                {msg.mealData.comparisonTable.headers.map((h, hIdx) => (
+                                  <th key={hIdx} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 700, color: '#1e293b' }}>
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {msg.mealData.comparisonTable.rows.map((row, rIdx) => (
+                                <tr key={rIdx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                  <td style={{ padding: '6px 8px', fontWeight: 600, color: '#334155' }}>{row.criteria}</td>
+                                  <td style={{ padding: '6px 8px', color: '#475569' }}>{row.tier1CheapValue}</td>
+                                  <td style={{ padding: '6px 8px', color: '#166534', fontWeight: 600 }}>{row.tier2StandardValue}</td>
+                                  <td style={{ padding: '6px 8px', color: '#1e40af' }}>{row.tier3PremiumValue}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Phase 3: Hiển thị Nguồn căn cứ kiến thức & Chính sách (Knowledge Grounding Badge) */}
+                  {msg.mealData && msg.mealData.knowledgeSource && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: '6px 10px',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: 8,
+                        border: '1px solid #e2e8f0',
+                        fontSize: 11.5,
+                        color: '#475569',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ fontSize: 13 }}>📚</span>
+                      <span>
+                        <strong>Nguồn kiểm chứng:</strong> {msg.mealData.knowledgeSource}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Phase 4: Hiển thị Metrics & Observability (Model Routing, Latency & Cache) */}
+                  {msg.mealData && msg.mealData.modelRouted && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        padding: '3px 8px',
+                        backgroundColor: '#f1f5f9',
+                        borderRadius: 6,
+                        border: '1px solid #e2e8f0',
+                        fontSize: 10.5,
+                        color: '#64748b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        ⚡ <strong>{msg.mealData.modelRouted}</strong>
+                      </span>
+                      {msg.mealData.promptVersion && (
+                        <span>🏷️ {msg.mealData.promptVersion}</span>
+                      )}
+                      {msg.mealData.executionLatencyMs !== undefined && (
+                        <span>⏱️ {msg.mealData.executionLatencyMs}ms</span>
+                      )}
+                      {msg.mealData.isCacheHit && (
+                        <span style={{ color: '#16a34a', fontWeight: 600 }}>💾 Cache Hit</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Nhãn thời gian */}
@@ -798,6 +1134,39 @@ export const AiShoppingAssistant: React.FC = () => {
             )}
 
             <div ref={chatEndRef} />
+
+            {showScrollBottomBtn && (
+              <button
+                onClick={() => {
+                  isUserAtBottomRef.current = true;
+                  scrollToBottom(true, true);
+                  setShowScrollBottomBtn(false);
+                }}
+                style={{
+                  position: 'sticky',
+                  bottom: 10,
+                  alignSelf: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  backgroundColor: '#0F5132',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 18,
+                  fontWeight: 700,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 20,
+                  transition: 'all 0.2s ease',
+                }}
+                title="Cuộn xuống mới nhất"
+              >
+                ↓
+              </button>
+            )}
           </div>
 
           {/* Thanh gợi ý câu hỏi nhanh */}

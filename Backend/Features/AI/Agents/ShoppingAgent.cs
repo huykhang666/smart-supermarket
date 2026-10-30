@@ -372,22 +372,21 @@ public class ShoppingAgent : BaseAgent
             var systemPrompt = await _promptBuilder.BuildSystemPromptAsync("shopping", cancellationToken);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"Hãy viết câu trả lời tự nhiên, thân thiện (xưng hô 'mình' - 'bạn') để tư vấn mâm cơm sau:");
+            sb.AppendLine("QUY TẮC RÀNG BUỘC VỀ NGÂN SÁCH & ĐỊNH DẠNG (Bắt buộc tuân thủ):");
+            sb.AppendLine("1. Ngân sách là ưu tiên số một. Xưng 'mình' gọi 'bạn'.");
+            sb.AppendLine("2. Không dùng văn phong marketing quá đà. Không bịa giá, nguyên liệu hay khuyến mãi.");
+            sb.AppendLine("3. Trả lời ngắn gọn, rõ ràng:");
             sb.AppendLine($"- Tên món: {dishName}");
             sb.AppendLine($"- Khẩu phần: {servings} người");
             sb.AppendLine($"- Ngân sách khách đưa ra: {targetBudget:N0} đ");
             sb.AppendLine($"- Tổng chi phí thực tế: {estimatedTotal:N0} đ");
-            sb.AppendLine($"- Số tiền tiết kiệm được nhờ Flash Sale/Voucher: {totalSaved:N0} đ");
+            sb.AppendLine($"- Trạng thái: {(estimatedTotal <= targetBudget ? "Trong ngân sách" : "Vượt ngân sách")}");
+            sb.AppendLine($"- Tiết kiệm nhờ Flash Sale: {totalSaved:N0} đ");
             if (!string.IsNullOrWhiteSpace(adjustmentNote))
             {
-                sb.AppendLine($"- Ghi chú điều chỉnh ngân sách: {adjustmentNote}");
+                sb.AppendLine($"- Ghi chú điều chỉnh: {adjustmentNote}");
             }
             sb.AppendLine($"- Mẹo nấu ăn: {cookingTips}");
-            sb.AppendLine("- Danh sách nguyên liệu:");
-            foreach (var item in ingredients)
-            {
-                sb.AppendLine($"  + {item.ProductName} ({item.QuantityToBuy} {item.Unit}): {item.FinalPrice:N0} đ {(item.IsPromotionOrNearExpiry ? $"[{item.PromotionNote}]" : "")}");
-            }
 
             var prompt = sb.ToString();
             var response = await GenerateLlmAsync(prompt, systemPrompt, cancellationToken);
@@ -403,24 +402,30 @@ public class ShoppingAgent : BaseAgent
 
         // Fallback văn bản thân thiện chuẩn mẫu khi LLM gặp sự cố
         var fallback = new StringBuilder();
-        fallback.AppendLine($"Chào bạn, mình đã gợi ý mâm cơm **{dishName}** phù hợp cho {servings} người:");
-        fallback.AppendLine($"- **Tổng chi phí ước tính**: {estimatedTotal:N0} đ {(targetBudget > 0 ? $"(Ngân sách dự kiến: {targetBudget:N0} đ)" : "")}");
+        if (estimatedTotal <= targetBudget)
+        {
+            fallback.AppendLine("**Mình đề xuất phương án phù hợp nhất với ngân sách của bạn trước:**\n");
+            fallback.AppendLine($"1. **Option đề xuất: {dishName}** — `{estimatedTotal:N0} đ`");
+            fallback.AppendLine("   - Trạng thái: Trong ngân sách");
+            fallback.AppendLine("   - Lý do: Cân bằng tốt giữa chi phí và nguyên liệu");
+        }
+        else
+        {
+            fallback.AppendLine("**Hiện tại chưa có phương án nào nằm trong ngân sách của bạn.**\n");
+            fallback.AppendLine($"1. **Option tham khảo: {dishName}** — `{estimatedTotal:N0} đ`");
+            fallback.AppendLine($"   - Trạng thái: Vượt ngân sách (+{(estimatedTotal - targetBudget):N0} đ)");
+            fallback.AppendLine("   - Lý do: Chỉ nên chọn nếu bạn muốn nâng mức chi");
+        }
+
         if (totalSaved > 0)
         {
-            fallback.AppendLine($"- **Tiết kiệm được**: {totalSaved:N0} đ nhờ các ưu đãi Flash Sale.");
+            fallback.AppendLine($"\n- **Tiết kiệm được**: {totalSaved:N0} đ nhờ các ưu đãi Flash Sale.");
         }
         if (!string.IsNullOrWhiteSpace(adjustmentNote))
         {
             fallback.AppendLine($"- *Lưu ý*: {adjustmentNote}");
         }
-        fallback.AppendLine("\n**Danh sách nguyên liệu:**");
-        foreach (var item in ingredients)
-        {
-            var promoTag = item.IsPromotionOrNearExpiry ? $" *({item.PromotionNote})*" : "";
-            fallback.AppendLine($"- {item.ProductName}: {item.QuantityToBuy} {item.Unit} - **{item.FinalPrice:N0} đ**{promoTag}");
-        }
-        fallback.AppendLine($"\n**Mẹo nấu ăn:** {cookingTips}");
-        fallback.AppendLine("\nBạn có thể bấm **'Chọn mâm này'** để thêm toàn bộ nguyên liệu vào giỏ hàng ngay nhé!");
+        fallback.AppendLine("\n👉 Bạn có thể bấm **'Chọn mâm này'** để thêm toàn bộ nguyên liệu vào giỏ hàng ngay nhé!");
 
         return fallback.ToString();
     }

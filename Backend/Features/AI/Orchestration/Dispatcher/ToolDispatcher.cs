@@ -235,6 +235,17 @@ public class ToolDispatcher : IToolDispatcher
                     GetParam(parameters, "items", new List<MealIngredientItemDto>()),
                     GetParam<string?>(parameters, "voucherCode"), ct),
 
+            "retailtool.searchretailproducts" or "retailtool.search" =>
+                await sp.GetRequiredService<IRetailTool>().SearchRetailProductsAsync(
+                    GetParam(parameters, "keyword", string.Empty),
+                    GetParam<string?>(parameters, "category"),
+                    GetParam<decimal?>(parameters, "maxPrice"),
+                    GetParam(parameters, "limit", 10), ct),
+
+            "retailtool.generatecategorycomparison" or "retailtool.compare" =>
+                await sp.GetRequiredService<IRetailTool>().GenerateCategoryComparisonAsync(
+                    GetParam(parameters, "category", string.Empty), ct),
+
             _ => throw new NotSupportedException($"Tool method '{toolMethod}' không được hỗ trợ.")
         };
     }

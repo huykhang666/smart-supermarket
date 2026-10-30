@@ -13,6 +13,10 @@ builder.ConfigureSerilog();
 // Add Observability (CorrelationId, OpenTelemetry tracing)
 builder.Services.AddObservability();
 
+// Add ASP.NET Core Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<SmartSupermarket.Backend.Features.AI.Health.AiHealthCheck>("ai_subsystem");
+
 // Add Services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -115,6 +119,9 @@ app.UseAuthorization();
 
 // Auto Redirect root / to /swagger/index.html
 app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
+
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
 
 app.MapControllers();
 

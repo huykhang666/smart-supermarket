@@ -10,22 +10,18 @@ namespace SmartSupermarket.Backend.Features.AI.Controllers;
 
 [ApiController]
 [Route("api/v1/ai")]
+[Authorize(Roles = "Admin,Manager")]
 public class AiRetailController : ControllerBase
 {
     private readonly IAiRetailService _aiRetailService;
-    private readonly IAiShoppingConciergeService _shoppingConciergeService;
 
-    public AiRetailController(
-        IAiRetailService aiRetailService,
-        IAiShoppingConciergeService shoppingConciergeService)
+    public AiRetailController(IAiRetailService aiRetailService)
     {
         _aiRetailService = aiRetailService;
-        _shoppingConciergeService = shoppingConciergeService;
     }
 
     // Phân tích rủi ro kho hàng và dự báo đứt hàng
     [HttpPost("retail/product-risks")]
-    [AllowAnonymous]
     public async Task<ActionResult<ApiResult<AiProductRiskReport>>> AnalyzeProductRisks(CancellationToken cancellationToken = default)
     {
         var result = await _aiRetailService.AnalyzeProductRisksAsync(cancellationToken);
@@ -34,7 +30,6 @@ public class AiRetailController : ControllerBase
 
     // Phân tích rổ hàng và gợi ý combo bán kèm
     [HttpPost("retail/market-basket")]
-    [AllowAnonymous]
     public async Task<ActionResult<ApiResult<AiMarketBasketReport>>> AnalyzeMarketBasket(
         [FromQuery] int daysBack = 30,
         CancellationToken cancellationToken = default)
@@ -45,7 +40,6 @@ public class AiRetailController : ControllerBase
 
     // Đề xuất phiếu nhập hàng nháp
     [HttpPost("retail/draft-import-order")]
-    [AllowAnonymous]
     public async Task<ActionResult<ApiResult<AiDraftImportOrder>>> GenerateDraftImportOrder(
         [FromQuery] int supplierId = 1,
         CancellationToken cancellationToken = default)
@@ -56,7 +50,6 @@ public class AiRetailController : ControllerBase
 
     // 1-Click lưu trực tiếp phiếu nhập hàng nháp vào CSDL
     [HttpPost("retail/commit-draft-import")]
-    [AllowAnonymous]
     public async Task<ActionResult<ApiResult<object>>> CommitDraftImportOrder(
         [FromBody] AiDraftImportOrder draftOrder,
         CancellationToken cancellationToken = default)
@@ -67,18 +60,7 @@ public class AiRetailController : ControllerBase
             receipt.ImportReceiptId, 
             receipt.ReceiptCode, 
             receipt.TotalAmount, 
-            Status = receipt.Status.ToString() 
-        }, $"Đã lưu phiếu nhập kho nháp {receipt.ReceiptCode} thành công."));
-    }
-
-    // Trợ lý gợi ý món ăn và giỏ hàng
-    [HttpPost("shopping/meal-plan")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ApiResult<MealPlanChatResponse>>> PlanMealAndShop(
-        [FromBody] MealPlanChatRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _shoppingConciergeService.PlanMealAndShopAsync(request, cancellationToken);
-        return Ok(ApiResult<MealPlanChatResponse>.Success(result, "Tư vấn thực đơn & giỏ hàng đi chợ thành công."));
+            receipt.Status 
+        }, "Đã lưu phiếu nhập kho thành công vào CSDL."));
     }
 }

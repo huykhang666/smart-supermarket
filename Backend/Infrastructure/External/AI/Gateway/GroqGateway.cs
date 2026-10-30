@@ -28,8 +28,8 @@ public class GroqGateway
         _httpClient.Timeout = TimeSpan.FromSeconds(20);
         _configuration = configuration;
         _logger = logger;
-        _apiKey = configuration["Groq:ApiKey"] ?? string.Empty;
-        var modelConfig = configuration["Groq:Model"];
+        _apiKey = Environment.GetEnvironmentVariable("GROQ_API_KEY") ?? configuration["Groq:ApiKey"] ?? string.Empty;
+        var modelConfig = Environment.GetEnvironmentVariable("GROQ_MODEL") ?? configuration["Groq:Model"];
         _model = string.IsNullOrWhiteSpace(modelConfig) ? "llama-3.3-70b-versatile" : modelConfig;
     }
 

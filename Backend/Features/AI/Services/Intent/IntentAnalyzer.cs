@@ -57,7 +57,13 @@ public class IntentAnalyzer : IIntentAnalyzer
             return Task.FromResult(intent);
         }
 
-        if (IsMealPlanning(lower) || intent.Servings.HasValue || intent.TargetBudget.HasValue)
+        if (IsRetailShopping(lower) && !IsExplicitMealTheme(lower))
+        {
+            ClassifyRetailIntent(lower, intent);
+            return Task.FromResult(intent);
+        }
+
+        if (IsMealPlanning(lower) || intent.Servings.HasValue)
         {
             intent.Type = IntentType.MealPlanning;
             ExtractDishTheme(lower, intent);
@@ -114,11 +120,19 @@ public class IntentAnalyzer : IIntentAnalyzer
     {
         return text.Contains("ăn gì") ||
                text.Contains("nấu gì") ||
+               text.Contains("món gì") ||
+               text.Contains("nấu ăn") ||
                text.Contains("mâm cơm") ||
+               text.Contains("bữa cơm") ||
                text.Contains("bữa tối") ||
                text.Contains("bữa trưa") ||
                text.Contains("bữa sáng") ||
+               text.Contains("thực đơn") ||
+               text.Contains("công thức") ||
+               text.Contains("nguyên liệu nấu") ||
                text.Contains("lẩu") ||
+               text.Contains("kho tàu") ||
+               text.Contains("canh chua") ||
                text.Contains("tiệc");
     }
 
@@ -128,6 +142,119 @@ public class IntentAnalyzer : IIntentAnalyzer
                text.Contains("có bán") ||
                text.Contains("giá bao nhiêu") ||
                text.Contains("còn hàng");
+    }
+
+    private static bool IsExplicitMealTheme(string text)
+    {
+        return text.Contains("cơm tấm") || text.Contains("lẩu") || text.Contains("kho tàu") ||
+               text.Contains("canh chua") || text.Contains("bữa tối") || text.Contains("bữa trưa") ||
+               text.Contains("bữa sáng") || text.Contains("mâm cơm") || text.Contains("bữa cơm") ||
+               text.Contains("nấu ăn") || text.Contains("nấu món") || text.Contains("nguyên liệu nấu") ||
+               text.Contains("công thức nấu") || text.Contains("thực đơn") || text.Contains("người ăn") ||
+               text.Contains("món gì") || text.Contains("nấu gì") || text.Contains("ăn gì");
+    }
+
+    private static bool IsRetailShopping(string text)
+    {
+        return text.Contains("dầu gội") ||
+               text.Contains("sữa tắm") ||
+               text.Contains("rửa chén") ||
+               text.Contains("nước rửa chén") ||
+               text.Contains("nồi cơm") ||
+               text.Contains("nồi") ||
+               text.Contains("chảo") ||
+               text.Contains("bếp") ||
+               text.Contains("nồi nhôm") ||
+               text.Contains("giấy vệ sinh") ||
+               text.Contains("khăn giấy") ||
+               text.Contains("em bé") ||
+               text.Contains("đồ cho em bé") ||
+               text.Contains("nước giặt") ||
+               text.Contains("nước xả") ||
+               text.Contains("hộp thủy tinh") ||
+               text.Contains("hộp nhựa") ||
+               text.Contains("bông tẩy trang") ||
+               text.Contains("dao cạo") ||
+               text.Contains("kem đánh răng") ||
+               text.Contains("bàn chải") ||
+               text.Contains("bột giặt") ||
+               text.Contains("lau sàn") ||
+               text.Contains("tã") ||
+               text.Contains("bỉm") ||
+               text.Contains("bình giữ nhiệt") ||
+               text.Contains("màng bọc") ||
+               text.Contains("túi rác") ||
+               text.Contains("rẻ mà ổn") ||
+               text.Contains("dùng lâu, giá hợp lý") ||
+               text.Contains("dùng lâu") ||
+               text.Contains("tiết kiệm mà tốt") ||
+               text.Contains("đáng tiền") ||
+               text.Contains("đáng mua") ||
+               text.Contains("phân khúc nào") ||
+               text.Contains("loại rẻ, loại tiêu chuẩn hay loại cao cấp");
+    }
+
+    private static void ClassifyRetailIntent(string text, UserIntentDto intent)
+    {
+        if (text.Contains("so sánh") || text.Contains("phân khúc nào") || text.Contains("loại rẻ, loại tiêu chuẩn hay loại cao cấp") || text.Contains("khác nhau thế nào"))
+        {
+            intent.Type = IntentType.CategoryComparison;
+        }
+        else if (text.Contains("giá bao nhiêu") || text.Contains("so sánh giá") || text.Contains("bảng giá"))
+        {
+            intent.Type = IntentType.PriceComparison;
+        }
+        else if (text.Contains("tốt nhất") || text.Contains("chất lượng") || text.Contains("loại nào tốt"))
+        {
+            intent.Type = IntentType.QualityComparison;
+        }
+        else if (intent.TargetBudget.HasValue || text.Contains("ngân sách") || text.Contains("tầm giá"))
+        {
+            intent.Type = IntentType.BudgetShopping;
+        }
+        else if (text.Contains("tiết kiệm mà tốt") || text.Contains("đáng tiền") || text.Contains("đáng mua") || text.Contains("hợp lý") || text.Contains("p/p"))
+        {
+            intent.Type = IntentType.ValueForMoneyShopping;
+            intent.PreferredTier = "Tier 2: Đáng tiền nhất";
+        }
+        else if (text.Contains("dùng lâu") || text.Contains("bền") || text.Contains("bền bỉ"))
+        {
+            intent.Type = IntentType.DurableProductSearch;
+            intent.PreferredTier = "Tier 3: Bền bỉ";
+        }
+        else if (text.Contains("rẻ mà ổn") || text.Contains("rẻ nhất") || text.Contains("giá rẻ"))
+        {
+            intent.Type = IntentType.CheapProductSearch;
+            intent.PreferredTier = "Tier 1: Tiết kiệm";
+        }
+        else if (text.Contains("cao cấp") || text.Contains("xịn") || text.Contains("hàng hiệu"))
+        {
+            intent.Type = IntentType.PremiumProductSearch;
+            intent.PreferredTier = "Tier 4: Cao cấp";
+        }
+        else if (text.Contains("khuyến mãi") || text.Contains("flash sale") || text.Contains("giảm giá") || text.Contains("voucher"))
+        {
+            intent.Type = IntentType.PromotionAwareShopping;
+        }
+        else if (text.Contains("còn hàng") || text.Contains("sẵn hàng") || text.Contains("tồn kho"))
+        {
+            intent.Type = IntentType.InventoryAwareShopping;
+        }
+        else
+        {
+            intent.Type = IntentType.ProductRecommendation;
+        }
+
+        if (text.Contains("dầu gội") || text.Contains("sữa tắm") || text.Contains("gội") || text.Contains("tắm") || text.Contains("dao cạo") || text.Contains("kem đánh răng") || text.Contains("bàn chải"))
+            intent.RetailCategory = "Chăm sóc cá nhân";
+        else if (text.Contains("rửa chén") || text.Contains("nước giặt") || text.Contains("nước xả") || text.Contains("lau sàn") || text.Contains("hóa phẩm"))
+            intent.RetailCategory = "Hóa phẩm & Giặt xả";
+        else if (text.Contains("nồi") || text.Contains("chảo") || text.Contains("nhà bếp") || text.Contains("bếp") || text.Contains("hộp thủy tinh") || text.Contains("hộp nhựa"))
+            intent.RetailCategory = "Đồ dùng gia đình & Nhà bếp";
+        else if (text.Contains("giấy") || text.Contains("khăn"))
+            intent.RetailCategory = "Giấy vệ sinh & Khăn giấy";
+        else if (text.Contains("em bé") || text.Contains("bé") || text.Contains("tã") || text.Contains("bỉm"))
+            intent.RetailCategory = "Mẹ & Bé";
     }
 
     private static int? ExtractServings(string text)

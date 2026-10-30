@@ -19,3 +19,7 @@ appsettings.*.json
 *.cert
 secrets.json
 *.bak
+
+# Logs
+logs/
+*.log

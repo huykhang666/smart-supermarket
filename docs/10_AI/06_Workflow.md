@@ -1,124 +1,247 @@
-# 10_AI - TÀI LIỆU 06: QUY TRÌNH NGHIỆP VỤ & LUỒNG XỬ LÝ (AI WORKFLOWS)
+# 06_Workflow.md
+
+# Conversation Update Workflow
+
+Version: 1.1
 
 ---
 
-## MỤC LỤC
-1. [Luồng đầy đủ: Tư vấn mâm cơm đa tác nhân (End-to-End Meal Planning Workflow)](#1-luồng-đầy-đủ-tư-vấn-mâm-cơm-đa-tác-nhân)
-2. [Luồng nạp giỏ hàng: 1-Click Add Cart (Add Cart Workflow)](#2-luồng-nạp-giỏ-hàng-1-click-add-cart)
-3. [Luồng xử lý khi hết hàng & Đề xuất thay thế (Out of Stock & Alternative Workflow)](#3-luồng-xử-lý-khi-hết-hàng--đề-xuất-thay-thế)
-4. [Luồng tự động giám sát hạn dùng & Flash Sale (Shelf-Life Workflow)](#4-luồng-tự-động-giám-sát-hạn-dùng--flash-sale)
+## A. Luồng tổng quát
+
+User message  
+→ Read current conversation state  
+→ Detect intent  
+→ Classify update type  
+→ Load relevant tools  
+→ Recalculate plan  
+→ Validate budget  
+→ Render response
 
 ---
 
-## 1. LUỒNG ĐẦY ĐỦ: TƯ VẤN MÂM CƠM ĐA TÁC NHÂN
+## B. Phân loại intent
 
-Áp dụng cho tình huống khách hàng gửi yêu cầu mua sắm và nấu ăn (Ví dụ: *"Tôi có 300k, muốn nấu lẩu cho 5 người, có giảm giá thì ưu tiên"*).
+### 1. CreatePlan
+Người dùng muốn tạo mâm cơm / kế hoạch mới.
 
-```mermaid
-flowchart TD
-    User([Khách Hàng]) -->|1. '300k nấu lẩu 5 người'| UI[Frontend Chat UI]
-    UI -->|2. POST /api/ai/chat| Ctrl[AIController]
-    Ctrl -->|3. Validate & Chuyển giao| Orch[AgentOrchestrator]
-    
-    Orch -->|4. Phân tích Intent| ShopAgent[ShoppingAgent]
-    
-    subgraph Execution_Pipeline["Chuỗi Thực Thi Đa Tác Nhân"]
-        ShopAgent -->|5. Tìm công thức| RecAgent[RecipeAgent]
-        RecAgent -->|6. Call Tool| RecTool[RecipeTool]
-        RecTool -->|7. Query Service| RecSvc[RecipeService]
-        RecSvc -->|8. Query Repo| RecRepo[RecipeRepository]
-        RecRepo -->|9. Đọc CSDL Cookpad| RecData[(Recipe Data)]
-        RecData -.->|Trả nguyên liệu| ShopAgent
+Ví dụ:
+- “Mình có 300k, nấu lẩu bò cho 4 người.”
 
-        ShopAgent -->|10. Kiểm tra tồn & date| InvAgent[InventoryAgent]
-        InvAgent -->|11. Call Tool| InvTool[InventoryTool]
-        InvTool -->|12. Query Service| InvSvc[InventoryService]
-        InvSvc -->|13. Query Repo| InvRepo[InventoryRepository]
-        InvRepo -->|14. Đọc kho hàng| InvData[(Inventory Batches)]
-        InvData -.->|Lọc lô cận date| ShopAgent
-
-        ShopAgent -->|15. Kiểm tra khuyến mãi| PromoAgent[PromotionAgent]
-        PromoAgent -->|16. Call Tool| PromoTool[PromotionTool]
-        PromoTool -->|17. Query Service| PromoSvc[PromotionService]
-        PromoSvc -->|18. Query Repo| PromoRepo[PromotionRepository]
-        PromoRepo -->|19. Đọc Voucher/Promo| PromoData[(Promotions)]
-        PromoData -.->|Áp dụng giảm 30%| ShopAgent
-
-        ShopAgent -->|20. Cân đối chi phí| BudAgent[BudgetAgent]
-        BudAgent -->|21. Call Tool| BudTool[ProductTool]
-        BudTool -->|22. Query Service| BudSvc[ProductService]
-        BudSvc -.->|Tổng chi <= 300k| ShopAgent
-    end
-
-    ShopAgent -->|23. Tổng hợp DTO| RespBuilder[Response Builder]
-    RespBuilder -->|24. Return DTO| Ctrl
-    Ctrl -->|25. HTTP 200 OK| UI
-    UI -->|26. Hiển thị mâm cơm| User
-```
+Xử lý:
+- gọi RecipeTool
+- gọi InventoryTool
+- gọi PromotionTool
+- gọi BudgetTool
+- tạo plan mới
+- chọn phương án tốt nhất trong ngân sách
 
 ---
 
-## 2. LUỒNG NẠP GIỎ HÀNG: 1-CLICK ADD CART
+### 2. ReplaceIngredient
+Người dùng muốn thay nguyên liệu.
 
-Áp dụng khi khách hàng bấm nút **"Chọn mâm này"** hoặc gửi tin nhắn *"Tôi lấy toàn bộ mâm lẩu này"*.
+Ví dụ:
+- “Đổi bò Úc thành bò ta.”
 
-```mermaid
-flowchart TD
-    User([Khách Hàng]) -->|'Tôi lấy toàn bộ mâm này'| UI[Frontend UI]
-    UI -->|POST /api/ai/cart/inject| Ctrl[AIController]
-    Ctrl --> Orch[AgentOrchestrator]
-    Orch --> ShopAgent[ShoppingAgent]
-    ShopAgent --> CartAgent[CartAgent]
-    
-    CartAgent --> CartTool[CartTool.AddToCartAsync]
-    CartTool --> OrderSvc[OrderService / CartService]
-    OrderSvc --> OrderRepo[OrderRepository]
-    OrderRepo --> DB[(SQL Server - Cart & CartItems)]
-    
-    DB -.->|Thêm thành công| OrderSvc
-    OrderSvc -.->|Giỏ hàng cập nhật| CartAgent
-    CartAgent -.->|Cart Status OK| ShopAgent
-    ShopAgent --> Resp[Thông báo: 'Đã thêm trọn bộ nguyên liệu vào giỏ hàng!']
-    Resp --> Ctrl --> UI --> User
-```
+Xử lý:
+- lấy plan hiện tại
+- xác định item cần thay
+- gọi ProductTool / InventoryTool nếu cần
+- thay nguyên liệu
+- tính lại total
+- render plan mới
 
 ---
 
-## 3. LUỒNG XỬ LÝ KHI HẾT HÀNG & ĐỀ XUẤT THAY THẾ (OUT OF STOCK & ALTERNATIVE)
+### 3. RemoveIngredient
+Người dùng muốn bỏ nguyên liệu.
 
-Khi một nguyên liệu trong công thức nấu ăn bị hết hàng tại siêu thị, hệ thống tự động tìm kiếm món thay thế tương đương cùng ngành hàng:
+Ví dụ:
+- “Bỏ nấm.”
 
-```mermaid
-flowchart TD
-    InvCheck[Kiểm tra tồn kho nguyên liệu] --> StockCheck{StockQuantity == 0?}
-    StockCheck -- Không (Còn hàng) --> NormalFlow[Sử dụng nguyên liệu gốc]
-    StockCheck -- Có (Hết hàng) --> TriggerInv[Kích hoạt InventoryAgent]
-    
-    TriggerInv --> CallAltTool[Gọi ProductTool.GetAlternativeAsync]
-    CallAltTool --> ProdSvc[ProductService]
-    
-    subgraph Alt_Resolution["Thuật Toán Tìm Sản Phẩm Thay Thế"]
-        ProdSvc --> MatchCategory[1. Khóa chặt cùng CategoryId]
-        MatchCategory --> MatchNutrition[2. Tương đồng giá trị đạm / calo]
-        MatchNutrition --> CheckStock[3. Sản phẩm thay thế phải có Stock > 0]
-        CheckStock --> CheckPrice[4. Đơn giá tương đương hoặc rẻ hơn]
-    end
-
-    ProdSvc --> ReturnAlt[Trả về sản phẩm thay thế]
-    ReturnAlt --> ShopAgent[ShoppingAgent gắn nhãn: 'Đã thay thế nguyên liệu']
-    ShopAgent --> NotifyUser[Thông báo minh bạch lý do thay thế cho người dùng]
-```
+Xử lý:
+- lấy plan hiện tại
+- xóa nguyên liệu khỏi list
+- tính lại total
+- nếu recipe bị thiếu thành phần quan trọng thì đề xuất thay thế
 
 ---
 
-## 4. LUỒNG TỰ ĐỘNG GIÁM SÁT HẠN DÙNG & FLASH SALE (SHELF-LIFE WORKFLOW)
+### 4. UpdateBudget
+Người dùng thay đổi ngân sách.
 
-Quy trình tự động chạy ngầm bảo vệ hàng hóa và giải cứu thực phẩm tươi sống:
-1. **06:00 AM Hàng ngày**: `ShelfLifeBackgroundService` quét toàn bộ bảng `ProductBatches`.
-2. **Tính số ngày còn lại**: $\text{DaysLeft} = \text{ExpiryDate} - \text{Today}$.
-3. **Phân loại**:
-   - $\text{DaysLeft} \le 0$: Khóa bán ngay lập tức (`Status = Expired`).
-   - $0 < \text{DaysLeft} \le 1$: Kích hoạt Flash Sale xả hàng **giảm 50%**.
-   - $1 < \text{DaysLeft} \le 3$: Kích hoạt Flash Sale **giảm 30%**.
-   - $\text{DaysLeft} > 3$: Trạng thái an toàn bình thường.
-4. `PromotionAgent` và `ShoppingAgent` tự động nhận diện các lô hàng này để đưa vào danh mục mâm cơm gợi ý cho khách hàng trong ngày.
+Ví dụ:
+- “Giảm còn 250k.”
+
+Xử lý:
+- lấy plan hiện tại
+- cập nhật budget mới
+- chạy lại budget optimization
+- sắp xếp lại options
+- ưu tiên option trong ngân sách
+
+---
+
+### 5. QueryPromotion
+Người dùng hỏi khuyến mãi.
+
+Ví dụ:
+- “Có flash sale nào không?”
+
+Xử lý:
+- gọi PromotionTool
+- lọc promotion đang active
+- kiểm tra điều kiện áp dụng
+- gắn kết quả vào plan hiện tại
+
+---
+
+### 6. QueryInventory
+Người dùng hỏi hàng còn hay không.
+
+Ví dụ:
+- “Món này còn hàng không?”
+
+Xử lý:
+- gọi InventoryTool
+- kiểm tra stock / batch / near-expiry
+- trả về dữ liệu thật
+- không đoán
+
+---
+
+### 7. AddToCart
+Người dùng muốn thêm vào giỏ.
+
+Ví dụ:
+- “Thêm tất cả vào giỏ.”
+
+Xử lý:
+- lấy plan hiện tại
+- gọi CartTool
+- thêm toàn bộ item hợp lệ
+- xác nhận lại kết quả
+
+---
+
+### 8. EstimateCart
+Người dùng muốn tính lại giỏ.
+
+Ví dụ:
+- “Tính lại tổng tiền.”
+
+Xử lý:
+- gọi CartTool / BudgetTool
+- tính tổng mới
+- so sánh ngân sách
+- render kết quả
+
+---
+
+## C. Workflow chi tiết cho hội thoại nhiều lượt
+
+### Bước 1: Nhận message mới
+Ví dụ:
+- “Mình có 300k, nấu lẩu bò cho 4 người.”
+
+### Bước 2: Tạo plan ban đầu
+- RecipeTool tìm recipe phù hợp
+- InventoryTool kiểm tra tồn kho
+- PromotionTool kiểm tra khuyến mãi
+- BudgetTool tính tổng
+
+### Bước 3: Người dùng sửa plan
+Ví dụ:
+- “Đổi bò Úc thành bò ta.”
+
+Xử lý:
+- không tạo plan mới từ đầu
+- chỉ cập nhật ingredient liên quan
+- tính lại tổng
+
+### Bước 4: Người dùng xoá thành phần
+Ví dụ:
+- “Bỏ nấm.”
+
+Xử lý:
+- xóa nấm khỏi plan hiện tại
+- nếu thiếu cân bằng món thì đề xuất thay thế
+
+### Bước 5: Người dùng đổi ngân sách
+Ví dụ:
+- “Giảm còn 250k.”
+
+Xử lý:
+- chạy lại budget optimization
+- sắp xếp lại options
+- option nào phù hợp ngân sách đưa lên đầu
+
+### Bước 6: Người dùng hỏi flash sale
+Ví dụ:
+- “Có flash sale nào không?”
+
+Xử lý:
+- kiểm tra promotion
+- trả kết quả thật
+- không làm mất plan hiện tại
+
+### Bước 7: Người dùng chốt giỏ
+Ví dụ:
+- “Thêm tất cả vào giỏ.”
+
+Xử lý:
+- thêm item hợp lệ
+- trả tổng tiền cuối cùng
+- giữ context cho checkout
+
+---
+
+## D. Output order rule
+
+Mỗi response phải theo thứ tự:
+
+1. Phương án khuyến nghị chính
+2. Phương án thay thế
+3. Phương án vượt ngân sách nếu có
+4. Tổng tiền
+5. Trạng thái ngân sách
+6. Gợi ý hành động tiếp theo
+
+---
+
+## E. Error handling workflow
+
+### Nếu thiếu context
+- hỏi lại người dùng
+- không tự đoán
+
+### Nếu tool lỗi
+- thông báo ngắn gọn
+- không bịa dữ liệu
+
+### Nếu không có phương án phù hợp ngân sách
+- nói rõ không có phương án phù hợp
+- đề xuất giảm chi phí hoặc thay nguyên liệu
+
+---
+
+## F. Validation checklist trước khi render
+
+Trước khi trả response, phải kiểm tra:
+- có đang dùng plan hiện tại không
+- có cập nhật đúng yêu cầu người dùng không
+- có bỏ nguyên liệu đúng chưa
+- có tính lại total chưa
+- có ưu tiên đúng ngân sách chưa
+- có gắn nhãn `Vượt ngân sách` chưa
+- có bịa dữ liệu không
+
+---
+
+## G. Required behavior summary
+
+- Không reset plan nếu user chỉ sửa một phần
+- Không giữ nguyên nguyên liệu cũ sau khi user yêu cầu thay thế
+- Không trả option vượt ngân sách như option chính
+- Không bỏ qua intent mới
+- Không trả lời như một request độc lập nếu đang có hội thoại trước đó

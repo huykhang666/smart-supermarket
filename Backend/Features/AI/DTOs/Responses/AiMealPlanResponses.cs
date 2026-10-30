@@ -25,6 +25,24 @@ public class MealPlanChatResponse
     public List<MealIngredientItemDto> Ingredients { get; set; } = new();
     public List<MealOptionDto> MealOptions { get; set; } = new();
     public string CookingTips { get; set; } = string.Empty;
+
+    // Phase 2: Retail Shopping Intelligence Properties
+    public bool HasRetailRecommendation { get; set; } = false;
+    public string? ShoppingCategory { get; set; }
+    public List<RetailProductRecommendationDto> RetailRecommendations { get; set; } = new();
+    public RetailComparisonTableDto? ComparisonTable { get; set; }
+
+    // Phase 3: Knowledge & Grounding RAG Properties
+    public string? KnowledgeSource { get; set; }
+    public List<string> GroundedFacts { get; set; } = new();
+
+    // Phase 4: Optimization, Routing & Observability Properties
+    public string? ModelRouted { get; set; }
+    public string? PromptVersion { get; set; }
+    public string? ExperimentVariant { get; set; }
+    public long? ExecutionLatencyMs { get; set; }
+    public decimal? EstimatedCostUsd { get; set; }
+    public bool IsCacheHit { get; set; }
 }
 
 public class MealIngredientItemDto

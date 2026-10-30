@@ -24,8 +24,8 @@ public class GroqClient : ILlmClient
     public GroqClient(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _apiKey = configuration["Groq:ApiKey"] ?? string.Empty;
-        _model = configuration["Groq:Model"] ?? "llama-3.3-70b-versatile";
+        _apiKey = Environment.GetEnvironmentVariable("GROQ_API_KEY") ?? configuration["Groq:ApiKey"] ?? string.Empty;
+        _model = Environment.GetEnvironmentVariable("GROQ_MODEL") ?? configuration["Groq:Model"] ?? "llama-3.3-70b-versatile";
     }
 
     public async Task<string> GenerateAsync(

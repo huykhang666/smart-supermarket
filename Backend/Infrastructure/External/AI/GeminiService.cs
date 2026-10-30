@@ -22,8 +22,8 @@ public class GeminiService : ILlmClient
         _httpClient = httpClient;
         _httpClient.Timeout = TimeSpan.FromSeconds(60);
         _configuration = configuration;
-        _apiKey = configuration["Gemini:ApiKey"] ?? string.Empty;
-        var modelConfig = configuration["Gemini:Model"];
+        _apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? configuration["Gemini:ApiKey"] ?? string.Empty;
+        var modelConfig = Environment.GetEnvironmentVariable("GEMINI_MODEL") ?? configuration["Gemini:Model"];
         _model = string.IsNullOrWhiteSpace(modelConfig) ? "gemini-2.5-flash" : modelConfig;
     }
 

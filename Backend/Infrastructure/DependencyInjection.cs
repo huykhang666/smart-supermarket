@@ -78,10 +78,16 @@ public static class DependencyInjection
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IKnowledgeCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.KnowledgeCache>();
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IPromptCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.PromptCache>();
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Cache.Interfaces.IResponseCache, SmartSupermarket.Backend.Features.AI.Cache.Implementations.ResponseCache>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Services.Knowledge.Interfaces.IKnowledgeRetrievalService, SmartSupermarket.Backend.Features.AI.Services.Knowledge.Implementations.KnowledgeRetrievalService>();
 
         // AI Monitoring & Observability Subsystem
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces.IAiMetricsCollector, SmartSupermarket.Backend.Features.AI.Monitoring.Implementations.AiMetricsCollector>();
         services.AddSingleton<SmartSupermarket.Backend.Features.AI.Monitoring.Interfaces.IAiMonitoringService, SmartSupermarket.Backend.Features.AI.Monitoring.Implementations.AiMonitoringService>();
+
+        // Phase 4: Optimization, Prompt Versioning, Model Routing & A/B Experimentation
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.PromptVersioning.Interfaces.IPromptVersionManager, SmartSupermarket.Backend.Features.AI.PromptVersioning.Implementations.PromptVersionManager>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Routing.Interfaces.IModelRouter, SmartSupermarket.Backend.Features.AI.Routing.Implementations.ModelRouter>();
+        services.AddSingleton<SmartSupermarket.Backend.Features.AI.Optimization.Interfaces.IAiExperimentService, SmartSupermarket.Backend.Features.AI.Optimization.Implementations.AiExperimentService>();
 
         services.AddHttpClient<GeminiService>();
         services.AddHttpClient<GroqClient>();
@@ -112,6 +118,7 @@ public static class DependencyInjection
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiRecipeService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiRecipeService>();
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiBudgetService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiBudgetService>();
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IAiCartService, SmartSupermarket.Backend.Features.AI.Services.Implementations.AiCartService>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Services.Interfaces.IRetailShoppingIntelligenceService, SmartSupermarket.Backend.Features.AI.Services.Implementations.RetailShoppingIntelligenceService>();
 
         // AI Tools
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IInventoryTool, SmartSupermarket.Backend.Features.AI.Tools.InventoryTool>();
@@ -120,6 +127,7 @@ public static class DependencyInjection
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IRecipeTool, SmartSupermarket.Backend.Features.AI.Tools.RecipeTool>();
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IBudgetTool, SmartSupermarket.Backend.Features.AI.Tools.BudgetTool>();
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.ICartTool, SmartSupermarket.Backend.Features.AI.Tools.CartTool>();
+        services.AddScoped<SmartSupermarket.Backend.Features.AI.Tools.IRetailTool, SmartSupermarket.Backend.Features.AI.Tools.RetailTool>();
 
         // AI Agents
         services.AddScoped<SmartSupermarket.Backend.Features.AI.Agents.ShoppingAgent>();

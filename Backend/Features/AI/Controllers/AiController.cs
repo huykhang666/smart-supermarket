@@ -70,7 +70,7 @@ public class AiController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[AiController] Lỗi xử lý chat cho session: {SessionId}", request.SessionId);
-            return StatusCode(500, ApiResult<AiChatResponseDto>.Failure($"Lỗi máy chủ nội bộ: {ex.Message}"));
+            return StatusCode(500, ApiResult<AiChatResponseDto>.Failure(GetSafeErrorMessage(ex, "Lỗi máy chủ nội bộ khi xử lý hội thoại.")));
         }
     }
 
@@ -92,13 +92,20 @@ public class AiController : ControllerBase
 
         try
         {
-            var response = await _shoppingConciergeService.PlanMealAndShopAsync(request, cancellationToken);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+            var response = await _shoppingConciergeService.PlanMealAndShopAsync(request, cts.Token);
             return Ok(ApiResult<MealPlanChatResponse>.Success(response, "Tư vấn thực đơn & giỏ hàng đi chợ thành công."));
+        }
+        catch (OperationCanceledException)
+        {
+            return StatusCode(504, ApiResult<MealPlanChatResponse>.Failure("Yêu cầu xử lý mâm cơm vượt quá thời gian cho phép (Timeout 10s). Vui lòng thử lại."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[AiController] Lỗi khi tạo mâm cơm");
-            return StatusCode(500, ApiResult<MealPlanChatResponse>.Failure($"Lỗi khi tạo mâm cơm: {ex.Message}"));
+            return StatusCode(500, ApiResult<MealPlanChatResponse>.Failure(GetSafeErrorMessage(ex, "Lỗi máy chủ khi tạo mâm cơm.")));
         }
     }
 
@@ -139,7 +146,7 @@ public class AiController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[AiController] Lỗi nạp giỏ hàng cho session: {SessionId}", request.SessionId);
-            return StatusCode(500, ApiResult<object>.Failure($"Lỗi máy chủ nội bộ: {ex.Message}"));
+            return StatusCode(500, ApiResult<object>.Failure(GetSafeErrorMessage(ex, "Lỗi máy chủ nội bộ khi cập nhật giỏ hàng.")));
         }
     }
 
@@ -180,15 +187,15 @@ public class AiController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[AiController] Lỗi thực thi tác nhân {Agent}", targetAgentName);
-            return StatusCode(500, ApiResult<AgentResultDto>.Failure($"Lỗi thực thi tác nhân: {ex.Message}"));
+            return StatusCode(500, ApiResult<AgentResultDto>.Failure(GetSafeErrorMessage(ex, $"Lỗi thực thi tác nhân {targetAgentName}.")));
         }
     }
 
     /// <summary>
-    /// Dự báo nhập hàng tự động theo dữ liệu lịch sử xuất bán.
+    /// Dự báo nhập hàng tự động theo dữ liệu lịch sử xuất bán (yêu cầu quyền Quản lý/Admin).
     /// </summary>
     [HttpPost("import-forecast")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<ApiResult<AiResponse>>> ImportForecast(
         [FromBody] AiImportForecastRequest request,
         CancellationToken cancellationToken = default)
@@ -198,10 +205,10 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo báo cáo phân tích doanh thu bán hàng thông minh.
+    /// Tạo báo cáo phân tích doanh thu bán hàng thông minh (yêu cầu quyền Quản lý/Admin).
     /// </summary>
     [HttpPost("revenue-report")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<ApiResult<AiResponse>>> RevenueReport(
         [FromBody] AiRevenueReportRequest request,
         CancellationToken cancellationToken = default)
@@ -211,10 +218,10 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Phân tích hiệu suất tiêu thụ và tỷ suất lợi nhuận sản phẩm.
+    /// Phân tích hiệu suất tiêu thụ và tỷ suất lợi nhuận sản phẩm (yêu cầu quyền Quản lý/Admin).
     /// </summary>
     [HttpPost("product-analysis")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<ApiResult<AiResponse>>> ProductAnalysis(
         [FromBody] AiProductAnalysisRequest request,
         CancellationToken cancellationToken = default)
@@ -224,13 +231,23 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Đề xuất mức chiết khấu tối ưu cho các sản phẩm cận hạn dùng.
+    /// Đề xuất mức chiết khấu tối ưu cho các sản phẩm cận hạn dùng (yêu cầu quyền Quản lý/Admin).
     /// </summary>
     [HttpPost("expiry-markdown")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<ActionResult<ApiResult<AiResponse>>> ExpiryMarkdown(CancellationToken cancellationToken = default)
     {
         var result = await _legacyAiService.GenerateExpiryMarkdownAsync(cancellationToken);
         return Ok(ApiResult<AiResponse>.Success(result, "AI đề xuất giảm giá hàng cận date thành công"));
+    }
+
+    private static string GetSafeErrorMessage(Exception ex, string fallbackMessage)
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{fallbackMessage}: {ex.Message}";
+        }
+        return fallbackMessage;
     }
 }

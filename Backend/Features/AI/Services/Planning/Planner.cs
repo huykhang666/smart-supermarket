@@ -80,6 +80,41 @@ public class Planner : IPlanner
                 });
                 break;
 
+            case IntentType.ProductRecommendation:
+            case IntentType.CategoryComparison:
+            case IntentType.PriceComparison:
+            case IntentType.QualityComparison:
+            case IntentType.BrandComparison:
+            case IntentType.BudgetShopping:
+            case IntentType.ValueForMoneyShopping:
+            case IntentType.DurableProductSearch:
+            case IntentType.PremiumProductSearch:
+            case IntentType.CheapProductSearch:
+            case IntentType.PromotionAwareShopping:
+            case IntentType.InventoryAwareShopping:
+            case IntentType.ProductSearch:
+                plan.Steps.Add(new ExecutionStepDto
+                {
+                    Order = 1,
+                    StepType = PlanStepType.InventoryCheck,
+                    TargetAgent = "InventoryAgent",
+                    TargetTool = "InventoryTool.GetStockAndNearExpiry"
+                });
+                plan.Steps.Add(new ExecutionStepDto
+                {
+                    Order = 2,
+                    StepType = PlanStepType.PromotionScan,
+                    TargetAgent = "PromotionAgent",
+                    TargetTool = "PromotionTool.CheckFlashSale"
+                });
+                plan.Steps.Add(new ExecutionStepDto
+                {
+                    Order = 3,
+                    StepType = PlanStepType.LlmSynthesis,
+                    TargetAgent = "ShoppingAgent"
+                });
+                break;
+
             case IntentType.MealPlanning:
             default:
                 // Đối với MealPlanning: Tra cứu công thức, kiểm tra kho và quét khuyến mãi có thể chạy song song

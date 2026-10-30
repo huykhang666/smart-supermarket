@@ -1,0 +1,18 @@
+{
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/logs": true,
+    "**/.vs": true,
+    "**/.idea": true,
+    "**/*.user": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "appsettings.json": "appsettings.*.json",
+    "*.cs": "$(capture).Designer.cs",
+    "*.csproj": "$(capture).csproj.user",
+    "package.json": "package-lock.json, tsconfig*.json, vite.config.*"
+  }
+}

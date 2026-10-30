@@ -10,7 +10,20 @@ public enum IntentType
     CartAction,
     CulinaryAdvice,
     Greeting,
-    GeneralChat
+    GeneralChat,
+    // Phase 2: Retail Shopping Intents
+    ProductRecommendation,
+    CategoryComparison,
+    PriceComparison,
+    QualityComparison,
+    BrandComparison,
+    BudgetShopping,
+    ValueForMoneyShopping,
+    DurableProductSearch,
+    PremiumProductSearch,
+    CheapProductSearch,
+    PromotionAwareShopping,
+    InventoryAwareShopping
 }
 
 public class UserIntentDto
@@ -24,4 +37,9 @@ public class UserIntentDto
     public List<string> Keywords { get; set; } = new();
     public List<int> CategoryIds { get; set; } = new();
     public bool PrioritizePromotions { get; set; } = true;
+
+    // Phase 2: Retail Shopping Extensions
+    public string? RetailCategory { get; set; }
+    public string? RetailUseCase { get; set; }
+    public string? PreferredTier { get; set; }
 }

@@ -142,3 +142,44 @@ Chuẩn khuyến nghị hiện tại:
 - DTO không chứa DbContext
 - DTO không chứa Entity Framework navigation object
 - DTO chỉ truyền dữ liệu cần thiết
+
+---
+
+# 8. Phase 2 — Retail Shopping Concierge Contract
+
+## 8.1 Endpoint
+`POST /api/v1/ai/shopping/meal-plan`
+
+Hỗ trợ đồng thời 2 chế độ:
+1. **Meal Planning**: Lên mâm cơm gia đình theo ngân sách, khẩu phần, loại trừ nguyên liệu, tích hợp Cookpad.
+2. **Retail Shopping Intelligence**: Tư vấn thông minh 13 ngành hàng tiêu dùng siêu thị với 4 phân khúc (Tier 1-4), chỉ số tiết kiệm (Unit Metric đ/kg, đ/g, đ/cuộn), phân tích trade-off và bảng so sánh đa phân khúc.
+
+## 8.2 Retail Shopping Response Structure
+```json
+{
+  "assistantMessage": "🎯 Gợi ý tốt nhất cho bạn: Nước rửa chén Sunlight chanh can 3.6kg...",
+  "hasMealSuggestion": false,
+  "hasRetailRecommendation": true,
+  "shoppingCategory": "Hóa phẩm & Giặt xả (Nước rửa chén & Nước giặt)",
+  "retailRecommendations": [
+    {
+      "productId": 63,
+      "productName": "Nước rửa chén Sunlight chanh sạch dầu mỡ can 3.6kg",
+      "barcode": "8934588063",
+      "unit": "Can 3.6kg",
+      "finalPrice": 105000,
+      "tier": 2,
+      "tierLabel": "Tier 2: Đáng tiền nhất (Best Value)",
+      "pricePerUnitMetric": "29.167 đ/kg",
+      "isRecommendedChoice": true,
+      "pros": ["Đơn giá chỉ ~29.167 đ/kg (rẻ hơn 25% so với mua chai nhỏ)", "Can 3.6kg dùng thoải mái 6-8 tháng"],
+      "cons": ["Can to nặng, nên chiết ra chai nhỏ để tiện rót"]
+    }
+  ],
+  "comparisonTable": {
+    "title": "Bảng so sánh phân khúc ngành hàng: Hóa phẩm & Giặt xả",
+    "headers": ["Tiêu chí", "Tier 1: Tiết kiệm", "Tier 2: Đáng tiền nhất (Best Value)", "Tier 3: Bền bỉ / Hiệu năng"],
+    "rows": [...]
+  }
+}
+```
