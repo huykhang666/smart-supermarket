@@ -22,6 +22,7 @@ public partial class AdminMainWindow : FluentWindow
         if (confirm == System.Windows.MessageBoxResult.Yes)
         {
             var login = new LoginWindow();
+            Application.Current.MainWindow = login;
             login.Show();
             this.Close();
         }
