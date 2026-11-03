@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using SmartSupermarket.POS.Models;
@@ -9,81 +13,222 @@ namespace SmartSupermarket.POS.Services;
 
 public class ApiService
 {
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(8) };
     public string BaseUrl { get; set; } = "http://localhost:5137";
 
-    public async Task<List<ProductItem>> GetProductsAsync()
+    public ApiService()
+    {
+        EnsureBackendRunning();
+    }
+
+    /// <summary>
+    /// Đảm bảo Backend API trên cổng 5137 luôn chạy ngầm
+    /// </summary>
+    public static void EnsureBackendRunning()
     {
         try
         {
-            var res = await _httpClient.GetAsync($"{BaseUrl}/api/v1/products?page=1&pageSize=100");
+            using var client = new HttpClient { Timeout = TimeSpan.FromMilliseconds(400) };
+            var res = client.GetAsync("http://localhost:5137/swagger/index.html").GetAwaiter().GetResult();
+            if (res.IsSuccessStatusCode) return;
+        }
+        catch
+        {
+            // Backend chưa chạy, tự động khởi động Backend ngầm
+            try
+            {
+                var candidatePaths = new[]
+                {
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\Backend\bin\Debug\net10.0\SmartSupermarket.Backend.exe"),
+                    Path.Combine(Directory.GetCurrentDirectory(), @"Backend\bin\Debug\net10.0\SmartSupermarket.Backend.exe"),
+                    @"C:\Users\MINH TRIEN\OneDrive\Desktop\smart-supermarket\Backend\bin\Debug\net10.0\SmartSupermarket.Backend.exe"
+                };
+
+                foreach (var path in candidatePaths)
+                {
+                    var fullPath = Path.GetFullPath(path);
+                    if (File.Exists(fullPath))
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = fullPath,
+                            WorkingDirectory = Path.GetDirectoryName(fullPath),
+                            CreateNoWindow = true,
+                            UseShellExecute = false
+                        };
+                        Process.Start(psi);
+                        break;
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    /// <summary>
+    /// Lấy danh sách sản phẩm THỰC TẾ từ Database Backend qua REST API
+    /// </summary>
+    public async Task<List<ProductItem>> GetProductsAsync()
+    {
+        var list = new List<ProductItem>();
+
+        // 1. Thử lấy từ endpoint phân trang CSDL
+        try
+        {
+            var res = await _httpClient.GetAsync($"{BaseUrl}/api/products?page=1&pageSize=300");
             if (res.IsSuccessStatusCode)
             {
                 var content = await res.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(content);
                 var root = doc.RootElement;
-                if (root.TryGetProperty("data", out var data))
+                if (root.TryGetProperty("data", out var data) && data.TryGetProperty("items", out var items))
                 {
-                    var itemsProp = data.TryGetProperty("items", out var items) ? items : data;
-                    if (itemsProp.ValueKind == JsonValueKind.Array)
+                    if (items.ValueKind == JsonValueKind.Array)
                     {
-                        var list = new List<ProductItem>();
-                        foreach (var el in itemsProp.EnumerateArray())
+                        foreach (var el in items.EnumerateArray())
                         {
-                            list.Add(new ProductItem
-                            {
-                                ProductId = el.GetProperty("productId").GetInt32(),
-                                ProductName = el.TryGetProperty("productName", out var pn) ? pn.GetString() ?? "" : "",
-                                Barcode = el.TryGetProperty("barcode", out var bc) ? bc.GetString() ?? "" : "",
-                                CategoryName = el.TryGetProperty("categoryName", out var cn) ? cn.GetString() ?? "Khác" : "Khác",
-                                Price = el.GetProperty("price").GetDecimal(),
-                                CostPrice = el.TryGetProperty("costPrice", out var cp) && cp.ValueKind != JsonValueKind.Null ? cp.GetDecimal() : null,
-                                ImageUrl = el.TryGetProperty("imageUrl", out var iu) ? iu.GetString() ?? "" : "",
-                                Unit = el.TryGetProperty("unit", out var un) ? un.GetString() ?? "Cái" : "Cái",
-                                Stock = el.TryGetProperty("stock", out var st) ? st.GetInt32() : 25,
-                                Status = "Đang bán"
-                            });
+                            list.Add(ParseProductItem(el));
                         }
-                        return list;
                     }
                 }
             }
         }
         catch { }
 
-        return GetMockProducts();
-    }
+        // 2. Nếu đã lấy được danh sách từ API CSDL, trả về ngay
+        if (list.Count > 0)
+        {
+            return list;
+        }
 
-    public async Task<List<OrderItem>> GetOrdersAsync()
-    {
+        // 3. Fallback sang endpoint lấy toàn bộ catalog mẫu thực tế 200 sản phẩm từ CSDL
         try
         {
-            var res = await _httpClient.GetAsync($"{BaseUrl}/api/v1/orders?page=1&pageSize=50");
+            var res = await _httpClient.GetAsync($"{BaseUrl}/api/products/sample");
             if (res.IsSuccessStatusCode)
             {
                 var content = await res.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(content);
                 var root = doc.RootElement;
-                if (root.TryGetProperty("data", out var data))
+                if (root.TryGetProperty("data", out var items) && items.ValueKind == JsonValueKind.Array)
                 {
-                    var itemsProp = data.TryGetProperty("items", out var items) ? items : data;
-                    if (itemsProp.ValueKind == JsonValueKind.Array)
+                    foreach (var el in items.EnumerateArray())
                     {
-                        var list = new List<OrderItem>();
-                        foreach (var el in itemsProp.EnumerateArray())
+                        list.Add(ParseProductItem(el));
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // 4. Nếu kết nối mạng backend tạm thời gián đoạn, đọc trực tiếp file CSDL products_seed.json
+        if (list.Count == 0)
+        {
+            list = LoadDirectFromSeedJson();
+        }
+
+        return list;
+    }
+
+    private ProductItem ParseProductItem(JsonElement el)
+    {
+        int id = el.TryGetProperty("productId", out var pid) ? pid.GetInt32()
+               : el.TryGetProperty("id", out var idProp) ? idProp.GetInt32() : 0;
+
+        string name = el.TryGetProperty("productName", out var pn) ? pn.GetString() ?? "" : "";
+        string barcode = el.TryGetProperty("barcode", out var bc) ? bc.GetString() ?? "" : "";
+        string category = el.TryGetProperty("categoryName", out var cn) ? cn.GetString() ?? "Khác" : "Khác";
+        decimal price = el.TryGetProperty("price", out var pr) ? pr.GetDecimal() : 0;
+        decimal? costPrice = el.TryGetProperty("costPrice", out var cp) && cp.ValueKind != JsonValueKind.Null ? cp.GetDecimal() : null;
+        string image = el.TryGetProperty("imageUrl", out var iu) ? iu.GetString() ?? "" : "";
+        string unit = el.TryGetProperty("unit", out var un) ? un.GetString() ?? "Cái" : "Cái";
+        int stock = el.TryGetProperty("stock", out var st) && st.ValueKind != JsonValueKind.Null ? st.GetInt32() : 50;
+        string status = el.TryGetProperty("statusName", out var sn) ? sn.GetString() ?? "Đang bán" : "Đang bán";
+        bool isNearExpiry = el.TryGetProperty("isNearExpiry", out var ine) && ine.GetBoolean();
+
+        return new ProductItem
+        {
+            ProductId = id,
+            ProductName = name,
+            Barcode = barcode,
+            CategoryName = category,
+            Price = price,
+            CostPrice = costPrice,
+            ImageUrl = image,
+            Unit = unit,
+            Stock = stock,
+            Status = status,
+            IsNearExpiry = isNearExpiry
+        };
+    }
+
+    private List<ProductItem> LoadDirectFromSeedJson()
+    {
+        var list = new List<ProductItem>();
+        try
+        {
+            var candidatePaths = new[]
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\Backend\Data\products_seed.json"),
+                Path.Combine(Directory.GetCurrentDirectory(), @"Backend\Data\products_seed.json"),
+                @"C:\Users\MINH TRIEN\OneDrive\Desktop\smart-supermarket\Backend\Data\products_seed.json"
+            };
+
+            foreach (var path in candidatePaths)
+            {
+                var fullPath = Path.GetFullPath(path);
+                if (File.Exists(fullPath))
+                {
+                    var json = File.ReadAllText(fullPath);
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var el in doc.RootElement.EnumerateArray())
+                        {
+                            list.Add(ParseProductItem(el));
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        catch { }
+
+        return list;
+    }
+
+    /// <summary>
+    /// Lấy danh sách đơn hàng THỰC TẾ từ Database Backend qua REST API
+    /// </summary>
+    public async Task<List<OrderItem>> GetOrdersAsync()
+    {
+        var list = new List<OrderItem>();
+        try
+        {
+            var res = await _httpClient.GetAsync($"{BaseUrl}/api/v1/orders?page=1&pageSize=100");
+            if (res.IsSuccessStatusCode)
+            {
+                var content = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("data", out var data) && data.TryGetProperty("items", out var items))
+                {
+                    if (items.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var el in items.EnumerateArray())
                         {
                             int id = el.GetProperty("orderId").GetInt32();
                             string cust = el.TryGetProperty("customerName", out var cn) && cn.ValueKind != JsonValueKind.Null ? cn.GetString() ?? "Khách Lẻ" : "Khách Lẻ";
                             string emp = el.TryGetProperty("employeeName", out var en) && en.ValueKind != JsonValueKind.Null ? en.GetString() ?? "Thu Ngân" : "Thu Ngân";
-                            decimal total = el.GetProperty("totalAmount").GetDecimal();
+                            decimal total = el.TryGetProperty("totalAmount", out var ta) ? ta.GetDecimal() : 0;
                             decimal discount = el.TryGetProperty("discountAmount", out var da) ? da.GetDecimal() : 0;
-                            decimal final_ = el.GetProperty("finalAmount").GetDecimal();
+                            decimal final_ = el.TryGetProperty("finalAmount", out var fa) ? fa.GetDecimal() : total;
                             int payInt = el.TryGetProperty("paymentMethod", out var pm) ? pm.GetInt32() : 1;
                             string payStr = payInt == 2 ? "VietQR" : payInt == 3 ? "Thẻ POS" : "Tiền mặt";
                             string dateStr = el.TryGetProperty("orderDate", out var od) ? od.GetString() ?? "" : "";
                             DateTime oDate = DateTime.TryParse(dateStr, out var dt) ? dt.ToLocalTime() : DateTime.Now;
 
-                            list.Add(new OrderItem
+                            var orderItem = new OrderItem
                             {
                                 OrderId = id,
                                 CustomerName = cust,
@@ -94,18 +239,38 @@ public class ApiService
                                 PaymentMethod = payStr,
                                 OrderDate = oDate,
                                 Status = "Hoàn thành"
-                            });
+                            };
+
+                            // Map real line items of this order
+                            if (el.TryGetProperty("orderDetails", out var details) && details.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var d in details.EnumerateArray())
+                                {
+                                    orderItem.Items.Add(new CartItem
+                                    {
+                                        ProductId = d.TryGetProperty("productId", out var pId) ? pId.GetInt32() : 0,
+                                        ProductName = d.TryGetProperty("productName", out var pName) ? pName.GetString() ?? "" : "Sản phẩm",
+                                        Barcode = d.TryGetProperty("barcode", out var bCode) ? bCode.GetString() ?? "" : "",
+                                        UnitPrice = d.TryGetProperty("unitPrice", out var uPrice) ? uPrice.GetDecimal() : 0,
+                                        Quantity = d.TryGetProperty("quantity", out var qty) ? qty.GetInt32() : 1
+                                    });
+                                }
+                            }
+
+                            list.Add(orderItem);
                         }
-                        return list;
                     }
                 }
             }
         }
         catch { }
 
-        return GetMockOrders();
+        return list;
     }
 
+    /// <summary>
+    /// Gửi tạo đơn hàng THỰC TẾ vào Database Backend
+    /// </summary>
     public async Task<bool> CreateOrderAsync(int employeeId, int? customerId, decimal totalAmount, decimal finalAmount, int paymentMethod, List<CartItem> items)
     {
         try
@@ -129,7 +294,7 @@ public class ApiService
             };
 
             var json = JsonSerializer.Serialize(req);
-            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var res = await _httpClient.PostAsync($"{BaseUrl}/api/v1/orders", content);
             return res.IsSuccessStatusCode;
         }
@@ -139,29 +304,65 @@ public class ApiService
         }
     }
 
-    private List<ProductItem> GetMockProducts()
+    /// <summary>
+    /// Tra cứu khách hàng thành viên THỰC TẾ qua số điện thoại từ Database
+    /// </summary>
+    public async Task<CustomerItem?> LookupCustomerAsync(string phone)
     {
-        return new List<ProductItem>
+        if (string.IsNullOrWhiteSpace(phone)) return null;
+
+        try
         {
-            new() { ProductId = 1, ProductName = "Sữa Tươi Tiệt Trùng Vinamilk 100% 1L", Barcode = "893467312301", CategoryName = "Sữa & Sản phẩm từ sữa", Price = 38000, Unit = "Hộp", Stock = 45, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2386/75470/bhx/sua-tuoi-tiet-trung-khong-duong-vinamilk-100-sua-tuoi-hop-1-lit-202303031024317189.jpg" },
-            new() { ProductId = 2, ProductName = "Nước Ngọt Coca Cola Chai 1.5L", Barcode = "893467312302", CategoryName = "Nước giải khát & Đồ uống", Price = 22000, Unit = "Chai", Stock = 80, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2443/76451/bhx/nuoc-ngot-coca-cola-15-lit-202302211516087568.jpg" },
-            new() { ProductId = 3, ProductName = "Bánh Quy Bơ Danisa Hộp Thiếc 454g", Barcode = "893467312303", CategoryName = "Bánh kẹo & Ăn vặt", Price = 135000, Unit = "Hộp", Stock = 18, ImageUrl = "https://cdn.tgdd.vn/Products/Images/3364/79313/bhx/banh-quy-bo-danisa-hop-454g-202301051515286591.jpg" },
-            new() { ProductId = 4, ProductName = "Mì Tôm Hảo Hảo Chua Cay Gói 75g", Barcode = "893467312304", CategoryName = "Đồ ăn liền & Đóng hộp", Price = 4500, Unit = "Gói", Stock = 150, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2565/78648/bhx/mi-hao-hao-tom-chua-cay-75g-202301051016556534.jpg" },
-            new() { ProductId = 5, ProductName = "Dầu Ăn Neptune Light Chai 1L", Barcode = "893467312305", CategoryName = "Gia vị & Đồ khô", Price = 58000, Unit = "Chai", Stock = 32, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2282/81575/bhx/dau-an-neptune-light-chai-1-lit-202303021415053421.jpg" },
-            new() { ProductId = 6, ProductName = "Gạo Thơm ST25 Đặc Sản Sóc Trăng 5kg", Barcode = "893467312306", CategoryName = "Gia vị & Đồ khô", Price = 185000, Unit = "Túi", Stock = 20, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2513/218967/bhx/gao-st25-ong-cua-tui-5kg-202301051516223451.jpg" },
-            new() { ProductId = 7, ProductName = "Nước Mắm Nam Ngư Đệ Nhị 900ml", Barcode = "893467312307", CategoryName = "Gia vị & Đồ khô", Price = 32000, Unit = "Chai", Stock = 40, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2286/77890/bhx/nuoc-mam-nam-ngu-de-nhi-chai-900ml-202301051015112234.jpg" },
-            new() { ProductId = 8, ProductName = "Nước Giặt OMO Matic Cửa Trên Túi 3.6kg", Barcode = "893467312308", CategoryName = "Hóa phẩm & Giặt xả", Price = 175000, Unit = "Túi", Stock = 15, ImageUrl = "https://cdn.tgdd.vn/Products/Images/2445/142999/bhx/nuoc-giat-omo-matic-chuyen-gia-cua-tren-tui-36kg-202301051015112234.jpg" }
-        };
+            var res = await _httpClient.GetAsync($"{BaseUrl}/api/customers/lookup?phone={Uri.EscapeDataString(phone.Trim())}");
+            if (res.IsSuccessStatusCode)
+            {
+                var content = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object)
+                {
+                    return new CustomerItem
+                    {
+                        CustomerId = data.TryGetProperty("customerId", out var cid) ? cid.GetInt32() : 0,
+                        FullName = data.TryGetProperty("fullName", out var fn) ? fn.GetString() ?? "" : "",
+                        PhoneNumber = data.TryGetProperty("phoneNumber", out var pn) ? pn.GetString() ?? phone : phone,
+                        LoyaltyPoints = data.TryGetProperty("points", out var pt) ? pt.GetInt32() : 0,
+                        Tier = data.TryGetProperty("membershipLevel", out var ml) ? ml.GetString() ?? "Thành viên" : "Thành viên"
+                    };
+                }
+            }
+        }
+        catch { }
+
+        return null;
     }
 
-    private List<OrderItem> GetMockOrders()
+    /// <summary>
+    /// Lấy báo cáo thống kê doanh thu thực tế từ Backend CSDL
+    /// </summary>
+    public async Task<(string TodayRevenue, string TodayOrders, string TotalCustomers, string WarningCount, string AiAnalysis)?> GetDashboardSummaryAsync()
     {
-        return new List<OrderItem>
+        try
         {
-            new() { OrderId = 1001, CustomerName = "Nguyễn Văn Hùng", EmployeeName = "Thu Ngân 01", TotalAmount = 245000, FinalAmount = 245000, PaymentMethod = "VietQR", OrderDate = DateTime.Now.AddHours(-2), Status = "Hoàn thành" },
-            new() { OrderId = 1002, CustomerName = "Trần Thị Mai", EmployeeName = "Thu Ngân 01", TotalAmount = 98000, FinalAmount = 98000, PaymentMethod = "Tiền mặt", OrderDate = DateTime.Now.AddHours(-1), Status = "Hoàn thành" },
-            new() { OrderId = 1003, CustomerName = "Lê Hoàng Long", EmployeeName = "Thu Ngân 02", TotalAmount = 450000, DiscountAmount = 50000, FinalAmount = 400000, PaymentMethod = "Thẻ POS", OrderDate = DateTime.Now.AddMinutes(-30), Status = "Hoàn thành" },
-            new() { OrderId = 1004, CustomerName = "Khách Lẻ", EmployeeName = "Thu Ngân 01", TotalAmount = 62500, FinalAmount = 62500, PaymentMethod = "VietQR", OrderDate = DateTime.Now.AddMinutes(-10), Status = "Hoàn thành" }
-        };
+            var res = await _httpClient.GetAsync($"{BaseUrl}/api/dashboard/summary");
+            if (res.IsSuccessStatusCode)
+            {
+                var content = await res.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("data", out var data))
+                {
+                    string rev = data.TryGetProperty("todayRevenue", out var r) ? r.GetString() ?? "0 đ" : "0 đ";
+                    string ord = data.TryGetProperty("todayOrders", out var o) ? o.GetString() ?? "0 đơn" : "0 đơn";
+                    string cus = data.TryGetProperty("totalCustomers", out var c) ? c.GetString() ?? "0" : "0";
+                    string warn = data.TryGetProperty("warningCount", out var w) ? w.GetString() ?? "0" : "0";
+                    string ai = data.TryGetProperty("aiAnalysis", out var a) ? a.GetString() ?? "" : "";
+                    return (rev, ord, cus, warn, ai);
+                }
+            }
+        }
+        catch { }
+
+        return null;
     }
 }
