@@ -20,19 +20,30 @@ public class AuthService
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
     public static UserSession CurrentUser { get; private set; } = new();
 
-    public async Task<(bool Success, string Message, string Role)> LoginAsync(string username, string password, string baseUrl = "http://localhost:5137")
+    public async Task<(bool Success, string Message, string Role)> LoginAsync(string username, string password, string pin = "", string baseUrl = "http://localhost:5137")
     {
         username = username.Trim();
         password = password.Trim();
+        pin = pin.Trim();
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
             return (false, "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!", "");
         }
 
+        if (!string.IsNullOrEmpty(pin) && (pin.Length < 4 || !long.TryParse(pin, out _)))
+        {
+            return (false, "Mã PIN phải từ 4 đến 6 chữ số!", "");
+        }
+
         // 1. Check quick mock accounts first
         if (username.Equals("admin", StringComparison.OrdinalIgnoreCase) && password == "admin123")
         {
+            if (!string.IsNullOrEmpty(pin) && pin != "1234" && pin != "123456" && pin.Length != 4 && pin.Length != 6)
+            {
+                return (false, "Mã PIN không đúng (Mặc định: 1234)!", "");
+            }
+
             CurrentUser = new UserSession
             {
                 UserId = 1,
@@ -40,12 +51,17 @@ public class AuthService
                 FullName = "Quản Trị Viên Hệ Thống",
                 Role = "Admin"
             };
-            return (true, "Đăng nhập thành công với quyền Quản Trị Viên!", "Admin");
+            return (true, "Đăng nhập thành công", "Admin");
         }
 
         if ((username.Equals("nhanvien", StringComparison.OrdinalIgnoreCase) && password == "nhanvien123") ||
             (username.Equals("staff", StringComparison.OrdinalIgnoreCase) && password == "staff123"))
         {
+            if (!string.IsNullOrEmpty(pin) && pin != "1234" && pin != "123456" && pin.Length != 4 && pin.Length != 6)
+            {
+                return (false, "Mã PIN không đúng (Mặc định: 1234)!", "");
+            }
+
             CurrentUser = new UserSession
             {
                 UserId = 2,
@@ -53,7 +69,7 @@ public class AuthService
                 FullName = "Nhân Viên Thu Ngân (POS)",
                 Role = "Staff"
             };
-            return (true, "Đăng nhập thành công với quyền Nhân Viên Thu Ngân!", "Staff");
+            return (true, "Đăng nhập thành công", "Staff");
         }
 
         // 2. Try calling Backend API

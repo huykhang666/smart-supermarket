@@ -2,66 +2,346 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        xmlns:pages="clr-namespace:SmartSupermarket.POS.Views.Pages"
-        Title="KATQ Smart Supermarket • Trạm Thu Ngân POS"
-        Height="800" Width="1280" MinHeight="620" MinWidth="980"
+        Title="KATQ Supermarket"
+        Height="900" Width="1440" MinHeight="700" MinWidth="1200"
         WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica">
+        WindowBackdropType="None"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        FontFamily="Segoe UI, Inter, Arial"
+        Background="{StaticResource AppBackgroundBrush}">
 
-    <Grid>
+    <Window.Resources>
+        <!-- Modern Clean White Sidebar NavItem Style (Matching Logout Button Exactly: FontSize 13, SemiBold) -->
+        <Style x:Key="ModernLightSidebarNavItemStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Margin" Value="10,3,10,3"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="bg" Background="Transparent" CornerRadius="21" Padding="14,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Icon slot via Tag -->
+                                <ContentPresenter x:Name="iconPresenter" Content="{TemplateBinding Tag}"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Left" Width="22"/>
+
+                                <!-- Text label matching EXACTLY the logout button style (FontSize 13, SemiBold) -->
+                                <TextBlock x:Name="txtLabel" Text="{TemplateBinding Content}"
+                                           VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold" Margin="6,0,0,0"
+                                           Foreground="{TemplateBinding Foreground}"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Hover state: subtle soft cyan -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#F0F9FF"/>
+                                <Setter TargetName="txtLabel" Property="Foreground" Value="#0284C7"/>
+                            </Trigger>
+                            <!-- Checked state: Vibrant Cyan Pill matching the image -->
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#00A8E8"/>
+                                <Setter TargetName="txtLabel" Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Window Control Button Style (Translucent Cyan/Dark Theme) -->
+        <Style x:Key="TitleBarActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bgBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#18000000"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#2C000000"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Window Close Button Style (Red Hover) -->
+        <Style x:Key="TitleBarCloseActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bgBorder" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bgBorder" Property="Background" Value="#E11D48"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto"/>
+            <!-- Top Header (Translucent Ice-to-Cyan Gradient) -->
+            <RowDefinition Height="*"/>
+            <!-- Main Work Area (Sidebar + Content) -->
         </Grid.RowDefinitions>
 
-        <!-- Windows 11 TitleBar with Staff Chip & Shift Status -->
-        <ui:TitleBar Grid.Row="0" Title="KATQ POS Workstation • Điểm Bán Hàng Thu Ngân">
-            <ui:TitleBar.Header>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
-                    <!-- Shift Status Badge -->
-                    <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="12" Padding="8,3,8,3" Margin="0,0,8,0">
-                        <TextBlock Text="🟢 Ca 1 - Đang Mở • Két Tiền Đã Khóa" FontSize="11" FontWeight="SemiBold" Foreground="#059669" />
-                    </Border>
+        <!-- ══════════════════════════════════════════════════════
+             ROW 0: Top Header / App Title Bar (Translucent Ice-to-Cyan Gradient Matching Design)
+             ══════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" BorderThickness="0,0,0,1" Height="38" MouseDown="TitleBar_MouseDown">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#C8E8F8FD" Offset="0.0"/>
+                    <GradientStop Color="#BCD6F2F9" Offset="0.15"/>
+                    <GradientStop Color="#B281D7EE" Offset="0.55"/>
+                    <GradientStop Color="#B815B5E1" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <SolidColorBrush Color="#3515B5E1"/>
+            </Border.BorderBrush>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                    <!-- User Profile Chip -->
-                    <Border Background="#FEF3C7" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="12" Padding="8,3,8,3" Margin="0,0,8,0">
-                        <TextBlock x:Name="TxtStaffProfile" Text="👤 Thu Ngân (Staff)" FontSize="11" FontWeight="SemiBold" Foreground="#D97706" />
-                    </Border>
+                <!-- Left: App Title with Brand Cyan Cart Icon -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Viewbox Width="17" Height="17" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M 1,1 L 4,1 L 6.68,13.4 C 6.8,14 7.3,14.5 8,14.5 L 18.5,14.5 C 19.2,14.5 19.7,14 19.85,13.4 L 22,4.5 L 5.5,4.5"
+                                  Stroke="#0284C7" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                            <Ellipse Canvas.Left="7" Canvas.Top="17.5" Width="3" Height="3" Fill="#0284C7"/>
+                            <Ellipse Canvas.Left="17" Canvas.Top="17.5" Width="3" Height="3" Fill="#0284C7"/>
+                        </Canvas>
+                    </Viewbox>
 
-                    <!-- Logout Button -->
-                    <ui:Button Content="Kết Ca / Đăng Xuất" Appearance="Transparent" Height="26" Padding="6,0,6,0" Click="BtnLogout_Click" />
+                    <TextBlock Text="KATQ Supermarket POS" FontSize="13" FontWeight="SemiBold" Foreground="#0F172A" VerticalAlignment="Center"/>
                 </StackPanel>
-            </ui:TitleBar.Header>
-        </ui:TitleBar>
 
-        <!-- NavigationView Sidebar -->
-        <ui:NavigationView Grid.Row="1" x:Name="RootNavigation"
-                           PaneDisplayMode="Left"
-                           IsBackButtonVisible="Collapsed"
-                           OpenPaneLength="220">
+                <!-- Center Drag Region -->
+                <Rectangle Grid.Column="1" Fill="Transparent"/>
 
-            <!-- Primary Navigation Items for Cashier -->
-            <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="POS Bán Hàng"
-                                       Icon="{ui:SymbolIcon Cart24}"
-                                       TargetPageType="{x:Type pages:PosPage}" />
+                <!-- Right: Window Action Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMinimize_Click" ToolTip="Thu nhỏ">
+                        <ui:SymbolIcon Symbol="Subtract16" FontSize="14" Foreground="#0F172A"/>
+                    </Button>
+                    <Button Style="{StaticResource TitleBarActionBtn}" Click="BtnMaximize_Click" ToolTip="Phóng to / Thu nhỏ">
+                        <ui:SymbolIcon Symbol="Maximize16" FontSize="14" Foreground="#0F172A"/>
+                    </Button>
+                    <Button Style="{StaticResource TitleBarCloseActionBtn}" Click="BtnWindowClose_Click" ToolTip="Đóng">
+                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="14" Foreground="#0F172A"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-                <ui:NavigationViewItem Content="Đơn Hàng Tại Quầy"
-                                       Icon="{ui:SymbolIcon Receipt24}"
-                                       TargetPageType="{x:Type pages:OrdersPage}" />
+        <!-- ══════════════════════════════════════════════════════
+             ROW 1: Sidebar (Modern White with Original Logo) + Content Area
+             ══════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1" Background="{StaticResource AppBackgroundBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="ColSidebar" Width="240"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <ui:NavigationViewItem Content="Tra Cứu Giá &amp; Hàng"
-                                       Icon="{ui:SymbolIcon Search24}"
-                                       TargetPageType="{x:Type pages:ProductsPage}" />
-            </ui:NavigationView.MenuItems>
+            <!-- ── Modern White Sidebar Matching the Uploaded Design Image ── -->
+            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- Logo & Status Header -->
+                        <RowDefinition Height="*"/>
+                        <!-- Main Menu Navigation -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Footer Logout Action -->
+                    </Grid.RowDefinitions>
 
-            <!-- Footer Navigation Items -->
-            <ui:NavigationView.FooterMenuItems>
-                <ui:NavigationViewItem Content="Cài Đặt"
-                                       Icon="{ui:SymbolIcon Settings24}"
-                                       TargetPageType="{x:Type pages:SettingsPage}" />
-            </ui:NavigationView.FooterMenuItems>
-        </ui:NavigationView>
+                    <!-- 1. Sidebar Header with TikTok-style Collapse / Expand Interaction -->
+                    <!-- State A: Expanded Header (Logo giữ nguyên size, khoảng trắng vừa vặn thông thoáng) -->
+                    <Grid Grid.Row="0" x:Name="PnlSidebarExpandedHeader" Height="52" Margin="8,6,8,8">
+                        <!-- Logo: giữ nguyên size đẹp (Width 102px), căn chính giữa với khoảng thở vừa vặn -->
+                        <Image Source="pack://application:,,,/Assets/Images/katq_logo_original.png"
+                               Width="102"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0,4,0,4"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                        <!-- TikTok-style Panel Collapse Button [| ] đặt góc phải -->
+                        <Button x:Name="BtnCollapseSidebar" Click="BtnCollapseSidebar_Click"
+                                Width="30" Height="30" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
+                                Cursor="Hand" ToolTip="Thu nhỏ thanh điều hướng"
+                                Background="Transparent" BorderThickness="0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="b" Background="Transparent" CornerRadius="6" Padding="5">
+                                        <Viewbox Width="17" Height="17">
+                                            <Canvas Width="24" Height="24">
+                                                <Rectangle Canvas.Left="3" Canvas.Top="3" Width="18" Height="18" RadiusX="3" RadiusY="3"
+                                                           Stroke="#64748B" StrokeThickness="1.8" Fill="Transparent"/>
+                                                <Line X1="9" Y1="3" X2="9" Y2="21"
+                                                      Stroke="#64748B" StrokeThickness="1.8"/>
+                                            </Canvas>
+                                        </Viewbox>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="b" Property="Background" Value="#F1F5F9"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="b" Property="Background" Value="#E2E8F0"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+
+                    <!-- State B: Collapsed Header (Mini Logo, shows Expand Button on MouseOver - TikTok Style) -->
+                    <Grid Grid.Row="0" x:Name="PnlSidebarCollapsedHeader" Height="52" Margin="0,6,0,8"
+                          Visibility="Collapsed" Cursor="Hand"
+                          MouseEnter="PnlSidebarCollapsedHeader_MouseEnter"
+                          MouseLeave="PnlSidebarCollapsedHeader_MouseLeave"
+                          MouseLeftButtonDown="BtnExpandSidebar_Click"
+                          ToolTip="Nhấp để phóng to thanh điều hướng">
+                        
+                        <!-- Mini Emblem Logo (Visible by default in collapsed mode) -->
+                        <Image x:Name="ImgMiniLogo"
+                               Source="pack://application:,,,/Assets/Images/katq_logo_mini.png"
+                               Width="32" Height="32"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                        <!-- Expand Icon (Appears on MouseOver) -->
+                        <Border x:Name="BorderExpandIcon"
+                                Width="34" Height="34" CornerRadius="8"
+                                Background="#E0F2FE" BorderBrush="#BAE6FD" BorderThickness="1"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                            <Viewbox Width="18" Height="18">
+                                <Canvas Width="24" Height="24">
+                                    <Rectangle Canvas.Left="3" Canvas.Top="3" Width="18" Height="18" RadiusX="3" RadiusY="3"
+                                               Stroke="#0284C7" StrokeThickness="1.8" Fill="Transparent"/>
+                                    <Line X1="9" Y1="3" X2="9" Y2="21"
+                                          Stroke="#0284C7" StrokeThickness="1.8"/>
+                                    <!-- Right arrow indicating expand -->
+                                    <Path Data="M 12,12 L 16,12 M 14,10 L 16.5,12 L 14,14"
+                                          Stroke="#0284C7" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+                    </Grid>
+
+                    <!-- 2. Main Navigation Items (Pill Style, giữ nguyên các tên chức năng cũ) -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,6,0,0">
+                            <!-- POS Bán Hàng (Active mặc định) -->
+                            <RadioButton x:Name="NavPos" Style="{StaticResource ModernLightSidebarNavItemStyle}"
+                                         Content="POS Bán Hàng" GroupName="NavGroup" IsChecked="True"
+                                         Click="NavPos_Click">
+                                <RadioButton.Tag>
+                                    <ui:SymbolIcon Symbol="Cart24" FontSize="17"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <!-- Đơn Hàng Tại Quầy -->
+                            <RadioButton x:Name="NavOrders" Style="{StaticResource ModernLightSidebarNavItemStyle}"
+                                         Content="Đơn Hàng Tại Quầy" GroupName="NavGroup"
+                                         Click="NavOrders_Click">
+                                <RadioButton.Tag>
+                                    <ui:SymbolIcon Symbol="Receipt24" FontSize="17"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <!-- Tra Cứu Giá & Hàng -->
+                            <RadioButton x:Name="NavProducts" Style="{StaticResource ModernLightSidebarNavItemStyle}"
+                                         Content="Tra Cứu Giá &amp; Hàng" GroupName="NavGroup"
+                                         Click="NavProducts_Click">
+                                <RadioButton.Tag>
+                                    <ui:SymbolIcon Symbol="Search24" FontSize="17"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <!-- Cài Đặt -->
+                            <RadioButton x:Name="NavSettings" Style="{StaticResource ModernLightSidebarNavItemStyle}"
+                                         Content="Cài Đặt" GroupName="NavGroup"
+                                         Click="NavSettings_Click">
+                                <RadioButton.Tag>
+                                    <ui:SymbolIcon Symbol="Settings24" FontSize="17"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- 3. Bottom Logout Action -->
+                    <Border Grid.Row="2" Padding="12,10" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0">
+                        <Button x:Name="BtnLogout" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1"
+                                Height="38" Cursor="Hand" Click="BtnLogout_Click" HorizontalAlignment="Stretch"
+                                ToolTip="Đăng xuất ca trực">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="19">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <ui:SymbolIcon Symbol="ArrowExit20" FontSize="15" Foreground="#EF4444"/>
+                                <TextBlock x:Name="TxtLogoutLabel" Text="Đăng xuất ca trực" FontSize="13" FontWeight="SemiBold" Foreground="#EF4444" Margin="6,0,0,0"
+                                           RenderOptions.ClearTypeHint="Enabled"
+                                           TextOptions.TextFormattingMode="Display"
+                                           TextOptions.TextRenderingMode="ClearType"
+                                           SnapsToDevicePixels="True" UseLayoutRounding="True"/>
+                            </StackPanel>
+                        </Button>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ── Content Frame (Clean Light Canvas #F4F7FB) ── -->
+            <Border Grid.Column="1" Background="{StaticResource AppBackgroundBrush}">
+                <Frame x:Name="MainFrame"
+                       NavigationUIVisibility="Hidden"
+                       Background="Transparent"/>
+            </Border>
+        </Grid>
     </Grid>
 </ui:FluentWindow>

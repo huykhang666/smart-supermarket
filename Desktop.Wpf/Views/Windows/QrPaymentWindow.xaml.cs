@@ -25,6 +25,14 @@ public partial class QrPaymentWindow : FluentWindow
         catch { }
     }
 
+    private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+        {
+            DragMove();
+        }
+    }
+
     private void BtnConfirm_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = true;

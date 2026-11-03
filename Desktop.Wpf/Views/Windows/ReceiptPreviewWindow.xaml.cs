@@ -29,6 +29,14 @@ public partial class ReceiptPreviewWindow : FluentWindow
         IcReceiptItems.ItemsSource = items;
     }
 
+    private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+        {
+            DragMove();
+        }
+    }
+
     private void BtnPrint_Click(object sender, RoutedEventArgs e)
     {
         System.Windows.MessageBox.Show("Đã gửi lệnh in thành công đến máy in nhiệt hóa đơn K80!", "In Hóa Đơn", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);

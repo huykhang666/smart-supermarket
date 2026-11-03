@@ -46,7 +46,9 @@ public class OrderItem
     public DateTime OrderDate { get; set; } = DateTime.Now;
     public string Status { get; set; } = "Hoàn thành";
     public string FormattedFinalAmount => $"{FinalAmount:N0} đ";
+    public string FormattedTotal => FormattedFinalAmount;
     public string FormattedDate => OrderDate.ToString("dd/MM/yyyy HH:mm");
+    public List<CartItem> Items { get; set; } = new();
 }
 
 public class CustomerItem

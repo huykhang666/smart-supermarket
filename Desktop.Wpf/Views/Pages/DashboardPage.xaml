@@ -2,105 +2,275 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-      Title="Dashboard">
+      Title="Tổng Quan Ca Làm Việc"
+      Background="{StaticResource AppBackgroundBrush}"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType"
+      TextOptions.TextHintingMode="Fixed"
+      UseLayoutRounding="True"
+      SnapsToDevicePixels="True"
+      FontFamily="Segoe UI, Inter, Arial">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24">
-            <!-- Header Banner -->
-            <ui:Card Margin="0,0,0,20" Padding="20">
+    <Page.Resources>
+        <!-- Light KPI Card Style -->
+        <Style x:Key="LightKpiCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="18,16"/>
+        </Style>
+
+        <!-- DataGrid Light Styles matching Technology Blue -->
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F0F7FD"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Primary100Brush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <Style x:Key="CenterHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{StaticResource Primary800Brush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource AppBackgroundBrush}">
+        <StackPanel Margin="24,20,24,24">
+
+            <!-- ══ 1. Top Banner: Tổng Quan Ca Làm Việc & Doanh Thu ══ -->
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="12" Padding="22,18" Margin="0,0,0,18">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="KATQ SUPERMARKET SMART ERP"
-                                   FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                        <TextBlock Text="Trung tâm điều hành doanh thu thời gian thực, quản lý điểm bán POS &amp; tồn kho"
-                                   Margin="0,4,0,0" FontSize="13" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <!-- Icon Banner Box -->
+                    <Border Grid.Column="0" Width="48" Height="48" CornerRadius="10"
+                            Background="{StaticResource Primary100Brush}" BorderBrush="{StaticResource Primary300Brush}" BorderThickness="1" Margin="0,0,16,0">
+                        <ui:SymbolIcon Symbol="ArrowTrendingLines24" FontSize="24" Foreground="{StaticResource Primary600Brush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Title & Description -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Tổng Quan Ca Làm Việc &amp; Doanh Thu" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="Theo dõi doanh thu, số lượng đơn hàng và trạng thái kho trong ca trực siêu thị."
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
 
-                    <ui:Button Grid.Column="1" Appearance="Primary" Icon="{ui:SymbolIcon ArrowClockwise24}"
-                               Content="Làm mới dữ liệu" Click="BtnRefresh_Click" />
+                    <!-- Action Button: Làm Mới Dữ Liệu -->
+                    <Button Grid.Column="2" Style="{StaticResource TechPrimaryBtn}" Click="BtnRefresh_Click" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="15" Foreground="White" Margin="0,0,6,0"/>
+                            <TextBlock Text="Làm Mới" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
                 </Grid>
-            </ui:Card>
+            </Border>
 
-            <!-- 4 Modern Metric KPI Cards -->
+            <!-- ══ 2. 4 KPI Metric Cards ══ -->
             <UniformGrid Columns="4" Margin="0,0,0,20">
-                <!-- Card 1 -->
-                <ui:Card Margin="0,0,10,0" Padding="16">
+                <!-- Card 1: Doanh Thu Hôm Nay -->
+                <Border Style="{StaticResource LightKpiCard}" Margin="0,0,8,0">
                     <StackPanel>
-                        <Grid>
-                            <TextBlock Text="DOANH THU HÔM NAY" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <ui:SymbolIcon Symbol="Money24" HorizontalAlignment="Right" Foreground="#2563EB" />
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="DOANH THU CA TRỰC" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <ui:SymbolIcon Symbol="Money24" FontSize="20" Foreground="{StaticResource Primary600Brush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <TextBlock x:Name="TxtTodayRevenue" Text="12,450,000 đ" FontSize="20" FontWeight="Bold" Margin="0,8,0,4" />
-                        <TextBlock Text="▲ +14.2% so với hôm qua" FontSize="11" Foreground="#059669" FontWeight="SemiBold" />
+                        <TextBlock x:Name="TxtTodayRevenue" Text="0 đ" FontSize="24" FontWeight="Bold" Foreground="{StaticResource Primary600Brush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="● Cập nhật liên tục theo POS" FontSize="12" Foreground="{StaticResource SuccessBrush}"/>
                     </StackPanel>
-                </ui:Card>
+                </Border>
 
-                <!-- Card 2 -->
-                <ui:Card Margin="5,0,5,0" Padding="16">
+                <!-- Card 2: Số Đơn Hàng -->
+                <Border Style="{StaticResource LightKpiCard}" Margin="4,0,4,0">
                     <StackPanel>
-                        <Grid>
-                            <TextBlock Text="TỔNG ĐƠN HÀNG POS" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <ui:SymbolIcon Symbol="Cart24" HorizontalAlignment="Right" Foreground="#059669" />
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="SỐ ĐƠN HOÀN TẤT" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <ui:SymbolIcon Symbol="DocumentBulletList24" FontSize="20" Foreground="{StaticResource SuccessBrush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <TextBlock x:Name="TxtTodayOrders" Text="84 đơn" FontSize="20" FontWeight="Bold" Margin="0,8,0,4" />
-                        <TextBlock Text="✓ 100% hoàn thành tại quầy" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="TxtTodayOrders" Text="0 đơn" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="● Đã thanh toán thành công" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
-                </ui:Card>
+                </Border>
 
-                <!-- Card 3 -->
-                <ui:Card Margin="5,0,5,0" Padding="16">
+                <!-- Card 3: Khách Hàng -->
+                <Border Style="{StaticResource LightKpiCard}" Margin="4,0,4,0">
                     <StackPanel>
-                        <Grid>
-                            <TextBlock Text="KHÁCH HÀNG THÀNH VIÊN" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <ui:SymbolIcon Symbol="People24" HorizontalAlignment="Right" Foreground="#D97706" />
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="KHÁCH THÀNH VIÊN" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <ui:SymbolIcon Symbol="PeopleCommunity24" FontSize="20" Foreground="{StaticResource Primary600Brush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <TextBlock x:Name="TxtCustomers" Text="1,248 TV" FontSize="20" FontWeight="Bold" Margin="0,8,0,4" />
-                        <TextBlock Text="★ 32 thẻ VIP hạng Vàng" FontSize="11" Foreground="#D97706" />
+                        <TextBlock x:Name="TxtTotalCustomers" Text="0 thành viên" FontSize="24" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="● Tích lũy điểm thưởng" FontSize="12" Foreground="{StaticResource Primary600Brush}"/>
                     </StackPanel>
-                </ui:Card>
+                </Border>
 
-                <!-- Card 4 -->
-                <ui:Card Margin="10,0,0,0" Padding="16">
+                <!-- Card 4: Cảnh Báo Kho -->
+                <Border Style="{StaticResource LightKpiCard}" Margin="8,0,0,0">
                     <StackPanel>
-                        <Grid>
-                            <TextBlock Text="CẢNH BÁO TỒN KHO &amp; HSD" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <ui:SymbolIcon Symbol="Warning24" HorizontalAlignment="Right" Foreground="#DC2626" />
+                        <Grid Margin="0,0,0,10">
+                            <TextBlock Text="CẢNH BÁO TỒN / HSD" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/>
+                            <ui:SymbolIcon Symbol="Warning24" FontSize="20" Foreground="{StaticResource DangerBrush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <TextBlock x:Name="TxtWarnings" Text="3 sản phẩm" FontSize="20" FontWeight="Bold" Margin="0,8,0,4" Foreground="#DC2626" />
-                        <TextBlock Text="⏳ Cần xả hàng cận date" FontSize="11" Foreground="#DC2626" />
+                        <TextBlock x:Name="TxtWarningCount" Text="0 mặt hàng" FontSize="24" FontWeight="Bold" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="● Cần xử lý cận date / sắp hết" FontSize="12" Foreground="{StaticResource DangerBrush}"/>
                     </StackPanel>
-                </ui:Card>
+                </Border>
             </UniformGrid>
 
-            <!-- Recent Orders Section -->
-            <ui:Card Padding="16">
+            <!-- ══ 2.5. AI Trợ Lý Phân Tích Thông Minh ══ -->
+            <Border x:Name="BorderAiCard" Background="#F0FDF4" BorderBrush="#86EFAC" BorderThickness="1"
+                    CornerRadius="12" Padding="18,14" Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="38" Height="38" CornerRadius="10" Background="#DCFCE7" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Sparkle24" FontSize="20" Foreground="#16A34A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBlock Text="AI PHÂN TÍCH TỔNG QUAN CA LÀM VIỆC" FontSize="12" FontWeight="Bold" Foreground="#15803D" Margin="0,0,8,0"/>
+                            <Border Background="#BBF7D0" CornerRadius="4" Padding="6,1">
+                                <TextBlock Text="THỜI GIAN THỰC" FontSize="10" FontWeight="Bold" Foreground="#166534"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock x:Name="TxtAiAnalysis" Text="Đang phân tích doanh số và kho hàng..." FontSize="13" Foreground="#1E293B" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ══ 3. Recent Transactions Table ══ -->
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20,18">
                 <StackPanel>
-                    <TextBlock Text="LỊCH SỬ GIAO DỊCH GẦN NHẤT" FontSize="14" FontWeight="Bold" Margin="0,0,0,12" />
-                    
-                    <DataGrid x:Name="DgvRecentOrders" AutoGenerateColumns="False" IsReadOnly="True"
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              RowHeight="38" FontSize="13" CanUserResizeRows="False"
-                              BorderThickness="0" Background="Transparent">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="MÃ ĐƠN" Binding="{Binding OrderCode}" Width="120" />
-                    <DataGridTextColumn Header="KHÁCH HÀNG" Binding="{Binding CustomerName}" Width="160" />
-                    <DataGridTextColumn Header="THU NGÂN" Binding="{Binding EmployeeName}" Width="130" />
-                    <DataGridTextColumn Header="THỜI GIAN" Binding="{Binding FormattedDate}" Width="150" />
-                    <DataGridTextColumn Header="PHƯƠNG THỨC" Binding="{Binding PaymentMethod}" Width="130" />
-                    <DataGridTextColumn Header="THÀNH TIỀN" Binding="{Binding FormattedFinalAmount}" Width="*" />
-                </DataGrid.Columns>
+                    <Grid Margin="0,0,0,14">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="Receipt24" FontSize="18" Foreground="{StaticResource Primary600Brush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="Giao Dịch Gần Nhất Trong Ca" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                        <TextBlock Text="10 hóa đơn mới nhất" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <DataGrid x:Name="DgvRecentOrders" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column" GridLinesVisibility="None"
+                              RowHeight="46" FontSize="13" BorderThickness="0" Background="Transparent"
+                              SelectionUnit="FullRow">
+                        <DataGrid.Columns>
+                            <!-- Code: Centered, Primary600 -->
+                            <DataGridTextColumn Header="MÃ ĐƠN" Binding="{Binding OrderCode}" Width="120"
+                                                HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Center"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Date: Centered -->
+                            <DataGridTextColumn Header="THỜI GIAN" Binding="{Binding FormattedDate}" Width="140"
+                                                HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Center"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Cashier: Left Aligned with Margin -->
+                            <DataGridTextColumn Header="THU NGÂN" Binding="{Binding CashierName}" Width="160">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Left"/>
+                                        <Setter Property="Padding" Value="12,0,0,0"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Payment Method: Centered -->
+                            <DataGridTextColumn Header="PHƯƠNG THỨC" Binding="{Binding PaymentMethod}" Width="120"
+                                                HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Center"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Total: Centered -->
+                            <DataGridTextColumn Header="TỔNG TIỀN" Binding="{Binding FormattedTotal}" Width="*"
+                                                HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Center"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Status: Centered Badge -->
+                            <DataGridTemplateColumn Header="TRẠNG THÁI" Width="130"
+                                                    HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource SuccessBgBrush}" BorderBrush="#A7F3D0" BorderThickness="1"
+                                                CornerRadius="12" Padding="10,3" HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>
-            </ui:Card>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </Page>
