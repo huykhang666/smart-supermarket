@@ -2,193 +2,703 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-      Title="POS Bán Hàng">
+      xmlns:controls="clr-namespace:SmartSupermarket.POS.Controls"
+      Title="Bán Hàng POS &amp; Scan"
+      Background="{StaticResource AppBackgroundBrush}"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType"
+      TextOptions.TextHintingMode="Fixed"
+      UseLayoutRounding="True"
+      SnapsToDevicePixels="True"
+      FontFamily="Segoe UI, Inter, Arial">
 
-    <Grid Margin="16">
+    <Page.Resources>
+        <!-- Light Clean Search Input -->
+        <Style x:Key="ModernSearchBox" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Primary600Brush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="Transparent" BorderThickness="0">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Cart DataGrid Styles (Clean Light Table matching Technology Blue) -->
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F0F7FD"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Primary100Brush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="8,10"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{StaticResource Primary800Brush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Small Action Button Style -->
+        <Style x:Key="SmallBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.65"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Stepper Button Style -->
+        <Style x:Key="StepperBtn" TargetType="Button">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#E2E8F0"/>
+                                <Setter Property="Foreground" Value="#0F172A"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#CBD5E1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Payment Action Button Style (VietQR Primary Blue) -->
+        <Style x:Key="PrimaryPayBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="#0284C7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="8"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True"
+                                UseLayoutRounding="True" RenderOptions.ClearTypeHint="Enabled"
+                                TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#0369A1"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#075985"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Payment Action Button Style (Cash Payment Clean Neutral) -->
+        <Style x:Key="SecondaryPayBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#E2E8F0"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="#94A3B8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#CBD5E1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Center Header Style -->
+        <Style x:Key="CenterHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="{StaticResource AppBackgroundBrush}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MinWidth="520" />
-            <ColumnDefinition Width="390" />
+            <ColumnDefinition Width="*" MinWidth="520"/>
+            <!-- Left: Catalog & Scanning Area -->
+            <ColumnDefinition Width="430"/>
+            <!-- Right: Cart & Checkout Panel -->
         </Grid.ColumnDefinitions>
 
-        <!-- LEFT COLUMN: Product Catalog Grid -->
-        <Grid Grid.Column="0" Margin="0,0,16,0">
+        <!-- ══════════════════════════════════════════════════════
+             LEFT: Barcode Scanning, Category Filter & Products Grid
+             ══════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="0" Margin="16,14,12,14">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto"/>
+                <!-- Top Scan & Search Bar -->
+                <RowDefinition Height="*"/>
+                <!-- Products Grid -->
             </Grid.RowDefinitions>
 
-            <!-- Search Bar -->
-            <ui:TextBox Grid.Row="0" x:Name="TxtSearch" PlaceholderText="🔍 Quét mã vạch hoặc gõ tên sản phẩm..."
-                        Margin="0,0,0,10" Height="40" FontSize="14" TextChanged="TxtSearch_TextChanged"
-                        ClearButtonEnabled="True" />
+            <!-- ── Top Search & Barcode Scan ── -->
+            <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="220"/>
+                </Grid.ColumnDefinitions>
 
-            <!-- Category Filter Horizontal Strip -->
-            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,12">
-                <StackPanel Orientation="Horizontal">
-                    <ui:Button Content="Tất cả" Margin="0,0,6,0" Appearance="Primary" Click="CategoryBtn_Click" Tag="" />
-                    <ui:Button Content="Nước giải khát" Margin="0,0,6,0" Appearance="Secondary" Click="CategoryBtn_Click" Tag="Nước giải khát" />
-                    <ui:Button Content="Sữa &amp; Sản phẩm sữa" Margin="0,0,6,0" Appearance="Secondary" Click="CategoryBtn_Click" Tag="Sữa" />
-                    <ui:Button Content="Bánh kẹo &amp; Ăn vặt" Margin="0,0,6,0" Appearance="Secondary" Click="CategoryBtn_Click" Tag="Bánh kẹo" />
-                    <ui:Button Content="Gia vị &amp; Đồ khô" Margin="0,0,6,0" Appearance="Secondary" Click="CategoryBtn_Click" Tag="Gia vị" />
-                    <ui:Button Content="Đồ ăn liền" Margin="0,0,6,0" Appearance="Secondary" Click="CategoryBtn_Click" Tag="Đồ ăn liền" />
-                </StackPanel>
-            </ScrollViewer>
+                <!-- Input Barcode / Name -->
+                <Border Grid.Column="0" Style="{StaticResource ModernInputContainer}"
+                        Height="44" Padding="14,0">
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="BarcodeScanner24" FontSize="18" Foreground="{StaticResource Primary600Brush}" Margin="0,0,10,0"/>
+                        <TextBox Grid.Column="1" x:Name="TxtSearch"
+                                 Style="{StaticResource CleanGhostTextBox}"
+                                 TextChanged="TxtSearch_TextChanged"/>
+                        <TextBlock Grid.Column="1" Text="Quét mã vạch hoặc gõ tên sản phẩm..."
+                                   Foreground="{StaticResource TextMutedBrush}" FontSize="13" VerticalAlignment="Center"
+                                   IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ElementName=TxtSearch, Path=Text}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Border Grid.Column="2" Background="{StaticResource Primary100Brush}" CornerRadius="6" Padding="8,3" Margin="6,0,0,0">
+                            <TextBlock x:Name="TxtProductCount" Text="0 sản phẩm" FontSize="12"
+                                       FontWeight="Bold" Foreground="{StaticResource Primary800Brush}" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Border>
 
-            <!-- Product Cards WrapPanel -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <!-- Category Filter Dropdown -->
+                <Border Grid.Column="2" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
+                        CornerRadius="8" Height="44" Padding="8,0">
+                    <Grid VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Grid.Column="0" Symbol="Filter24" FontSize="15" Foreground="{StaticResource Primary600Brush}" Margin="4,0,6,0"/>
+                        <ComboBox Grid.Column="1" x:Name="CbCategoryFilter"
+                                  Background="Transparent" BorderThickness="0"
+                                  Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" FontWeight="SemiBold"
+                                  VerticalContentAlignment="Center" Padding="4,0"
+                                  SelectionChanged="CbCategoryFilter_SelectionChanged">
+                            <ComboBoxItem Content="Tất cả mặt hàng" Tag="ALL" IsSelected="True"/>
+                            <ComboBoxItem Content="Nước giải khát &amp; Đồ uống" Tag="Nước giải khát"/>
+                            <ComboBoxItem Content="Sữa &amp; SP từ sữa" Tag="Sữa"/>
+                            <ComboBoxItem Content="Bánh kẹo &amp; Ăn vặt" Tag="Bánh kẹo"/>
+                            <ComboBoxItem Content="Rau củ quả tươi" Tag="Rau"/>
+                            <ComboBoxItem Content="Gia vị &amp; Đồ khô" Tag="Gia vị"/>
+                            <ComboBoxItem Content="Đồ dùng gia đình &amp; Nhà bếp" Tag="Đồ dùng"/>
+                            <ComboBoxItem Content="Hóa phẩm &amp; Giặt xả" Tag="Hóa phẩm"/>
+                            <ComboBoxItem Content="Chăm sóc cá nhân" Tag="Chăm sóc"/>
+                            <ComboBoxItem Content="Thịt &amp; Thủy hải sản" Tag="Thịt"/>
+                            <ComboBoxItem Content="Đồ ăn liền &amp; Đóng hộp" Tag="Đồ ăn liền"/>
+                        </ComboBox>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ── Product Catalog Grid (Responsive auto-fitting columns, balanced margins) ── -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="IcProducts">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel />
+                            <controls:ResponsiveGridPanel MinItemWidth="195" ItemHeight="255"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <ui:CardAction Margin="6" Width="185" Height="255" Padding="10" Click="ProductCard_Click" Tag="{Binding}">
-                                <Grid>
+                            <Border Margin="5" Height="245" HorizontalAlignment="Stretch" CornerRadius="12"
+                                    Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    Cursor="Hand" MouseDown="ProductCard_Click" Tag="{Binding}">
+                                <Grid Margin="12">
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="125" />
-                                        <RowDefinition Height="45" />
-                                        <RowDefinition Height="28" />
-                                        <RowDefinition Height="24" />
+                                        <RowDefinition Height="105"/>
+                                        <RowDefinition Height="45"/>
+                                        <RowDefinition Height="24"/>
+                                        <RowDefinition Height="32"/>
                                     </Grid.RowDefinitions>
 
-                                    <!-- Product Image -->
-                                    <Border Grid.Row="0" CornerRadius="6" Background="#F1F5F9" ClipToBounds="True">
-                                        <Image Source="{Binding ImageUrl}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <!-- Image / Placeholder -->
+                                    <Border Grid.Row="0" CornerRadius="8" Background="{StaticResource SurfaceSecondaryBrush}" ClipToBounds="True">
+                                        <Grid>
+                                            <Image Source="{Binding ImageUrl}" Stretch="Uniform"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <ui:SymbolIcon Symbol="Box24" FontSize="34" Foreground="{StaticResource BorderStrongBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ui:SymbolIcon.Style>
+                                                    <Style TargetType="ui:SymbolIcon">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ImageUrl}" Value="">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ui:SymbolIcon.Style>
+                                            </ui:SymbolIcon>
+                                        </Grid>
                                     </Border>
 
-                                    <!-- Product Name -->
-                                    <TextBlock Grid.Row="1" Text="{Binding ProductName}" TextWrapping="Wrap" Height="36"
-                                               FontSize="12.5" FontWeight="SemiBold" Margin="0,6,0,0"
-                                               TextTrimming="CharacterEllipsis" />
+                                    <!-- Product Name (Left Aligned) -->
+                                    <TextBlock Grid.Row="1" Text="{Binding ProductName}"
+                                               FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                               Margin="0,6,0,0" LineHeight="17"/>
 
-                                    <!-- Price -->
-                                    <TextBlock Grid.Row="2" Text="{Binding FormattedPrice}"
-                                               FontSize="14" FontWeight="Bold" Foreground="#2563EB"
-                                               VerticalAlignment="Center" />
+                                    <!-- Stock (Left Aligned) -->
+                                    <TextBlock Grid.Row="2" Text="{Binding FormattedStock}"
+                                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
 
-                                    <!-- Stock & Barcode -->
-                                    <Grid Grid.Row="3">
-                                        <TextBlock Text="{Binding FormattedStock}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                                        <TextBlock Text="🛒 Thêm" HorizontalAlignment="Right" FontSize="11" FontWeight="SemiBold" Foreground="#059669" VerticalAlignment="Center" />
+                                    <!-- Price & Add Button -->
+                                    <Grid Grid.Row="3" VerticalAlignment="Bottom">
+                                        <TextBlock Text="{Binding FormattedPrice}" FontSize="14" FontWeight="Bold"
+                                                   Foreground="{StaticResource Primary600Brush}" VerticalAlignment="Center"/>
+
+                                        <Border HorizontalAlignment="Right" Background="{StaticResource Primary600Brush}"
+                                                CornerRadius="6" Padding="10,5">
+                                            <TextBlock Text="+ Thêm" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                                        </Border>
                                     </Grid>
                                 </Grid>
-                            </ui:CardAction>
+                            </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
         </Grid>
 
-        <!-- RIGHT COLUMN: Cart & Checkout -->
-        <ui:Card Grid.Column="1" Padding="16">
+        <!-- ══════════════════════════════════════════════════════
+             RIGHT: Customer, Cart Items, Voucher & Payment Action
+             ══════════════════════════════════════════════════════ -->
+        <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto"/>
+                    <!-- Customer phone & status -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Cart Header & park/clear buttons -->
+                    <RowDefinition Height="*"/>
+                    <!-- Cart Items Table -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Summary, Voucher, Total & Pay Action -->
                 </Grid.RowDefinitions>
 
-                <!-- Cart Header & Customer lookup -->
-                <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                    <Grid Margin="0,0,0,8">
-                        <TextBlock Text="GIỎ HÀNG THU NGÂN" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:Button x:Name="BtnParkOrder" Content="Lưu đơn" Appearance="Secondary" Height="28" Padding="6,0,6,0" Margin="0,0,4,0" Click="BtnParkOrder_Click" />
-                            <ui:Button x:Name="BtnResumeParked" Content="Đơn tạm (0)" Appearance="Secondary" Height="28" Padding="6,0,6,0" Margin="0,0,4,0" Click="BtnResumeParked_Click" />
-                            <ui:Button Content="Xóa" Appearance="Transparent" Height="28" Padding="6,0,6,0" Click="BtnClearCart_Click" />
+                <!-- ── 1. Customer Section (Clean POS Style) ── -->
+                <Border Grid.Row="0" Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Phone Input with Clean Slate Border -->
+                        <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1"
+                                CornerRadius="8" Height="38" Padding="10,0">
+                            <Grid VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ui:SymbolIcon Grid.Column="0" Symbol="PersonCall24" FontSize="15" Foreground="#64748B" Margin="0,0,8,0"/>
+                                <TextBox Grid.Column="1" x:Name="TxtCustomerPhone"
+                                         Style="{StaticResource CleanGhostTextBox}"
+                                         FontSize="13"
+                                         TextChanged="TxtCustomerPhone_TextChanged"/>
+                                <TextBlock Grid.Column="1" Text="Số ĐT khách hàng..."
+                                           Foreground="{StaticResource TextMutedBrush}" FontSize="13" VerticalAlignment="Center"
+                                           IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ElementName=TxtCustomerPhone, Path=Text}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+
+                        <!-- Customer Name / VIP Badge Chip -->
+                        <Border Grid.Column="2" x:Name="BorderCustomerBadge"
+                                Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1"
+                                CornerRadius="8" Padding="12,0" Height="38">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:SymbolIcon x:Name="IconCustomerBadge" Symbol="Person20" FontSize="15" Foreground="#64748B" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="TxtCustomerLoyaltyInfo" Text="Khách Lẻ"
+                                           FontSize="13" FontWeight="SemiBold" Foreground="#334155"
+                                           VerticalAlignment="Center"
+                                           RenderOptions.ClearTypeHint="Enabled"
+                                           TextOptions.TextFormattingMode="Display"
+                                           TextOptions.TextRenderingMode="ClearType"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- ── 2. Cart Header ── -->
+                <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="ShoppingBag24" FontSize="16" Foreground="{StaticResource Primary600Brush}" Margin="0,0,6,0"/>
+                            <TextBlock Text="Giỏ Hàng" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock x:Name="TxtCartItemCount" Text="(0)" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button x:Name="BtnParkOrder" Click="BtnParkOrder_Click" Style="{StaticResource SmallBtn}"
+                                    Margin="0,0,6,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="PauseCircle20" FontSize="13" Foreground="#64748B" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Lưu đơn" FontSize="12" Foreground="#475569" FontWeight="Medium"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="BtnResumeParked" Click="BtnResumeParked_Click" Style="{StaticResource SmallBtn}"
+                                    Margin="0,0,6,0">
+                                <TextBlock x:Name="TxtParkedCount" Text="Đơn tạm (0)" FontSize="12" Foreground="#475569" FontWeight="Medium"/>
+                            </Button>
+
+                            <Button Click="BtnClearCart_Click" Style="{StaticResource SmallBtn}"
+                                    Background="#FEF2F2" BorderBrush="#FECACA">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Delete20" FontSize="13" Foreground="#DC2626" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Xóa giỏ" FontSize="12" Foreground="#DC2626" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Grid>
+                </Border>
 
-                    <ui:TextBox x:Name="TxtCustomerPhone" PlaceholderText="Nhập SĐT khách hàng tích điểm..."
-                                Margin="0,0,0,4" Height="34" TextChanged="TxtCustomerPhone_TextChanged" />
-                    <TextBlock x:Name="TxtCustomerLoyaltyInfo" Text="Khách Lẻ • Điểm tích lũy: 0 điểm"
-                               FontSize="11.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
+                <!-- ── 2. Cart DataGrid with Empty State ── -->
+                <Grid Grid.Row="2">
+                    <!-- DataGrid -->
+                    <DataGrid x:Name="DgCart" AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column" GridLinesVisibility="None"
+                              RowHeight="48" FontSize="13" BorderThickness="0" Background="Transparent"
+                              SelectionUnit="FullRow">
+                        <DataGrid.Columns>
+                            <!-- Product Name -->
+                            <DataGridTextColumn Header="MẶT HÀNG" Binding="{Binding ProductName}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Left"/>
+                                        <Setter Property="Padding" Value="12,0,0,0"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
 
-                <!-- Cart Items List -->
-                <DataGrid Grid.Row="1" x:Name="DgCart" AutoGenerateColumns="False" CanUserAddRows="False"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                          RowHeight="42" FontSize="12.5" BorderThickness="0" Background="Transparent"
-                          SelectionUnit="FullRow">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Mặt Hàng" Binding="{Binding ProductName}" Width="*" />
-                        <DataGridTemplateColumn Header="SL" Width="70">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <ui:Button Content="-" Width="22" Height="22" Padding="0" Click="BtnDecQty_Click" Tag="{Binding}" />
-                                        <TextBlock Text="{Binding Quantity}" Width="24" TextAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" />
-                                        <ui:Button Content="+" Width="22" Height="22" Padding="0" Click="BtnIncQty_Click" Tag="{Binding}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Thành Tiền" Binding="{Binding FormattedTotal}" Width="85" />
-                        <DataGridTemplateColumn Width="36">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <ui:Button Icon="{ui:SymbolIcon Delete20}" Appearance="Transparent"
-                                               Width="28" Height="28" Padding="0" Click="BtnRemoveItem_Click" Tag="{Binding}" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
+                            <!-- Modern Stepper SL -->
+                            <DataGridTemplateColumn Header="SL" Width="96"
+                                                    HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                                                BorderThickness="1" CornerRadius="6" Height="26"
+                                                Padding="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="–" Style="{StaticResource StepperBtn}"
+                                                        Click="BtnDecQty_Click" Tag="{Binding}" ToolTip="Giảm 1"/>
+                                                <TextBlock Text="{Binding Quantity}" Width="26" TextAlignment="Center"
+                                                           VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13" Foreground="#0F172A"/>
+                                                <Button Content="+" Style="{StaticResource StepperBtn}"
+                                                        Click="BtnIncQty_Click" Tag="{Binding}" ToolTip="Tăng 1"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
 
-                <!-- Billing & Checkout Action Panel -->
-                <StackPanel Grid.Row="2" Margin="0,10,0,0">
-                    <!-- Voucher Input -->
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ui:TextBox Grid.Column="0" x:Name="TxtVoucherCode" PlaceholderText="Nhập mã Voucher..." Height="32" Margin="0,0,6,0" />
-                        <ui:Button Grid.Column="1" Content="Áp dụng" Height="32" Click="BtnApplyVoucher_Click" />
-                    </Grid>
+                            <!-- Total Price -->
+                            <DataGridTextColumn Header="THÀNH TIỀN" Binding="{Binding FormattedTotal}" Width="95"
+                                                HeaderStyle="{StaticResource CenterHeaderStyle}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Right"/>
+                                        <Setter Property="Padding" Value="0,0,10,0"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Primary700Brush}"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
 
-                    <Separator Margin="0,0,0,10" />
+                            <!-- Remove Action Button -->
+                            <DataGridTemplateColumn Width="38">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                Click="BtnRemoveItem_Click" Tag="{Binding}" Padding="2"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border CornerRadius="6" Background="Transparent" Padding="4">
+                                                <ui:SymbolIcon Symbol="Delete20" FontSize="14" Foreground="{StaticResource DangerBrush}"/>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
 
-                    <!-- Calculation lines -->
-                    <Grid Margin="0,2,0,2">
-                        <TextBlock Text="Tạm tính:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <TextBlock x:Name="TxtSubTotal" Text="0 đ" HorizontalAlignment="Right" FontWeight="SemiBold" />
-                    </Grid>
-                    <Grid Margin="0,2,0,2">
-                        <TextBlock Text="Thuế VAT (8%):" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <TextBlock x:Name="TxtVat" Text="0 đ" HorizontalAlignment="Right" />
-                    </Grid>
-                    <Grid Margin="0,2,0,2">
-                        <TextBlock Text="Giảm giá / Voucher:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                        <TextBlock x:Name="TxtDiscount" Text="0 đ" HorizontalAlignment="Right" Foreground="#059669" FontWeight="SemiBold" />
-                    </Grid>
-                    <Grid Margin="0,4,0,12">
-                        <TextBlock Text="TỔNG THANH TOÁN:" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
-                        <TextBlock x:Name="TxtGrandTotal" Text="0 đ" HorizontalAlignment="Right"
-                                   FontSize="20" FontWeight="Bold" Foreground="#2563EB" />
-                    </Grid>
+                    <!-- Empty State Placeholder (Visible when cart is empty) -->
+                    <Border x:Name="PnlCartEmpty" Background="{StaticResource SurfaceBrush}"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                            IsHitTestVisible="False">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0">
+                            <Border Width="64" Height="64" CornerRadius="32" Background="{StaticResource Primary100Brush}"
+                                    BorderBrush="{StaticResource Primary200Brush}" BorderThickness="1"
+                                    HorizontalAlignment="Center">
+                                <ui:SymbolIcon Symbol="ShoppingBag24" FontSize="28" Foreground="{StaticResource Primary600Brush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="Chưa có món hàng nào" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,14,0,4"/>
+                            <TextBlock Text="Chạm chọn sản phẩm hoặc quét mã vạch" FontSize="12"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
-                    <!-- Large Checkout Action Buttons -->
-                    <UniformGrid Columns="2">
-                        <ui:Button Appearance="Primary" Height="44" Margin="0,0,4,0" Click="BtnPayQr_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="QrCode24" Margin="0,0,6,0" />
-                                <TextBlock Text="VietQR Code" FontWeight="Bold" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </ui:Button>
+                <!-- ── 3. Voucher, Breakdown & Grand Payment Card ── -->
+                <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="16,14">
+                    <StackPanel>
+                        <!-- ── Voucher Section (Clean Side-by-Side Matching Top Row) ── -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <ui:Button Appearance="Secondary" Height="44" Margin="4,0,0,0" Click="BtnPayCash_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="Money24" Margin="0,0,6,0" />
-                                <TextBlock Text="Tiền Mặt" FontWeight="Bold" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </ui:Button>
-                    </UniformGrid>
-                </StackPanel>
+                            <!-- Voucher Code Input -->
+                            <Border Grid.Column="0" Style="{StaticResource ModernInputContainer}" Height="38" Padding="10,0">
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ui:SymbolIcon Grid.Column="0" Symbol="Tag24" FontSize="15" Foreground="{StaticResource Primary600Brush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" x:Name="TxtVoucherCode" Style="{StaticResource CleanGhostTextBox}" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="Nhập mã voucher..."
+                                               Foreground="{StaticResource TextMutedBrush}" FontSize="13" VerticalAlignment="Center"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ElementName=TxtVoucherCode, Path=Text}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <!-- Apply Voucher Button: Clean Sibling Action Button (Option 1) -->
+                            <Button Grid.Column="2" x:Name="BtnApplyVoucher" Click="BtnApplyVoucher_Click"
+                                    Height="38" Padding="16,0" Cursor="Hand" BorderThickness="0" Background="Transparent">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="btnBorder" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1"
+                                                CornerRadius="8" Padding="{TemplateBinding Padding}"
+                                                RenderOptions.ClearTypeHint="Enabled"
+                                                SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                            <TextBlock x:Name="btnText" Text="Áp dụng" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="#334155" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       RenderOptions.ClearTypeHint="Enabled"
+                                                       TextOptions.TextFormattingMode="Display"
+                                                       TextOptions.TextRenderingMode="ClearType"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="btnBorder" Property="Background" Value="#0284C7"/>
+                                                <Setter TargetName="btnBorder" Property="BorderBrush" Value="#0284C7"/>
+                                                <Setter TargetName="btnText" Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="btnBorder" Property="Background" Value="#0369A1"/>
+                                                <Setter TargetName="btnBorder" Property="BorderBrush" Value="#0369A1"/>
+                                                <Setter TargetName="btnText" Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </Grid>
+
+                        <!-- Summary lines with Clean Typography -->
+                        <Grid Margin="0,2,0,4">
+                            <TextBlock Text="Tạm tính giỏ hàng:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
+                            <TextBlock x:Name="TxtSubTotal" Text="0 đ" HorizontalAlignment="Right" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" FontSize="13"/>
+                        </Grid>
+                        <Grid Margin="0,2,0,4">
+                            <TextBlock Text="Thuế GTGT (VAT 8%):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
+                            <TextBlock x:Name="TxtVat" Text="0 đ" HorizontalAlignment="Right" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
+                        </Grid>
+                        <Grid Margin="0,2,0,12">
+                            <TextBlock Text="Giảm giá Voucher / Điểm:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
+                            <TextBlock x:Name="TxtDiscount" Text="–0 đ" HorizontalAlignment="Right" Foreground="{StaticResource DangerBrush}" FontSize="13" FontWeight="Bold"/>
+                        </Grid>
+
+                        <!-- Grand Total Card (Clean & Modern SaaS Flat Style) -->
+                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1"
+                                CornerRadius="10" Padding="16,12" Margin="0,0,0,12">
+                            <Grid>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="TỔNG TIỀN PHẢI THU" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
+                                    <TextBlock Text="Đã gồm 8% thuế VAT" FontSize="11" Foreground="#94A3B8" Margin="0,3,0,0"/>
+                                </StackPanel>
+                                <TextBlock x:Name="TxtGrandTotal" Text="0 đ" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           FontSize="26" FontWeight="Bold" Foreground="#0F172A"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Direct 1-Click Payment Methods (Option A) -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.25*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- VietQR Primary Payment Action -->
+                            <Button Grid.Column="0" Style="{StaticResource PrimaryPayBtn}" Height="44"
+                                    Click="BtnPayQr_Click">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="QrCode24" FontSize="18" Foreground="White" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Quét VietQR" FontSize="13" FontWeight="SemiBold" Foreground="White"
+                                               RenderOptions.ClearTypeHint="Enabled"
+                                               TextOptions.TextFormattingMode="Display"
+                                               TextOptions.TextRenderingMode="ClearType"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Cash Payment Action -->
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryPayBtn}" Height="44"
+                                    Click="BtnPayCash_Click">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Money24" FontSize="18" Foreground="#059669" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Tiền mặt" FontSize="13" FontWeight="SemiBold" Foreground="#1E293B"
+                                               RenderOptions.ClearTypeHint="Enabled"
+                                               TextOptions.TextFormattingMode="Display"
+                                               TextOptions.TextRenderingMode="ClearType"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
             </Grid>
-        </ui:Card>
+        </Border>
     </Grid>
 </Page>
