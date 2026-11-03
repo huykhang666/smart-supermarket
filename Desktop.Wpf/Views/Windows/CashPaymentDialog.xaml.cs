@@ -29,6 +29,8 @@ public partial class CashPaymentDialog : FluentWindow
 
     private void CalculateChange()
     {
+        if (TxtCashGiven == null || TxtChangeDue == null || BtnConfirm == null) return;
+
         string raw = (TxtCashGiven.Text ?? "").Replace(",", "").Replace(".", "").Replace("đ", "").Trim();
         if (decimal.TryParse(raw, out decimal given))
         {
@@ -61,13 +63,16 @@ public partial class CashPaymentDialog : FluentWindow
         }
     }
 
+    private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
+        {
+            DragMove();
+        }
+    }
+
     private void BtnConfirm_Click(object sender, RoutedEventArgs e)
     {
-        if (CashGiven < TotalPayable)
-        {
-            System.Windows.MessageBox.Show("Số tiền khách đưa chưa đủ để thanh toán đơn hàng!", "Cảnh báo", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
-            return;
-        }
         DialogResult = true;
         Close();
     }
