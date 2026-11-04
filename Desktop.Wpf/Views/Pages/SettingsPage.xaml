@@ -2,93 +2,65 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-      Title="Cài Đặt"
-      Background="#F8FAFC"
+      Title="Cài Đặt Hệ Thống"
+      Background="{StaticResource AppBackgroundBrush}"
       TextOptions.TextFormattingMode="Display"
       TextOptions.TextRenderingMode="ClearType"
       TextOptions.TextHintingMode="Fixed"
+      RenderOptions.ClearTypeHint="Enabled"
       UseLayoutRounding="True"
       SnapsToDevicePixels="True"
       FontFamily="Segoe UI, Inter, Arial">
 
     <Page.Resources>
-        <!-- Section Card Style -->
+        <!-- Standard Settings Card -->
         <Style x:Key="SettingsCard" TargetType="Border">
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="24,20"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="22,18"/>
             <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
         </Style>
 
-        <!-- Theme button: inactive (Auto width with comfortable padding) -->
-        <Style x:Key="ThemeBtn" TargetType="Button">
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Height" Value="42"/>
-            <Setter Property="Padding" Value="18,0"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" CornerRadius="10" Background="#F1F5F9"
-                                BorderThickness="1" BorderBrush="#CBD5E1" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="BorderBrush" Value="#0284C7"/>
-                                <Setter TargetName="bg" Property="Background" Value="#E0F2FE"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+        <!-- Card Icon Container Badge (Harmonized Technology Blue) -->
+        <Style x:Key="CardIconBadge" TargetType="Border">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="{StaticResource Primary100Brush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Primary200Brush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
         </Style>
 
-        <!-- Theme button: active -->
-        <Style x:Key="ThemeBtnActive" TargetType="Button">
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Height" Value="42"/>
-            <Setter Property="Padding" Value="18,0"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" CornerRadius="10" Background="#0284C7"
-                                BorderThickness="1" BorderBrush="#0369A1" Padding="{TemplateBinding Padding}">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#0284C7" BlurRadius="10" ShadowDepth="2" Opacity="0.25" Direction="270"/>
-                            </Border.Effect>
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#0369A1"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Secondary Outline Action Button -->
-        <Style x:Key="OutlineActionBtn" TargetType="Button">
+        <!-- Theme Segment Button: Active (Vibrant Technology Blue) -->
+        <Style x:Key="ThemeSegmentBtnActive" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Height" Value="40"/>
-            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Padding" Value="18,0"/>
+            <Setter Property="Background" Value="{StaticResource Primary600Brush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" CornerRadius="8" Background="#F8FAFC"
-                                BorderThickness="1" BorderBrush="#CBD5E1" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bg" CornerRadius="8" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="BorderBrush" Value="#0284C7"/>
-                                <Setter TargetName="bg" Property="Background" Value="#F0F9FF"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary700Brush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary800Brush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -96,23 +68,140 @@
             </Setter>
         </Style>
 
-        <!-- Primary Save button -->
-        <Style x:Key="SaveBtn" TargetType="Button">
+        <!-- Theme Segment Button: Inactive (Clean White Neutral) -->
+        <Style x:Key="ThemeSegmentBtnInactive" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Height" Value="44"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="18,0"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" CornerRadius="10" Background="#0284C7" Padding="28,0">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#0284C7" BlurRadius="12" ShadowDepth="3" Opacity="0.3" Direction="270"/>
-                            </Border.Effect>
+                        <Border x:Name="bg" CornerRadius="8" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#0369A1"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary50Brush}"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{StaticResource Primary600Brush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary100Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Outline Action Button (In Thử, Kiểm Tra Kết Nối) -->
+        <Style x:Key="SettingsActionBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" CornerRadius="8" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary50Brush}"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{StaticResource Primary600Brush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary100Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Subtle Reset Button (Khôi phục mặc định) -->
+        <Style x:Key="ResetActionBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" CornerRadius="8" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#FEF2F2"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="#FECACA"/>
+                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#FEE2E2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Save Button -->
+        <Style x:Key="SaveConfigBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Padding" Value="24,0"/>
+            <Setter Property="Background" Value="{StaticResource Primary600Brush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" CornerRadius="8" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary700Brush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary800Brush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -121,18 +210,18 @@
         </Style>
     </Page.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#F8FAFC">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource AppBackgroundBrush}">
         <StackPanel Margin="24,20,24,28">
 
-            <!-- ════ 0. Tiêu Đề Trang ════ -->
+            <!-- ════ 0. Tiêu Đề Trang Gọn Gàng ════ -->
             <StackPanel Margin="0,0,0,18">
-                <TextBlock Text="Cài Đặt Hệ Thống &amp; Quầy Thu Ngân" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/>
-                <TextBlock Text="Quản lý giao diện, máy in hóa đơn K80 và tùy chọn bán hàng tại quầy"
-                           FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+                <TextBlock Text="Cài Đặt Hệ Thống" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="Cấu hình thiết bị, giao diện và tùy chọn thanh toán tại quầy"
+                           FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
             </StackPanel>
 
-            <!-- ════ 1. THÔNG TIN NHÂN VIÊN & CA TRỰC (Đã bỏ nút đăng xuất trùng lặp) ════ -->
-            <Border Style="{StaticResource SettingsCard}" BorderBrush="#BAE6FD" BorderThickness="1.5">
+            <!-- ════ 1. THẺ THÔNG TIN NHÂN VIÊN & CA TRỰC ════ -->
+            <Border Style="{StaticResource SettingsCard}" BorderBrush="{StaticResource Primary200Brush}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -140,91 +229,98 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Avatar Profile Icon -->
-                    <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" Background="#0284C7" Margin="0,0,16,0">
-                        <TextBlock Text="A" FontSize="20" FontWeight="Bold" Foreground="White"
+                    <!-- Avatar Icon -->
+                    <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24"
+                            Background="{StaticResource Primary600Brush}" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="A" FontSize="19" FontWeight="Bold" Foreground="White"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
 
-                    <!-- Staff Info -->
+                    <!-- Staff Profile Details -->
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                            <TextBlock x:Name="TxtStaffName" Text="Nhân Viên Thu Ngân" FontSize="16" FontWeight="Bold" Foreground="#0F172A"/>
-                            <Border Background="#E0F2FE" CornerRadius="6" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="THU NGÂN • TRẠM POS" FontSize="10" FontWeight="Bold" Foreground="#0284C7"/>
+                            <TextBlock x:Name="TxtStaffName" Text="Nhân Viên Thu Ngân" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <Border Background="{StaticResource Primary100Brush}" CornerRadius="6" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Thu Ngân" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Primary600Brush}"/>
                             </Border>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Tài khoản: " FontSize="13" Foreground="#64748B"/>
-                            <TextBlock x:Name="TxtStaffUsername" Text="staff" FontSize="13" FontWeight="SemiBold" Foreground="#0F172A"/>
-                            <TextBlock Text="  •  Ca trực: Sáng (07:00 – 14:30)  •  Quầy POS #01" FontSize="13" Foreground="#64748B"/>
+                            <TextBlock Text="@" FontSize="13" Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock x:Name="TxtStaffUsername" Text="nhanvien" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="  •  Ca Sáng (07:00 – 14:30)  •  Quầy POS #01" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Active Shift Status Badge (Thay thế nút đăng xuất) -->
-                    <Border Grid.Column="2" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1"
-                            CornerRadius="20" Padding="14,6" VerticalAlignment="Center">
+                    <!-- Active Shift Status Badge -->
+                    <Border Grid.Column="2" Background="{StaticResource SuccessBgBrush}" BorderBrush="#A7F3D0" BorderThickness="1"
+                            CornerRadius="16" Padding="12,5" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse Width="8" Height="8" Fill="#10B981" Margin="0,0,8,0"/>
-                            <TextBlock Text="Đang trong ca trực" FontSize="12" FontWeight="SemiBold" Foreground="#047857"/>
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,7,0"/>
+                            <TextBlock Text="Đang trong ca trực" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/>
                         </StackPanel>
                     </Border>
                 </Grid>
             </Border>
 
-            <!-- ════ 2. GIAO DIỆN ỨNG DỤNG (Đã sửa nút đầy đủ chữ không bị che) ════ -->
+            <!-- ════ 2. CHẾ ĐỘ GIAO DIỆN MÀU SẮC ════ -->
             <Border Style="{StaticResource SettingsCard}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                        <Border Width="36" Height="36" CornerRadius="9" Background="#E0F2FE" Margin="0,0,12,0">
-                            <ui:SymbolIcon Symbol="DarkTheme24" FontSize="18" Foreground="#0284C7"
+                        <Border Style="{StaticResource CardIconBadge}">
+                            <ui:SymbolIcon Symbol="DarkTheme24" FontSize="18" Foreground="{StaticResource Primary600Brush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Giao Diện Màu Sắc" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                            <TextBlock Text="Chọn chế độ hiển thị phù hợp ánh sáng quầy thu ngân" FontSize="12" Foreground="#64748B"/>
+                            <TextBlock Text="Chế Độ Giao Diện" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Lựa chọn giao diện hiển thị phù hợp với điều kiện ánh sáng quầy"
+                                       FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Height="1" Background="#E2E8F0" Margin="0,0,0,16"/>
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,16"/>
 
                     <StackPanel Orientation="Horizontal">
-                        <!-- Nút Sáng: Auto width, chữ hiển thị 100% đầy đủ -->
-                        <Button Style="{StaticResource ThemeBtnActive}" Click="BtnThemeLight_Click" Margin="0,0,14,0">
+                        <!-- Nút Sáng: Active -->
+                        <Button Style="{StaticResource ThemeSegmentBtnActive}" Click="BtnThemeLight_Click" Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <ui:SymbolIcon Symbol="WeatherSunny24" FontSize="16" Foreground="White" Margin="0,0,8,0"/>
-                                <TextBlock Text="Sáng (Khuyên dùng)" Foreground="White" FontSize="13" FontWeight="SemiBold"
-                                           VerticalAlignment="Center"/>
+                                <ui:SymbolIcon Symbol="WeatherSunny24" FontSize="16" Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Giao diện Sáng" Foreground="White" FontSize="13" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           TextOptions.TextFormattingMode="Display"
+                                           TextOptions.TextRenderingMode="Grayscale"/>
                             </StackPanel>
                         </Button>
 
-                        <!-- Nút Tối -->
-                        <Button Style="{StaticResource ThemeBtn}" Click="BtnThemeDark_Click">
+                        <!-- Nút Tối: Inactive -->
+                        <Button Style="{StaticResource ThemeSegmentBtnInactive}" Click="BtnThemeDark_Click">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <ui:SymbolIcon Symbol="WeatherMoon24" FontSize="16" Foreground="#475569" Margin="0,0,8,0"/>
-                                <TextBlock Text="Tối (Dark Mode)" Foreground="#475569" FontSize="13" FontWeight="SemiBold"
-                                           VerticalAlignment="Center"/>
+                                <ui:SymbolIcon Symbol="WeatherMoon24" FontSize="16" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Giao diện Tối" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           TextOptions.TextFormattingMode="Display"
+                                           TextOptions.TextRenderingMode="ClearType"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- ════ 3. CẤU HÌNH THIẾT BỊ MÁY IN HÓA ĐƠN K80 ════ -->
+            <!-- ════ 3. CẤU HÌNH MÁY IN HÓA ĐƠN K80 ════ -->
             <Border Style="{StaticResource SettingsCard}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                        <Border Width="36" Height="36" CornerRadius="9" Background="#FEF3C7" Margin="0,0,12,0">
-                            <ui:SymbolIcon Symbol="Print24" FontSize="18" Foreground="#D97706"
+                        <Border Style="{StaticResource CardIconBadge}">
+                            <ui:SymbolIcon Symbol="Print24" FontSize="18" Foreground="{StaticResource Primary600Brush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Cấu Hình Máy In Hóa Đơn Bill" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                            <TextBlock Text="Cấu hình máy in nhiệt K80 và in thử hóa đơn test tại quầy" FontSize="12" Foreground="#64748B"/>
+                            <TextBlock Text="Máy In Hóa Đơn (K80)" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Cấu hình kết nối máy in nhiệt và kiểm tra lệnh in hóa đơn"
+                                       FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Height="1" Background="#E2E8F0" Margin="0,0,0,16"/>
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,16"/>
 
                     <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
@@ -235,11 +331,11 @@
 
                         <!-- Chọn máy in -->
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Máy in hóa đơn mặc định:" FontSize="12" Foreground="#64748B" Margin="0,0,0,6"/>
-                            <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1"
+                            <TextBlock Text="Máy in hóa đơn mặc định:" FontSize="12.5" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                            <Border Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
                                     CornerRadius="8" Height="40">
-                                <ComboBox Background="Transparent" BorderThickness="0" Foreground="#0F172A"
-                                          FontSize="13" VerticalContentAlignment="Center" Padding="12,0">
+                                <ComboBox Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                          FontSize="13" FontWeight="SemiBold" VerticalContentAlignment="Center" Padding="12,0">
                                     <ComboBoxItem Content="EPSON TM-T82X (USB / LAN)" IsSelected="True"/>
                                     <ComboBoxItem Content="Xprinter XP-Q800 (USB)"/>
                                     <ComboBoxItem Content="BIXOLON SRP-350 Plus"/>
@@ -250,11 +346,11 @@
 
                         <!-- Khổ giấy in -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Khổ giấy in nhiệt:" FontSize="12" Foreground="#64748B" Margin="0,0,0,6"/>
-                            <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1"
+                            <TextBlock Text="Khổ giấy in nhiệt:" FontSize="12.5" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                            <Border Background="{StaticResource SurfaceSecondaryBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
                                     CornerRadius="8" Height="40">
-                                <ComboBox Background="Transparent" BorderThickness="0" Foreground="#0F172A"
-                                          FontSize="13" VerticalContentAlignment="Center" Padding="12,0">
+                                <ComboBox Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextPrimaryBrush}"
+                                          FontSize="13" FontWeight="SemiBold" VerticalContentAlignment="Center" Padding="12,0">
                                     <ComboBoxItem Content="K80 – 80mm (Chuẩn siêu thị)" IsSelected="True"/>
                                     <ComboBoxItem Content="K57 – 57mm (Mini)"/>
                                 </ComboBox>
@@ -262,7 +358,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Dòng trạng thái máy in và nút in test -->
+                    <!-- Trạng thái kết nối & Nút in thử -->
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -270,51 +366,49 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse Width="8" Height="8" Fill="#10B981" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Máy in đang sẵn sàng kết nối cổng USB-01" FontSize="12" Foreground="#10B981" FontWeight="SemiBold"/>
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Máy in sẵn sàng kết nối cổng USB-01" FontSize="12.5" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold"/>
                         </StackPanel>
 
-                        <!-- Nút in thử hóa đơn test -->
-                        <Button Grid.Column="1" Style="{StaticResource OutlineActionBtn}" Click="BtnPrintTest_Click">
+                        <!-- Nút In Thử Hóa Đơn -->
+                        <Button Grid.Column="1" Style="{StaticResource SettingsActionBtn}" Click="BtnPrintTest_Click">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <ui:SymbolIcon Symbol="Print20" FontSize="14" Foreground="#0284C7" Margin="0,0,6,0"/>
-                                <TextBlock Text="In Thử Bill Test" Foreground="#0284C7" FontSize="13" FontWeight="SemiBold"/>
+                                <ui:SymbolIcon Symbol="Print20" FontSize="15" Foreground="{StaticResource Primary600Brush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="In Thử Hóa Đơn" Foreground="{StaticResource Primary600Brush}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- ════ 4. TÙY CHỌN THAO TÁC BÁN HÀNG TẠI QUẦY (Tính năng quầy POS) ════ -->
+            <!-- ════ 4. TÙY CHỌN THAO TÁC BÁN HÀNG TẠI QUẦY ════ -->
             <Border Style="{StaticResource SettingsCard}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                        <Border Width="36" Height="36" CornerRadius="9" Background="#EEF2FF" Margin="0,0,12,0">
-                            <ui:SymbolIcon Symbol="Settings24" FontSize="18" Foreground="#6366F1"
+                        <Border Style="{StaticResource CardIconBadge}">
+                            <ui:SymbolIcon Symbol="Flash24" FontSize="18" Foreground="{StaticResource Primary600Brush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Tùy Chọn Bán Hàng Tại Quầy" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                            <TextBlock Text="Tối ưu hóa tốc độ thanh toán và âm thanh phản hồi" FontSize="12" Foreground="#64748B"/>
+                            <TextBlock Text="Tùy Chọn Thao Tác" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Cấu hình âm thanh phản hồi và tự động hóa thao tác quầy thu ngân"
+                                       FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Height="1" Background="#E2E8F0" Margin="0,0,0,16"/>
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,16"/>
 
                     <StackPanel>
-                        <!-- Checkbox 1 -->
                         <CheckBox IsChecked="True" Margin="0,0,0,12" Cursor="Hand">
-                            <TextBlock Text="Phát âm thanh 'Bíp' khi quét mã vạch sản phẩm thành công" FontSize="13" Foreground="#1E293B"/>
+                            <TextBlock Text="Phát âm thanh 'Bíp' khi quét mã vạch sản phẩm thành công" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
                         </CheckBox>
 
-                        <!-- Checkbox 2 -->
                         <CheckBox IsChecked="True" Margin="0,0,0,12" Cursor="Hand">
-                            <TextBlock Text="Tự động mở ngăn kéo đựng tiền khi xác nhận thanh toán Tiền mặt" FontSize="13" Foreground="#1E293B"/>
+                            <TextBlock Text="Tự động mở ngăn kéo đựng tiền khi xác nhận thanh toán Tiền mặt" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
                         </CheckBox>
 
-                        <!-- Checkbox 3 -->
                         <CheckBox IsChecked="True" Cursor="Hand">
-                            <TextBlock Text="Tự động in hóa đơn ngay sau khi hoàn tất đơn hàng" FontSize="13" Foreground="#1E293B"/>
+                            <TextBlock Text="Tự động in hóa đơn ngay sau khi hoàn tất đơn hàng" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
                         </CheckBox>
                     </StackPanel>
                 </StackPanel>
@@ -324,17 +418,18 @@
             <Border Style="{StaticResource SettingsCard}">
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                        <Border Width="36" Height="36" CornerRadius="9" Background="#ECFDF5" Margin="0,0,12,0">
-                            <ui:SymbolIcon Symbol="Globe24" FontSize="18" Foreground="#10B981"
+                        <Border Style="{StaticResource CardIconBadge}">
+                            <ui:SymbolIcon Symbol="Globe24" FontSize="18" Foreground="{StaticResource Primary600Brush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Trạng Thái Kết Nối Máy Chủ API" FontSize="14" FontWeight="Bold" Foreground="#0F172A"/>
-                            <TextBlock Text="Đồng bộ danh mục hàng hóa, giá niêm yết và khuyến mãi theo thời gian thực" FontSize="12" Foreground="#64748B"/>
+                            <TextBlock Text="Kết Nối Máy Chủ (API)" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Đồng bộ danh mục hàng hóa, giá niêm yết và dữ liệu theo thời gian thực"
+                                       FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                     </StackPanel>
 
-                    <Border Height="1" Background="#E2E8F0" Margin="0,0,0,16"/>
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,0,0,16"/>
 
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -342,35 +437,50 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Tóm tắt trạng thái -->
+                        <!-- Thông tin kết nối -->
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <Ellipse Width="8" Height="8" Fill="#10B981" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Máy chủ hoạt động bình thường • Phản hồi: 38ms" FontSize="13" FontWeight="SemiBold" Foreground="#059669"/>
+                                <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Máy chủ hoạt động bình thường" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" VerticalAlignment="Center"/>
+                                <Border Background="{StaticResource SuccessBgBrush}" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="6" Padding="6,2" Margin="10,0,0,0">
+                                    <TextBlock Text="Độ trễ: 38ms" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/>
+                                </Border>
                             </StackPanel>
-                            <TextBlock Text="Cổng dịch vụ: http://localhost:5000/api/" FontSize="12" Foreground="#64748B"/>
+                            <TextBlock Text="Địa chỉ dịch vụ: http://localhost:5000/api/" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
                         </StackPanel>
 
-                        <!-- Nút Kiểm tra lại -->
-                        <Button Grid.Column="1" Style="{StaticResource OutlineActionBtn}" Click="BtnCheckApi_Click">
+                        <!-- Nút Kiểm Tra Kết Nối -->
+                        <Button Grid.Column="1" Style="{StaticResource SettingsActionBtn}" Click="BtnCheckApi_Click">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <ui:SymbolIcon Symbol="ArrowSync20" FontSize="14" Foreground="#475569" Margin="0,0,6,0"/>
-                                <TextBlock Text="Kiểm Tra Kết Nối" Foreground="#475569" FontSize="13" FontWeight="SemiBold"/>
+                                <ui:SymbolIcon Symbol="ArrowSync20" FontSize="15" Foreground="{StaticResource Primary600Brush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Kiểm Tra Kết Nối" Foreground="{StaticResource Primary600Brush}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- ════ 6. NÚT LƯU THIẾT LẬP ════ -->
-            <Button Style="{StaticResource SaveBtn}" HorizontalAlignment="Right" Margin="0,6,0,0"
-                    Click="BtnSaveConfig_Click">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon Symbol="Save24" FontSize="16" Foreground="White" Margin="0,0,8,0"/>
-                    <TextBlock Text="Lưu Thiết Lập" Foreground="White" FontSize="13" FontWeight="Bold"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
+            <!-- ════ 6. THANH HÀNH ĐỘNG CUỐI TRANG (CÂN ĐỐI 2 BÊN) ════ -->
+            <Grid Margin="0,4,0,12">
+                <!-- Nút phụ bên trái: Khôi phục mặc định -->
+                <Button HorizontalAlignment="Left" Style="{StaticResource ResetActionBtn}" Click="BtnRestoreDefaults_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="ArrowCounterclockwise20" FontSize="15" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Khôi Phục Mặc Định" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Nút chính bên phải: Lưu thiết lập -->
+                <Button HorizontalAlignment="Right" Style="{StaticResource SaveConfigBtn}" Click="BtnSaveConfig_Click">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Save24" FontSize="16" Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Lưu Thiết Lập" Foreground="White" FontSize="13.5" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   TextOptions.TextFormattingMode="Display"
+                                   TextOptions.TextRenderingMode="Grayscale"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
 
         </StackPanel>
     </ScrollViewer>

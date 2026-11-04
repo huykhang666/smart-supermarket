@@ -129,7 +129,7 @@
                 <TextBlock Text="QUÉT MÃ QR ĐỂ THANH TOÁN" FontSize="11" FontWeight="Bold"
                            Foreground="#64748B" HorizontalAlignment="Center" Margin="0,0,0,4"/>
                 <TextBlock x:Name="TxtAmount" Text="0 đ"
-                           FontSize="32" FontWeight="Bold" Foreground="#0284C7" HorizontalAlignment="Center"/>
+                           FontSize="32" FontWeight="Bold" Foreground="{StaticResource Primary600Brush}" HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
                     <Ellipse Width="7" Height="7" Fill="#10B981" Margin="0,0,6,0" VerticalAlignment="Center"/>
                     <TextBlock Text="Đang chờ thanh toán..." FontSize="12" Foreground="#047857" FontWeight="SemiBold"/>

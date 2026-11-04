@@ -190,7 +190,7 @@
                     <TextBlock Text="SỐ TIỀN CẦN THANH TOÁN" FontSize="11" FontWeight="Bold"
                                Foreground="#0284C7" HorizontalAlignment="Center"/>
                     <TextBlock x:Name="TxtTotalAmount" Text="0 đ"
-                               FontSize="30" FontWeight="Bold" Foreground="#0369A1"
+                               FontSize="30" FontWeight="Bold" Foreground="{StaticResource Primary600Brush}" Typography.NumeralAlignment="Tabular"
                                HorizontalAlignment="Center" Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
@@ -248,7 +248,7 @@
                     </StackPanel>
                     <TextBlock x:Name="TxtChangeDue" Text="0 đ"
                                HorizontalAlignment="Right" VerticalAlignment="Center"
-                               FontSize="22" FontWeight="Bold" Foreground="#15803D"/>
+                               FontSize="22" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}" Typography.NumeralAlignment="Tabular"/>
                 </Grid>
             </Border>
 

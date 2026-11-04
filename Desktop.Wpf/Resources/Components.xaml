@@ -6,7 +6,7 @@
         <ResourceDictionary Source="Colors.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
-    <!-- ══ Primary Action Button (38-42px, R8, Primary600) ══ -->
+    <!-- ══ Primary Action Button (38px, R8, Primary600) ══ -->
     <Style x:Key="TechPrimaryBtn" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource Primary600Brush}"/>
         <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -16,13 +16,19 @@
         <Setter Property="Padding" Value="16,0"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="bg" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -52,11 +58,15 @@
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="bg" Background="{TemplateBinding Background}"
-                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -76,7 +86,41 @@
         </Setter>
     </Style>
 
-    <!-- ══ Danger Button (E53935) ══ -->
+    <!-- ══ Success / Confirmed Action Button ══ -->
+    <Style x:Key="TechSuccessBtn" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bg" Background="{TemplateBinding Background}"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bg" Property="Background" Value="#047857"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="bg" Property="Background" Value="#065F46"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ══ Danger Button ══ -->
     <Style x:Key="TechDangerBtn" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource DangerBgBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
@@ -87,13 +131,16 @@
         <Setter Property="Height" Value="38"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="bg" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            CornerRadius="8" Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -109,21 +156,25 @@
         </Setter>
     </Style>
 
-    <!-- ══ Card Style (White, R12, Border E3EAF2, Padding 18-20) ══ -->
+    <!-- ══ Card Style (White, R12, Border E2E8F0, Padding 18-20) ══ -->
     <Style x:Key="TechCard" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="18,16"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
-    <!-- ══ Global DataGrid Clean Row & Header ══ -->
+    <!-- ══ Global DataGrid Clean Row & Header with Tabular Numbers ══ -->
     <Style x:Key="TechDataGridRow" TargetType="DataGridRow">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="#F0F7FD"/>
@@ -143,6 +194,8 @@
         <Setter Property="Padding" Value="12,10"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
     <Style x:Key="TechCenterDataGridHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource TechDataGridHeader}">
@@ -161,6 +214,11 @@
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="SelectionBrush" Value="#BAE6FD"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -185,6 +243,7 @@
         <Setter Property="BorderThickness" Value="1.5"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                 <Setter Property="BorderBrush" Value="{StaticResource Primary600Brush}"/>

@@ -53,8 +53,8 @@ public partial class ProductsPage : Page
         if (!_isInitialized || DgvProducts == null) return;
 
         string query = TxtSearch?.Text?.Trim().ToLowerInvariant() ?? "";
-        string cat = (CbCategory?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
-        if (cat == "Tất cả danh mục") cat = "";
+        string cat = (CbCategory?.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+        if (cat == "ALL") cat = "";
 
         var filtered = _allProducts.Where(p =>
         {

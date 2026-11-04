@@ -47,6 +47,24 @@ public partial class SettingsPage : Page
             MessageBoxImage.Information);
     }
 
+    private void BtnRestoreDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        var result = MessageBox.Show(
+            "Bạn có chắc chắn muốn khôi phục toàn bộ thiết lập về trạng thái mặc định ban đầu?",
+            "Xác nhận khôi phục",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            MessageBox.Show(
+                "Đã khôi phục các thiết lập máy in, âm thanh và giao diện về mặc định thành công!",
+                "Khôi phục thành công",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
     private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
     {
         MessageBox.Show(

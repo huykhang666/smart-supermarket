@@ -221,16 +221,17 @@
                               Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" FontWeight="SemiBold"
                               VerticalContentAlignment="Center"
                               SelectionChanged="CbCategory_SelectionChanged">
-                        <ComboBoxItem Content="Tất cả danh mục" IsSelected="True"/>
-                        <ComboBoxItem Content="Nước giải khát &amp; Đồ uống"/>
-                        <ComboBoxItem Content="Sữa &amp; Các sản phẩm từ sữa"/>
-                        <ComboBoxItem Content="Bánh kẹo &amp; Ăn vặt"/>
-                        <ComboBoxItem Content="Mì, Miến &amp; Thực phẩm ăn liền"/>
-                        <ComboBoxItem Content="Gia vị &amp; Dầu ăn"/>
-                        <ComboBoxItem Content="Hóa phẩm &amp; Tẩy rửa"/>
-                        <ComboBoxItem Content="Chăm sóc cá nhân &amp; Gia đình"/>
-                        <ComboBoxItem Content="Thực phẩm khô &amp; Đóng hộp"/>
-                        <ComboBoxItem Content="Đồ gia dụng tiện ích"/>
+                        <ComboBoxItem Content="Tất cả mặt hàng" Tag="ALL" IsSelected="True"/>
+                        <ComboBoxItem Content="Bánh kẹo &amp; Ăn vặt" Tag="Bánh kẹo"/>
+                        <ComboBoxItem Content="Chăm sóc cá nhân" Tag="Chăm sóc"/>
+                        <ComboBoxItem Content="Đồ ăn liền &amp; Đóng hộp" Tag="Đồ ăn liền"/>
+                        <ComboBoxItem Content="Đồ dùng gia đình &amp; Nhà bếp" Tag="Đồ dùng"/>
+                        <ComboBoxItem Content="Gia vị &amp; Đồ khô" Tag="Gia vị"/>
+                        <ComboBoxItem Content="Hóa phẩm &amp; Giặt xả" Tag="Hóa phẩm"/>
+                        <ComboBoxItem Content="Nước giải khát &amp; Đồ uống" Tag="Nước giải khát"/>
+                        <ComboBoxItem Content="Rau củ quả tươi" Tag="Rau"/>
+                        <ComboBoxItem Content="Sữa &amp; Sản phẩm từ sữa" Tag="Sữa"/>
+                        <ComboBoxItem Content="Thịt, Thủy hải sản &amp; Trứng" Tag="Thịt"/>
                     </ComboBox>
                 </Border>
             </Grid>
@@ -251,6 +252,7 @@
                             <Setter Property="FontWeight" Value="SemiBold"/>
                             <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
                             <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
@@ -291,6 +293,7 @@
                             <Setter Property="FontWeight" Value="Bold"/>
                             <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
                             <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>

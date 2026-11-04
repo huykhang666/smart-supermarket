@@ -140,23 +140,27 @@
         <!-- Primary Payment Action Button Style (VietQR Primary Blue) -->
         <Style x:Key="PrimaryPayBtn" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Background" Value="#0284C7"/>
+            <Setter Property="Background" Value="{StaticResource Primary600Brush}"/>
             <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="8"
                                 Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True"
-                                UseLayoutRounding="True" RenderOptions.ClearTypeHint="Enabled"
-                                TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                UseLayoutRounding="True" RenderOptions.ClearTypeHint="Enabled">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#0369A1"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary700Brush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#075985"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary800Brush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -167,10 +171,15 @@
         <!-- Secondary Payment Action Button Style (Cash Payment Clean Neutral) -->
         <Style x:Key="SecondaryPayBtn" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Background" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -178,16 +187,17 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="8"
-                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True"
+                                UseLayoutRounding="True" RenderOptions.ClearTypeHint="Enabled">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#E2E8F0"/>
-                                <Setter TargetName="bg" Property="BorderBrush" Value="#94A3B8"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource SurfaceSecondaryBrush}"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{StaticResource Primary600Brush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#CBD5E1"/>
+                                <Setter TargetName="bg" Property="Background" Value="#E2E8F0"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -277,16 +287,16 @@
                                   VerticalContentAlignment="Center" Padding="4,0"
                                   SelectionChanged="CbCategoryFilter_SelectionChanged">
                             <ComboBoxItem Content="Tất cả mặt hàng" Tag="ALL" IsSelected="True"/>
-                            <ComboBoxItem Content="Nước giải khát &amp; Đồ uống" Tag="Nước giải khát"/>
-                            <ComboBoxItem Content="Sữa &amp; SP từ sữa" Tag="Sữa"/>
                             <ComboBoxItem Content="Bánh kẹo &amp; Ăn vặt" Tag="Bánh kẹo"/>
-                            <ComboBoxItem Content="Rau củ quả tươi" Tag="Rau"/>
-                            <ComboBoxItem Content="Gia vị &amp; Đồ khô" Tag="Gia vị"/>
-                            <ComboBoxItem Content="Đồ dùng gia đình &amp; Nhà bếp" Tag="Đồ dùng"/>
-                            <ComboBoxItem Content="Hóa phẩm &amp; Giặt xả" Tag="Hóa phẩm"/>
                             <ComboBoxItem Content="Chăm sóc cá nhân" Tag="Chăm sóc"/>
-                            <ComboBoxItem Content="Thịt &amp; Thủy hải sản" Tag="Thịt"/>
                             <ComboBoxItem Content="Đồ ăn liền &amp; Đóng hộp" Tag="Đồ ăn liền"/>
+                            <ComboBoxItem Content="Đồ dùng gia đình &amp; Nhà bếp" Tag="Đồ dùng"/>
+                            <ComboBoxItem Content="Gia vị &amp; Đồ khô" Tag="Gia vị"/>
+                            <ComboBoxItem Content="Hóa phẩm &amp; Giặt xả" Tag="Hóa phẩm"/>
+                            <ComboBoxItem Content="Nước giải khát &amp; Đồ uống" Tag="Nước giải khát"/>
+                            <ComboBoxItem Content="Rau củ quả tươi" Tag="Rau"/>
+                            <ComboBoxItem Content="Sữa &amp; Sản phẩm từ sữa" Tag="Sữa"/>
+                            <ComboBoxItem Content="Thịt, Thủy hải sản &amp; Trứng" Tag="Thịt"/>
                         </ComboBox>
                     </Grid>
                 </Border>
@@ -525,6 +535,7 @@
                                         <Setter Property="Padding" Value="0,0,10,0"/>
                                         <Setter Property="Foreground" Value="{StaticResource Primary700Brush}"/>
                                         <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
                                         <Setter Property="VerticalAlignment" Value="Center"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
@@ -658,24 +669,25 @@
                                     <TextBlock Text="Đã gồm 8% thuế VAT" FontSize="11" Foreground="#94A3B8" Margin="0,3,0,0"/>
                                 </StackPanel>
                                 <TextBlock x:Name="TxtGrandTotal" Text="0 đ" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                           FontSize="26" FontWeight="Bold" Foreground="#0F172A"/>
+                                           FontSize="26" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" Typography.NumeralAlignment="Tabular"/>
                             </Grid>
                         </Border>
 
                         <!-- Direct 1-Click Payment Methods (Option A) -->
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.25*"/>
-                                <ColumnDefinition Width="8"/>
-                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- VietQR Primary Payment Action -->
-                            <Button Grid.Column="0" Style="{StaticResource PrimaryPayBtn}" Height="44"
+                            <!-- VietQR Primary Payment Action: Chữ 13px sắc nét giống các nút khác -->
+                            <Button Grid.Column="0" Style="{StaticResource PrimaryPayBtn}" Height="40"
                                     Click="BtnPayQr_Click">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="QrCode24" FontSize="18" Foreground="White" Margin="0,0,8,0"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="QrCode24" FontSize="16" Foreground="White" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="Quét VietQR" FontSize="13" FontWeight="SemiBold" Foreground="White"
+                                               VerticalAlignment="Center"
                                                RenderOptions.ClearTypeHint="Enabled"
                                                TextOptions.TextFormattingMode="Display"
                                                TextOptions.TextRenderingMode="ClearType"
@@ -683,12 +695,13 @@
                                 </StackPanel>
                             </Button>
 
-                            <!-- Cash Payment Action -->
-                            <Button Grid.Column="2" Style="{StaticResource SecondaryPayBtn}" Height="44"
+                            <!-- Cash Payment Action: Chữ 13px sắc nét giống các nút khác -->
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryPayBtn}" Height="40"
                                     Click="BtnPayCash_Click">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <ui:SymbolIcon Symbol="Money24" FontSize="18" Foreground="#059669" Margin="0,0,6,0"/>
-                                    <TextBlock Text="Tiền mặt" FontSize="13" FontWeight="SemiBold" Foreground="#1E293B"
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Money24" FontSize="16" Foreground="{StaticResource SuccessBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Tiền mặt" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center"
                                                RenderOptions.ClearTypeHint="Enabled"
                                                TextOptions.TextFormattingMode="Display"
                                                TextOptions.TextRenderingMode="ClearType"

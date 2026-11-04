@@ -300,6 +300,7 @@
                             <Setter Property="FontWeight" Value="Bold"/>
                             <Setter Property="Foreground" Value="{StaticResource Primary700Brush}"/>
                             <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>

@@ -41,15 +41,17 @@
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- Hover state: subtle soft cyan -->
+                            <!-- Hover state: subtle soft blue -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#F0F9FF"/>
-                                <Setter TargetName="txtLabel" Property="Foreground" Value="#0284C7"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary50Brush}"/>
+                                <Setter TargetName="txtLabel" Property="Foreground" Value="{StaticResource Primary600Brush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource Primary600Brush}"/>
                             </Trigger>
-                            <!-- Checked state: Vibrant Cyan Pill matching the image -->
+                            <!-- Checked state: Technology Blue Pill -->
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#00A8E8"/>
+                                <Setter TargetName="bg" Property="Background" Value="{StaticResource Primary600Brush}"/>
                                 <Setter TargetName="txtLabel" Property="Foreground" Value="#FFFFFF"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -140,14 +142,7 @@
 
                 <!-- Left: App Title with Brand Cyan Cart Icon -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                    <Viewbox Width="17" Height="17" Margin="0,0,8,0" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path Data="M 1,1 L 4,1 L 6.68,13.4 C 6.8,14 7.3,14.5 8,14.5 L 18.5,14.5 C 19.2,14.5 19.7,14 19.85,13.4 L 22,4.5 L 5.5,4.5"
-                                  Stroke="#0284C7" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                            <Ellipse Canvas.Left="7" Canvas.Top="17.5" Width="3" Height="3" Fill="#0284C7"/>
-                            <Ellipse Canvas.Left="17" Canvas.Top="17.5" Width="3" Height="3" Fill="#0284C7"/>
-                        </Canvas>
-                    </Viewbox>
+                    <ui:SymbolIcon Symbol="Cart24" FontSize="18" Foreground="{StaticResource Primary600Brush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
 
                     <TextBlock Text="KATQ Supermarket POS" FontSize="13" FontWeight="SemiBold" Foreground="#0F172A" VerticalAlignment="Center"/>
                 </StackPanel>
@@ -277,7 +272,7 @@
                                          Content="POS Bán Hàng" GroupName="NavGroup" IsChecked="True"
                                          Click="NavPos_Click">
                                 <RadioButton.Tag>
-                                    <ui:SymbolIcon Symbol="Cart24" FontSize="17"/>
+                                    <ui:SymbolIcon Symbol="Cart24" FontSize="18" Foreground="{Binding RelativeSource={RelativeSource AncestorType=RadioButton}, Path=Foreground}"/>
                                 </RadioButton.Tag>
                             </RadioButton>
 
@@ -286,7 +281,7 @@
                                          Content="Đơn Hàng Tại Quầy" GroupName="NavGroup"
                                          Click="NavOrders_Click">
                                 <RadioButton.Tag>
-                                    <ui:SymbolIcon Symbol="Receipt24" FontSize="17"/>
+                                    <ui:SymbolIcon Symbol="Receipt24" FontSize="18" Foreground="{Binding RelativeSource={RelativeSource AncestorType=RadioButton}, Path=Foreground}"/>
                                 </RadioButton.Tag>
                             </RadioButton>
 
@@ -295,7 +290,7 @@
                                          Content="Tra Cứu Giá &amp; Hàng" GroupName="NavGroup"
                                          Click="NavProducts_Click">
                                 <RadioButton.Tag>
-                                    <ui:SymbolIcon Symbol="Search24" FontSize="17"/>
+                                    <ui:SymbolIcon Symbol="Search24" FontSize="18" Foreground="{Binding RelativeSource={RelativeSource AncestorType=RadioButton}, Path=Foreground}"/>
                                 </RadioButton.Tag>
                             </RadioButton>
 
@@ -304,7 +299,7 @@
                                          Content="Cài Đặt" GroupName="NavGroup"
                                          Click="NavSettings_Click">
                                 <RadioButton.Tag>
-                                    <ui:SymbolIcon Symbol="Settings24" FontSize="17"/>
+                                    <ui:SymbolIcon Symbol="Settings24" FontSize="18" Foreground="{Binding RelativeSource={RelativeSource AncestorType=RadioButton}, Path=Foreground}"/>
                                 </RadioButton.Tag>
                             </RadioButton>
                         </StackPanel>
